@@ -22,6 +22,10 @@ function getProjectRef() {
 }
 
 function getDatabaseUrl() {
+  if (process.env.SUPABASE_CONNECTION) {
+    return process.env.SUPABASE_CONNECTION
+  }
+
   if (process.env.SUPABASE_DATABASE_URL) {
     return process.env.SUPABASE_DATABASE_URL
   }

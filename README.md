@@ -24,6 +24,7 @@ CONTENT_SAFETY_ENABLED=true
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 SUPABASE_DB_PASSWORD=...
+SUPABASE_CONNECTION=postgresql://postgres.<project-ref>:<password>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres
 # Optional if using Supabase's pooler:
 # SUPABASE_DB_POOLER_REGION=eu-west-1
 ```
@@ -52,6 +53,8 @@ and set:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: the publishable or anon client key.
 - `SUPABASE_DB_PASSWORD`: the database password, used only by server routes for
   the image cache.
+- `SUPABASE_CONNECTION`: optional full Postgres connection URL. Prefer the
+  Supabase shared pooler URL on IPv4-only networks.
 - `SUPABASE_DB_POOLER_REGION`: the pooler region, if using Supabase's pooler.
 - `SUPABASE_DATABASE_URL`: optional full database URL instead of password and
   pooler-region assembly.

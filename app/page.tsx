@@ -61,6 +61,10 @@ function pathBackView(track: LearningTrack): AppView {
   return { kind: "catalogue" }
 }
 
+function requiresAuth(view: AppView) {
+  return !["catalogue", "company", "freeplay"].includes(view.kind)
+}
+
 export default function Page() {
   const [view, setView] = useState<AppView>({ kind: "catalogue" })
   const [languageId, setLanguageId] = useState<LanguageId>(DEFAULT_LANGUAGE_ID)
@@ -241,5 +245,11 @@ export default function Page() {
     )
   }
 
-  return <AuthGate>{renderView()}</AuthGate>
+  const content = renderView()
+
+  if (requiresAuth(view)) {
+    return <AuthGate>{content}</AuthGate>
+  }
+
+  return content
 }
