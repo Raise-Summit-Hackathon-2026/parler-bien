@@ -13,7 +13,9 @@ Target phrase: "${phrase}"
 
 Listen to their recording and score their pronunciation. Be slightly generous but accurate. Ignore background noise and focus on whether they attempted the target phrase.
 
-Respond with JSON only. Split the phrase into individual words (including punctuation attached to words as in the original). Score each word from 0-100. Use null for issue and tip when a word scores 80 or above.`
+Respond with JSON only. Split the phrase into individual words (including punctuation attached to words as in the original). Score each word from 0-100. Use null for issue and tip when a word scores 80 or above.
+
+Also write voice_line: a short in-character spoken reaction for text-to-speech (2-3 sentences max). Use French-accented English with occasional French pet names (mon chéri, etc.) and optional bracket performance tags like [laughs softly] or [whispers]. Match the emotional arc to the score: encouraging and gentle around 60, warm and teasing around 75, celebratory and flirtatious at 90+. Do not repeat the coaching text verbatim.`
 }
 
 function parseScore(content: string): PronunciationScore {
@@ -22,6 +24,7 @@ function parseScore(content: string): PronunciationScore {
   if (
     typeof parsed.overall_score !== "number" ||
     typeof parsed.coaching !== "string" ||
+    typeof parsed.voice_line !== "string" ||
     !Array.isArray(parsed.words)
   ) {
     throw new Error("Invalid score response shape")

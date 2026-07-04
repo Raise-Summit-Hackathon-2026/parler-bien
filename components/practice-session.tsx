@@ -1,11 +1,12 @@
 "use client"
 
-import { Loader2, Mic, RotateCcw, Square } from "lucide-react"
+import { Loader2, Mic, RotateCcw, Square, Volume2 } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
+import { useSpeaker } from "@/hooks/use-speaker"
 import type { PronunciationScore, WordScore } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -38,20 +39,23 @@ function WordChip({
       type="button"
       onClick={onSelect}
       className={cn(
-        "rounded-full px-3 py-1.5 text-lg font-medium ring-1 transition-all",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-lg font-medium ring-1 transition-all",
         scoreBg(word.score),
         scoreColor(word.score),
         selected && "ring-2 ring-foreground/30",
       )}
     >
+      <Volume2 className="size-3.5 opacity-60" />
       {word.word}
     </button>
   )
 }
 
 export function PracticeSession() {
-  const { isRecording, analyser, error, startRecording, stopRecording } =
+  const { isRecording, analyser: recorderAnalyser, error, startRecording, stopRecording } =
     useAudioRecorder()
+  const { isSpeaking, analyser: speakerAnalyser, speak, stop: stopSpeaking } =
+    useSpeaker()
 
   const [isScoring, setIsScoring] = useState(false)
   const [score, setScore] = useState<PronunciationScore | null>(null)
@@ -59,6 +63,10 @@ export function PracticeSession() {
   const [requestError, setRequestError] = useState<string | null>(null)
 
   const displayError = error ?? requestError
+  const isBusy = isScoring || isSpeaking
+
+  const waveformAnalyser = isRecording ? recorderAnalyser : speakerAnalyser
+  const waveformActive = isRecording || isSpeaking
 
   const selectedIndex = useMemo(() => {
     if (!score || !selectedWord) return -1
@@ -66,7 +74,7 @@ export function PracticeSession() {
   }, [score, selectedWord])
 
   async function handleMicPress() {
-    if (isScoring) return
+    if (isBusy) return
 
     if (isRecording) {
       setRequestError(null)
@@ -99,6 +107,10 @@ export function PracticeSession() {
         const result = (await response.json()) as PronunciationScore
         setScore(result)
         setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
+
+        if (result.voice_line) {
+          void speak(result.voice_line, "coach")
+        }
       } catch (err) {
         setRequestError(
           err instanceof Error ? err.message : "Something went wrong",
@@ -109,6 +121,7 @@ export function PracticeSession() {
       return
     }
 
+    stopSpeaking()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
@@ -116,9 +129,19 @@ export function PracticeSession() {
   }
 
   function handleReset() {
+    stopSpeaking()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
+  }
+
+  function handleWordSelect(word: WordScore) {
+    setSelectedWord(word)
+    void speak(word.word, "word")
+  }
+
+  function handleHearPhrase() {
+    void speak(DEFAULT_PHRASE, "phrase")
   }
 
   return (
@@ -131,7 +154,7 @@ export function PracticeSession() {
           Practice your pronunciation
         </h1>
         <p className="text-muted-foreground">
-          Say it out loud. Tap any word to see how to improve it.
+          Say it out loud. Tap any word to hear how it should sound.
         </p>
       </div>
 
@@ -140,10 +163,21 @@ export function PracticeSession() {
           <p className="text-xs tracking-wide text-muted-foreground uppercase">
             {DEFAULT_LANGUAGE}
           </p>
-          <p className="text-2xl font-medium">{DEFAULT_PHRASE}</p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-2xl font-medium">{DEFAULT_PHRASE}</p>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleHearPhrase}
+              disabled={isRecording || isScoring}
+              aria-label="Hear phrase"
+            >
+              <Volume2 className="size-4" />
+            </Button>
+          </div>
         </div>
 
-        <Waveform analyser={analyser} active={isRecording} />
+        <Waveform analyser={waveformAnalyser} active={waveformActive} />
 
         <div className="flex flex-col items-center gap-3">
           <Button
@@ -153,7 +187,7 @@ export function PracticeSession() {
               isRecording && "scale-105 bg-destructive hover:bg-destructive/90",
             )}
             onClick={handleMicPress}
-            disabled={isScoring}
+            disabled={isBusy}
             aria-label={isRecording ? "Stop recording" : "Start recording"}
           >
             {isScoring ? (
@@ -167,9 +201,11 @@ export function PracticeSession() {
           <p className="text-sm text-muted-foreground">
             {isScoring
               ? "Analyzing your pronunciation…"
-              : isRecording
-                ? "Tap to stop"
-                : "Tap to speak"}
+              : isSpeaking
+                ? "Coach is speaking…"
+                : isRecording
+                  ? "Tap to stop"
+                  : "Tap to speak"}
           </p>
         </div>
 
@@ -198,7 +234,7 @@ export function PracticeSession() {
                   key={`${word.word}-${index}`}
                   word={word}
                   selected={selectedIndex === index}
-                  onSelect={() => setSelectedWord(word)}
+                  onSelect={() => handleWordSelect(word)}
                 />
               ))}
             </div>
@@ -215,11 +251,7 @@ export function PracticeSession() {
               </div>
             )}
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleReset}
-            >
+            <Button variant="outline" className="w-full" onClick={handleReset}>
               <RotateCcw />
               Try again
             </Button>

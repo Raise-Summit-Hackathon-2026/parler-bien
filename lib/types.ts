@@ -5,9 +5,12 @@ export type WordScore = {
   tip: string | null
 }
 
+export type { TtsStyle } from "@/lib/tts"
+
 export type PronunciationScore = {
   overall_score: number
   coaching: string
+  voice_line: string
   words: WordScore[]
 }
 

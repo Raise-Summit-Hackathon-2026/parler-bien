@@ -9,6 +9,11 @@ export const pronunciationScoreJsonSchema = {
       type: "string",
       description: "One short encouraging sentence with the main fix",
     },
+    voice_line: {
+      type: "string",
+      description:
+        "Short in-character spoken reaction for TTS. French-accented English with optional bracket tags like [laughs softly]. Match emotional arc to score.",
+    },
     words: {
       type: "array",
       items: {
@@ -24,6 +29,6 @@ export const pronunciationScoreJsonSchema = {
       },
     },
   },
-  required: ["overall_score", "coaching", "words"],
+  required: ["overall_score", "coaching", "voice_line", "words"],
   additionalProperties: false,
 } as const
