@@ -1,0 +1,23 @@
+components/language-picker.tsx
+  s_5026ce805d8b26::t_a73e25dd9658f5 17,26,29-31,37
+lib/scenarios.ts
+  s_5026ce805d8b26::t_59ae63cde838d2 1,108-114,117-118,121,123-130
+components/practice-session.tsx
+  s_5026ce805d8b26::t_cad2e1161a5f07 28-29,263-272,292-297,314-319,421-422,712-713,716
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c639843571c4d383a31b4640666b59741caab35e",
+  "prompts": {},
+  "sessions": {
+    "s_5026ce805d8b26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2ec4-1053-78e3-bbda-441ba3b474d4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
