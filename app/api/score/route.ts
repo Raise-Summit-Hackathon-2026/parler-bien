@@ -9,12 +9,7 @@ import {
   isRegionId,
 } from "@/lib/languages"
 import { buildCharacterPrompt } from "@/lib/prompts"
-import {
-  isCustomScenarioId,
-  isScenarioId,
-  resolveScenario,
-  type Scenario,
-} from "@/lib/scenarios"
+import { resolveScenario, type Scenario } from "@/lib/character"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
 import { requireCurrentUser } from "@/lib/supabase"
 import type {
@@ -121,13 +116,13 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!isScenarioId(scenarioId)) {
+  if (!scenarioId || typeof scenarioId !== "string") {
     return NextResponse.json({ error: "Invalid scenarioId" }, { status: 400 })
   }
 
-  if (isCustomScenarioId(scenarioId) && !customScenario) {
+  if (!customScenario) {
     return NextResponse.json(
-      { error: "customScenario is required for custom scenarios" },
+      { error: "customScenario is required" },
       { status: 400 }
     )
   }

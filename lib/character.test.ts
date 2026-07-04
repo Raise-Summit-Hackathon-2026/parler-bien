@@ -13,7 +13,7 @@ import {
   getBuiltInCharacter,
   isBuiltInCharacterId,
 } from "@/lib/characters/index"
-import type { Scenario } from "@/lib/scenarios"
+import type { Scenario } from "@/lib/character"
 
 const sampleCharacter: Character = {
   id: "test-char",

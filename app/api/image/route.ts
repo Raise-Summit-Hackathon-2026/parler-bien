@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 
 import { getCachedImageUrl, setCachedImageUrl } from "@/lib/image-cache-db"
-import { getScenario, isBuiltInScenarioId } from "@/lib/scenarios"
+import {
+  getBuiltInCharacter,
+  isBuiltInCharacterId,
+} from "@/lib/characters/index"
 import { requireCurrentUser } from "@/lib/supabase"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -92,11 +95,11 @@ export async function POST(request: Request) {
   let cacheKey = prompt?.trim()
 
   if (scenarioId) {
-    if (!isBuiltInScenarioId(scenarioId)) {
+    if (!isBuiltInCharacterId(scenarioId)) {
       return NextResponse.json({ error: "Invalid scenarioId" }, { status: 400 })
     }
-    const scenario = getScenario(scenarioId)
-    imagePrompt = scenario.imagePrompt
+    const character = getBuiltInCharacter(scenarioId)
+    imagePrompt = character.avatarPrompt
     cacheKey = `scenario:${scenarioId}`
   }
 

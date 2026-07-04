@@ -1,5 +1,5 @@
 import type { Region } from "@/lib/languages"
-import type { Scenario } from "@/lib/scenarios"
+import type { Scenario } from "@/lib/character"
 import type { ConversationTurn } from "@/lib/types"
 
 import { buildCoachPrompt } from "@/lib/prompts/coach"

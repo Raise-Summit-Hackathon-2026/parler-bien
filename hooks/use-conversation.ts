@@ -13,7 +13,7 @@ import {
   resolveCharacterVoice,
   type CharacterGender,
   type Scenario,
-} from "@/lib/scenarios"
+} from "@/lib/character"
 import type {
   CharacterReply,
   ConversationTurn,

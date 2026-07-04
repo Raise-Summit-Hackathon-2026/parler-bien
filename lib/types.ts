@@ -1,5 +1,5 @@
 import type { LanguageId, RegionId } from "@/lib/languages"
-import type { Scenario, ScenarioId } from "@/lib/scenarios"
+import type { Scenario, ScenarioId } from "@/lib/character"
 
 export type WordScore = {
   word: string
@@ -32,7 +32,7 @@ export type SpeakerProfile = {
 }
 
 export type { TtsStyle, TtsRequestOptions } from "@/lib/tts"
-export type { Scenario, ScenarioId } from "@/lib/scenarios"
+export type { Scenario, ScenarioId } from "@/lib/character"
 
 export type PronunciationScore = {
   overall_score: number

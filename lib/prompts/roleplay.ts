@@ -1,4 +1,4 @@
-import { formatPersona } from "@/lib/scenarios"
+import { formatPersona } from "@/lib/character"
 
 import { formatHistory } from "@/lib/prompts/coach"
 import { agentCoachingBlock } from "@/lib/prompts/personality"

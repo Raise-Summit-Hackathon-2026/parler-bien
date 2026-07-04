@@ -1,6 +1,6 @@
 import type { GestureStep } from "@/lib/gestures"
-import type { LanguageId } from "@/lib/languages"
-import type { Scenario, ScenarioContent } from "@/lib/scenarios"
+import type { LanguageId, Region } from "@/lib/languages"
+import type { SentenceSuggestion, SpeakerProfile } from "@/lib/types"
 
 export type CharacterCategoryId =
   | "languages"
@@ -164,3 +164,128 @@ export function levelBadge(character: Character): string | null {
   if (character.levels.some((l) => l.kind === "gesture")) kinds.push("Camera")
   return `${character.levels.length} levels · ${kinds.join(" · ")}`
 }
+
+// ---------------------------------------------------------------------------
+// Wire layer (folded in from the former lib/scenarios.ts).
+// A `Scenario` is the flattened, per-level payload sent over the wire to the
+// score/prompt routes. Characters produce Scenarios via characterLevelScenario.
+// ---------------------------------------------------------------------------
+
+export type CustomScenarioId = `custom:${string}`
+
+export type ScenarioId = string
+
+export type ScenarioContent = {
+  openingLine: SentenceSuggestion | null
+  starters: SentenceSuggestion[]
+}
+
+export type Scenario = {
+  id: ScenarioId
+  title: string
+  tagline: string
+  goal: string | null
+  meterLabel: string | null
+  winMessage: string | null
+  persona: string
+  voice: {
+    ageRange: string
+    tone: string
+    gender?: CharacterGenderMode
+    voices?: CharacterVoiceMap
+  }
+  /** Prompt mode carried from the Character's voice level. Default "roleplay". */
+  mode?: "roleplay" | "coach" | "open"
+  deliveryStyle?: string
+  coachingStyle?: string
+  content: Partial<Record<LanguageId, ScenarioContent>>
+  imagePrompt: string
+  /** Set on AI-generated custom scenarios */
+  primaryLanguageId?: LanguageId
+  createdAt?: number
+  sourceLabel?: string
+}
+
+export type CharacterGender = "male" | "female"
+export type CharacterGenderMode = CharacterGender | "random" | "opposite-speaker"
+export type CharacterVoiceMap = Partial<Record<CharacterGender, string>> & {
+  default?: string
+}
+
+export function resolveCharacterGender(
+  scenario: Pick<Scenario, "mode" | "voice">,
+  speakerGender?: SpeakerProfile["gender"],
+  randomGender: CharacterGender = "female",
+): CharacterGender {
+  const mode =
+    scenario.voice.gender ??
+    (scenario.mode === "coach" ? "opposite-speaker" : "random")
+
+  if (mode === "male" || mode === "female") return mode
+  if (mode === "random") return randomGender
+  if (speakerGender === "male") return "female"
+  if (speakerGender === "female") return "male"
+  return randomGender
+}
+
+export function randomCharacterGender(): CharacterGender {
+  return Math.random() < 0.5 ? "female" : "male"
+}
+
+export function resolveCharacterVoice(
+  scenario: Pick<Scenario, "voice">,
+  gender: CharacterGender,
+): string | undefined {
+  return scenario.voice.voices?.[gender] ?? scenario.voice.voices?.default
+}
+
+export function isCustomScenarioId(value: string): value is CustomScenarioId {
+  return value.startsWith("custom:")
+}
+
+export function resolveScenario(
+  scenarioId: ScenarioId,
+  customScenario?: Scenario | null,
+): Scenario {
+  if (!customScenario || customScenario.id !== scenarioId) {
+    throw new Error("Custom scenario payload is required")
+  }
+  return customScenario
+}
+
+export function getScenarioContent(
+  scenario: Scenario,
+  languageId: LanguageId,
+): ScenarioContent {
+  const direct = scenario.content[languageId]
+  if (direct) return direct
+
+  const primary = scenario.primaryLanguageId
+  if (primary && scenario.content[primary]) {
+    return scenario.content[primary]
+  }
+
+  return (
+    scenario.content.fr ??
+    scenario.content.en ??
+    scenario.content.es ??
+    scenario.content.ru ??
+    EMPTY_CONTENT
+  )
+}
+
+export function formatPersona(
+  scenario: Scenario,
+  characterGender: CharacterGender,
+  languageName: string,
+  region: Region,
+): string {
+  const genderLabel = characterGender === "male" ? "male" : "female"
+  const persona = scenario.persona.replaceAll("{characterGender}", genderLabel)
+
+  return `${persona}
+
+LANGUAGE AND SETTING: Conduct the entire conversation in ${languageName} with a natural ${region.accent} accent and vocabulary. The scene is set in ${region.city} — adapt place names, currency, and cultural references naturally to that city. Your reply.text must be in ${languageName}; reply.tts_text must contain the same spoken words as reply.text, with optional audio-only bracketed delivery cues; reply.hint is a short English gloss (or a brief usage cue if the conversation is already in English).`
+}
+
+const EMPTY_CONTENT: ScenarioContent = { openingLine: null, starters: [] }

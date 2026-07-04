@@ -1,5 +1,5 @@
 import type { Character } from "@/lib/character"
-import type { Scenario } from "@/lib/scenarios"
+import type { Scenario } from "@/lib/character"
 
 export type WorkspaceRow = {
   id: string

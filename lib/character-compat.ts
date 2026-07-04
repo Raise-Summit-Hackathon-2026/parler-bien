@@ -1,5 +1,5 @@
 import { scenarioToCharacter, type Character } from "@/lib/character"
-import type { Scenario } from "@/lib/scenarios"
+import type { Scenario } from "@/lib/character"
 import type { CharacterRow } from "@/lib/workspace-types"
 
 function isCharacterShape(value: Character | Scenario): value is Character {

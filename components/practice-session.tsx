@@ -18,9 +18,13 @@ import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useConversation } from "@/hooks/use-conversation"
-import { characterLevelScenario, type Character } from "@/lib/character"
+import {
+  characterLevelScenario,
+  getScenarioContent,
+  type Character,
+} from "@/lib/character"
+import { isBuiltInCharacterId } from "@/lib/characters/index"
 import { markScenarioCompleted } from "@/lib/completions"
-import { getScenarioContent, isBuiltInScenarioId } from "@/lib/scenarios"
 import { pickRandomSentences } from "@/lib/sentences"
 import type { ConversationTurn, SentenceSuggestion } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -270,9 +274,9 @@ export function PracticeSession({
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
         <ScenarioScene
-          scenarioId={isBuiltInScenarioId(scenario.id) ? scenario.id : undefined}
+          scenarioId={isBuiltInCharacterId(scenario.id) ? scenario.id : undefined}
           imagePrompt={
-            isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt
+            isBuiltInCharacterId(scenario.id) ? undefined : scenario.imagePrompt
           }
           className="h-44 w-full shrink-0 rounded-none"
           overlay
