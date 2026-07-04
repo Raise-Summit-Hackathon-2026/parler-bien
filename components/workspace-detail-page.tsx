@@ -8,9 +8,11 @@ import {
   Loader2,
   Plus,
   Share2,
+  Sparkles,
   Upload,
 } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { LevelEditorForm, type LevelFormValues } from "@/components/level-editor-form"
@@ -61,6 +63,8 @@ function safeFileName(value: string) {
 }
 
 export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
+  const searchParams = useSearchParams()
+  const isGenerated = searchParams.get("generated") === "1"
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [tab, setTab] = useState<Tab>("personas")
   const [workspace, setWorkspace] = useState<WorkspaceRow | null>(null)
@@ -362,6 +366,16 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
             </p>
           </div>
         </div>
+
+        {isGenerated && (
+          <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+            <p>
+              Generated from your source material — review and adjust personas, tracks, and levels
+              below.
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 border-b pb-2">
           {(["personas", "tracks", "context", "share"] as Tab[]).map((item) => (

@@ -1,21 +1,34 @@
 import { GLAF_TEMPLATE } from "@/lib/glaf-template"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-export async function seedGaleriesLafayetteTemplate(
+import type { WorkspaceTemplateInput } from "@/lib/workspace-template"
+
+function slugify(value: string) {
+  const slug = value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+  return slug || `workspace-${Date.now()}`
+}
+
+export async function createWorkspaceFromTemplate(
   supabase: SupabaseClient,
   userId: string,
+  template: WorkspaceTemplateInput,
 ): Promise<string> {
-  const slug = `galeries-lafayette-${Date.now().toString(36)}`
+  const slug = `${slugify(template.workspace.name)}-${Date.now().toString(36)}`
 
   const { data: workspace, error: workspaceError } = await supabase
     .from("user_workspaces")
     .insert({
       owner_id: userId,
-      name: GLAF_TEMPLATE.workspace.name,
+      name: template.workspace.name,
       slug,
-      description: GLAF_TEMPLATE.workspace.description,
-      company_name: GLAF_TEMPLATE.workspace.company_name,
-      visibility: GLAF_TEMPLATE.workspace.visibility,
+      description: template.workspace.description,
+      company_name: template.workspace.company_name,
+      visibility: template.workspace.visibility ?? "private",
     })
     .select()
     .single()
@@ -25,29 +38,30 @@ export async function seedGaleriesLafayetteTemplate(
   const workspaceId = workspace.id as string
   const personaIds: Record<string, string> = {}
 
-  for (const [key, persona] of Object.entries(GLAF_TEMPLATE.personas)) {
+  for (const persona of template.personas) {
+    const { key, ...fields } = persona
     const { data: row, error } = await supabase
       .from("workspace_personas")
       .insert({
         workspace_id: workspaceId,
         created_by: userId,
-        name: persona.name,
-        role_title: persona.role_title,
-        tagline: persona.tagline,
-        agent_type: persona.agent_type,
-        capabilities: persona.capabilities,
-        voice_age_range: persona.voice_age_range,
-        voice_gender: persona.voice_gender,
-        voice_tone: persona.voice_tone,
-        delivery_style: persona.delivery_style,
-        coaching_style: persona.coaching_style,
-        skills: persona.skills,
-        preview_script: persona.preview_script,
-        persona_base: persona.persona_base,
-        avatar_prompt: persona.avatar_prompt,
-        greeting: persona.greeting,
-        theme_color: persona.theme_color,
-        instructions: persona.instructions,
+        name: fields.name,
+        role_title: fields.role_title,
+        tagline: fields.tagline,
+        agent_type: fields.agent_type,
+        capabilities: fields.capabilities,
+        voice_age_range: fields.voice_age_range,
+        voice_gender: fields.voice_gender,
+        voice_tone: fields.voice_tone,
+        delivery_style: fields.delivery_style,
+        coaching_style: fields.coaching_style,
+        skills: fields.skills,
+        preview_script: fields.preview_script,
+        persona_base: fields.persona_base,
+        avatar_prompt: fields.avatar_prompt,
+        greeting: fields.greeting,
+        theme_color: fields.theme_color,
+        instructions: fields.instructions,
       })
       .select("id")
       .single()
@@ -56,20 +70,26 @@ export async function seedGaleriesLafayetteTemplate(
     personaIds[key] = row.id as string
   }
 
-  const firstPersonaId = personaIds.chloe
-  if (firstPersonaId) {
-    await supabase.from("persona_context_items").insert({
-      workspace_id: workspaceId,
-      persona_id: firstPersonaId,
-      created_by: userId,
-      kind: "text",
-      title: "Brand guidelines",
-      body_text: GLAF_TEMPLATE.contextGuidelines,
-      source_name: "galeries-lafayette-guidelines.txt",
-    })
+  const contextSummary = template.contextSummary?.trim()
+  if (contextSummary) {
+    const firstPersonaId = template.personas[0]
+      ? personaIds[template.personas[0].key]
+      : undefined
+
+    if (firstPersonaId) {
+      await supabase.from("persona_context_items").insert({
+        workspace_id: workspaceId,
+        persona_id: firstPersonaId,
+        created_by: userId,
+        kind: "text",
+        title: "Training guidelines",
+        body_text: contextSummary,
+        source_name: "generated-guidelines.txt",
+      })
+    }
   }
 
-  for (const track of GLAF_TEMPLATE.tracks) {
+  for (const track of template.tracks) {
     const personaId = personaIds[track.personaKey]
     if (!personaId) continue
 
@@ -110,4 +130,21 @@ export async function seedGaleriesLafayetteTemplate(
   }
 
   return workspaceId
+}
+
+export async function seedGaleriesLafayetteTemplate(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  const template: WorkspaceTemplateInput = {
+    workspace: GLAF_TEMPLATE.workspace,
+    contextSummary: GLAF_TEMPLATE.contextGuidelines,
+    personas: Object.entries(GLAF_TEMPLATE.personas).map(([key, persona]) => ({
+      key,
+      ...persona,
+    })),
+    tracks: [...GLAF_TEMPLATE.tracks],
+  }
+
+  return createWorkspaceFromTemplate(supabase, userId, template)
 }

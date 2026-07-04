@@ -1,10 +1,11 @@
 "use client"
 
-import { ArrowLeft, BriefcaseBusiness, Loader2, Plus, Sparkles } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { type FormEvent, useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { WorkspaceGenerateWizard } from "@/components/workspace-generate-wizard"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { seedGaleriesLafayetteTemplate } from "@/lib/workspace-seed"
 import type { WorkspaceRow } from "@/lib/workspace-types"
@@ -22,6 +23,7 @@ function slugify(value: string) {
 
 export function WorkspaceListPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([])
+  const [showEmptyForm, setShowEmptyForm] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [busy, setBusy] = useState(true)
@@ -45,7 +47,7 @@ export function WorkspaceListPage() {
       .finally(() => setBusy(false))
   }, [])
 
-  async function createWorkspace(event: FormEvent) {
+  async function createEmptyWorkspace(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
     setError("")
@@ -67,6 +69,7 @@ export function WorkspaceListPage() {
       if (insertError) throw insertError
       setName("")
       setDescription("")
+      setShowEmptyForm(false)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create workspace")
@@ -116,32 +119,49 @@ export function WorkspaceListPage() {
           </Button>
         </div>
 
-        <section className="rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <BriefcaseBusiness className="size-4" />
-            <h2 className="font-semibold">Create workspace</h2>
-          </div>
-          <form className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={createWorkspace}>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Workspace name"
-              required
-              minLength={2}
-              className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            />
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Purpose or company notes"
-              className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            />
-            <Button disabled={busy}>
-              <Plus />
-              Create
-            </Button>
-          </form>
-        </section>
+        <WorkspaceGenerateWizard onBusyChange={setBusy} />
+
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          {!showEmptyForm ? (
+            <button
+              type="button"
+              onClick={() => setShowEmptyForm(true)}
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Create empty workspace instead
+            </button>
+          ) : (
+            <section className="w-full rounded-2xl border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Plus className="size-4" />
+                <h2 className="font-semibold">Create empty workspace</h2>
+              </div>
+              <form
+                className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+                onSubmit={createEmptyWorkspace}
+              >
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Workspace name"
+                  required
+                  minLength={2}
+                  className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+                <input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Purpose or company notes"
+                  className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+                <Button disabled={busy}>
+                  <Plus />
+                  Create
+                </Button>
+              </form>
+            </section>
+          )}
+        </div>
 
         {error && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
