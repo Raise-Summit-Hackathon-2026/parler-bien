@@ -1,0 +1,26 @@
+next.config.ts
+  s_2b088684ad6fb8::t_4e07da88c022e8 4
+package.json
+  s_2b088684ad6fb8::t_55e87dc866a6f2 7,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "999172d3ff34cd6d07b4ce4af1265fb5882bcd7c",
+  "prompts": {},
+  "humans": {
+    "h_813cbbe43c4b46": {
+      "author": "sno <serrnovik@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2b088684ad6fb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2da2-1b49-73d1-a311-ec7542833425",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
