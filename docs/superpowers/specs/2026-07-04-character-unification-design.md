@@ -83,9 +83,11 @@ type VoiceLevel = {
   meter?: { label: string; start: number }   // as today
   winMessage?: string
   personaOverlay?: string  // appended to Character.persona for this level
-  openEnded?: boolean      // true = no scoring/meter (Siddhartha mode)
-  content?: PerLanguageContent // starter sentences / situation text, same
-                               // per-language shape Scenario carries today
+  mode?: "roleplay" | "coach" | "open"
+                           // roleplay (default): goal + meter
+                           // coach: pronunciation drilling (teacher), no meter
+                           // open: free conversation, no scoring (Siddhartha)
+  content?: ScenarioContent // opening line + starter sentences, as today
 }
 
 type GestureLevel = {
@@ -165,9 +167,10 @@ table, RLS, share tokens.
     props are removed; it always receives `(character, voiceLevel)`.
 - `GestureSession` / `useGestureCamera` / `lib/gestures.ts`: unchanged
   internals; consume `GestureLevel`.
-- Prompt building (`lib/prompts/`): keyed off level/character config
-  (`openEnded`, `coachingStyle`, overlay) instead of agent type or scenario id.
-  `spiritual.ts`'s text becomes Siddhartha's character/prompt config.
+- Prompt building (`lib/prompts/`): keyed off the level's `mode`
+  (roleplay/coach/open) plus `coachingStyle`/overlay, instead of agent type or
+  scenario id. `spiritual.ts` becomes the `open` mode prompt; `language.ts`
+  becomes `coach`; Siddhartha/teacher are just characters using those modes.
 - `/api/score` contract unchanged (`PronunciationScore`); only its prompt
   assembly input changes. `/api/tts`, `/api/image` unchanged.
 
