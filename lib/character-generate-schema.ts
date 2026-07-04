@@ -1,4 +1,7 @@
-export const generatedScenarioJsonSchema = {
+import type { Character } from "@/lib/character"
+import type { LanguageId } from "@/lib/languages"
+
+export const generatedCharacterJsonSchema = {
   type: "object",
   properties: {
     title: { type: "string", description: "Short scenario title, e.g. The Hotel Clerk" },
@@ -80,7 +83,7 @@ export const generatedScenarioJsonSchema = {
   additionalProperties: false,
 } as const
 
-export type GeneratedScenarioPayload = {
+export type GeneratedCharacterPayload = {
   title: string
   tagline: string
   goal: string
@@ -98,25 +101,25 @@ export type GeneratedScenarioPayload = {
   imagePrompt: string
 }
 
-const scenarioObjectSchema = {
+const characterObjectSchema = {
   type: "object",
-  properties: generatedScenarioJsonSchema.properties,
-  required: generatedScenarioJsonSchema.required,
+  properties: generatedCharacterJsonSchema.properties,
+  required: generatedCharacterJsonSchema.required,
   additionalProperties: false,
 } as const
 
-export function buildGeneratedScenariosBatchSchema(count: number) {
+export function buildGeneratedCharactersBatchSchema(count: number) {
   return {
     type: "object",
     properties: {
-      scenarios: {
+      characters: {
         type: "array",
         minItems: count,
         maxItems: count,
-        items: scenarioObjectSchema,
+        items: characterObjectSchema,
       },
     },
-    required: ["scenarios"],
+    required: ["characters"],
     additionalProperties: false,
   } as const
 }
@@ -131,11 +134,11 @@ function isGeneratedVoiceMap(value: unknown) {
   )
 }
 
-export function validateGeneratedScenarioPayload(
+export function validateGeneratedCharacterPayload(
   parsed: unknown,
-): parsed is GeneratedScenarioPayload {
+): parsed is GeneratedCharacterPayload {
   if (!parsed || typeof parsed !== "object") return false
-  const payload = parsed as GeneratedScenarioPayload
+  const payload = parsed as GeneratedCharacterPayload
 
   return (
     typeof payload.title === "string" &&
@@ -156,4 +159,38 @@ export function validateGeneratedScenarioPayload(
     payload.starters.length >= 3 &&
     typeof payload.imagePrompt === "string"
   )
+}
+
+export function generatedPayloadToCharacter(
+  payload: GeneratedCharacterPayload,
+  opts: { id: string; languageId: LanguageId; sourceLabel?: string },
+): Character {
+  return {
+    id: opts.id,
+    name: payload.title,
+    tagline: payload.tagline,
+    category: "everyday",
+    avatarPrompt: payload.imagePrompt,
+    voice: payload.voice,
+    persona: payload.persona,
+    primaryLanguageId: opts.languageId,
+    sourceLabel: opts.sourceLabel,
+    levels: [
+      {
+        kind: "voice",
+        id: "main",
+        title: payload.title,
+        subtitle: payload.tagline,
+        goal: payload.goal,
+        meterLabel: payload.meterLabel,
+        winMessage: payload.winMessage,
+        content: {
+          [opts.languageId]: {
+            openingLine: payload.openingLine,
+            starters: payload.starters,
+          },
+        },
+      },
+    ],
+  }
 }

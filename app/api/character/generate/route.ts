@@ -1,5 +1,3 @@
-import { randomUUID } from "crypto"
-
 import { NextResponse } from "next/server"
 
 import {
@@ -9,19 +7,17 @@ import {
   scenariosTextForModeration,
 } from "@/lib/content-safety"
 import {
+  buildGeneratedCharactersBatchSchema,
+  generatedCharacterJsonSchema,
+  validateGeneratedCharacterPayload,
+  type GeneratedCharacterPayload,
+} from "@/lib/character-generate-schema"
+import {
   getLanguage,
   getRegion,
   isLanguageId,
   isRegionId,
-  type LanguageId,
 } from "@/lib/languages"
-import {
-  buildGeneratedScenariosBatchSchema,
-  generatedScenarioJsonSchema,
-  validateGeneratedScenarioPayload,
-  type GeneratedScenarioPayload,
-} from "@/lib/scenario-generate-schema"
-import type { Scenario } from "@/lib/scenarios"
 import { requireCurrentUser, getSupabaseClientWithToken } from "@/lib/supabase"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -36,7 +32,7 @@ function buildInstructions(
   languageName: string,
   regionLabel: string,
   city: string,
-  trackCount: number,
+  characterCount: number,
   workspace?: { name: string; description: string | null },
 ) {
   const workspaceBlock = workspace
@@ -47,17 +43,17 @@ WORKSPACE CONTEXT — this character is for a shared team workspace. Stay specif
 - The scenario, roles, setting, and vocabulary must fit this workspace. Do not genericize.`
     : ""
 
-  const trackBlock =
-    trackCount > 1
+  const characterBlock =
+    characterCount > 1
       ? `
 
-Generate exactly ${trackCount} distinct practice tracks (separate scenarios). Each track must:
+Generate exactly ${characterCount} distinct practice characters. Each character must:
 - Cover a different situation, skill, or escalation step inspired by the source material
 - Have its own title, character angle, goal, and opening line
 - Progress logically when ordered (easier → harder) without repeating the same scene`
       : ""
 
-  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).${workspaceBlock}${trackBlock}
+  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).${workspaceBlock}${characterBlock}
 
 The scenario must:
 - Have a clear win condition tracked by a 0-100 meter
@@ -70,11 +66,11 @@ The scenario must:
 - Feel specific and fun, inspired by the user's source material when provided`
 }
 
-function parseGenerated(content: string): GeneratedScenarioPayload {
-  const parsed = JSON.parse(content) as GeneratedScenarioPayload
+function parseGenerated(content: string): GeneratedCharacterPayload {
+  const parsed = JSON.parse(content) as GeneratedCharacterPayload
 
-  if (!validateGeneratedScenarioPayload(parsed)) {
-    throw new Error("Invalid generated scenario shape")
+  if (!validateGeneratedCharacterPayload(parsed)) {
+    throw new Error("Invalid generated character shape")
   }
 
   return parsed
@@ -82,48 +78,19 @@ function parseGenerated(content: string): GeneratedScenarioPayload {
 
 function parseGeneratedBatch(
   content: string,
-  trackCount: number,
-): GeneratedScenarioPayload[] {
-  const parsed = JSON.parse(content) as { scenarios?: unknown[] }
+  characterCount: number,
+): GeneratedCharacterPayload[] {
+  const parsed = JSON.parse(content) as { characters?: unknown[] }
 
   if (
-    !Array.isArray(parsed.scenarios) ||
-    parsed.scenarios.length !== trackCount ||
-    !parsed.scenarios.every(validateGeneratedScenarioPayload)
+    !Array.isArray(parsed.characters) ||
+    parsed.characters.length !== characterCount ||
+    !parsed.characters.every(validateGeneratedCharacterPayload)
   ) {
-    throw new Error("Invalid generated scenarios batch shape")
+    throw new Error("Invalid generated characters batch shape")
   }
 
-  return parsed.scenarios
-}
-
-function toScenario(
-  payload: GeneratedScenarioPayload,
-  languageId: LanguageId,
-  sourceLabel?: string
-): Scenario {
-  const id = `custom:${randomUUID()}` as const
-
-  return {
-    id,
-    title: payload.title.trim(),
-    tagline: payload.tagline.trim(),
-    goal: payload.goal.trim(),
-    meterLabel: payload.meterLabel.trim(),
-    winMessage: payload.winMessage.trim(),
-    persona: payload.persona.trim(),
-    voice: payload.voice,
-    content: {
-      [languageId]: {
-        openingLine: payload.openingLine,
-        starters: payload.starters.slice(0, 3),
-      },
-    },
-    imagePrompt: payload.imagePrompt.trim(),
-    primaryLanguageId: languageId,
-    createdAt: Date.now(),
-    sourceLabel: sourceLabel?.trim() || undefined,
-  }
+  return parsed.characters
 }
 
 export async function POST(request: Request) {
@@ -149,7 +116,7 @@ export async function POST(request: Request) {
     fileName?: string
     sourceLabel?: string
     workspaceId?: string
-    trackCount?: number
+    characterCount?: number
   }
 
   try {
@@ -165,14 +132,13 @@ export async function POST(request: Request) {
     prompt,
     fileBase64,
     fileName,
-    sourceLabel,
     workspaceId,
-    trackCount: rawTrackCount,
+    characterCount: rawCharacterCount,
   } = body
 
-  const trackCount = Math.min(
+  const characterCount = Math.min(
     10,
-    Math.max(1, Number.isFinite(rawTrackCount) ? Math.round(rawTrackCount!) : 1),
+    Math.max(1, Number.isFinite(rawCharacterCount) ? Math.round(rawCharacterCount!) : 1),
   )
 
   const authorization = request.headers.get("authorization")
@@ -263,7 +229,7 @@ export async function POST(request: Request) {
     language.name,
     region.label,
     region.city,
-    trackCount,
+    characterCount,
     workspaceContext ?? undefined,
   )
 
@@ -314,12 +280,12 @@ export async function POST(request: Request) {
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: trackCount > 1 ? "generated_scenarios" : "generated_scenario",
+            name: characterCount > 1 ? "generated_characters" : "generated_character",
             strict: true,
             schema:
-              trackCount > 1
-                ? buildGeneratedScenariosBatchSchema(trackCount)
-                : generatedScenarioJsonSchema,
+              characterCount > 1
+                ? buildGeneratedCharactersBatchSchema(characterCount)
+                : generatedCharacterJsonSchema,
           },
         },
       }),
@@ -327,9 +293,9 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error("Scenario generate error:", errorText)
+      console.error("Character generate error:", errorText)
       return NextResponse.json(
-        { error: "Failed to generate scenario" },
+        { error: "Failed to generate character" },
         { status: 502 }
       )
     }
@@ -347,8 +313,8 @@ export async function POST(request: Request) {
     }
 
     const payloads =
-      trackCount > 1
-        ? parseGeneratedBatch(content, trackCount)
+      characterCount > 1
+        ? parseGeneratedBatch(content, characterCount)
         : [parseGenerated(content)]
 
     const userSource =
@@ -359,14 +325,14 @@ export async function POST(request: Request) {
     const moderation = await moderateGeneratedContent(
       apiKey,
       userSource,
-      trackCount > 1
+      characterCount > 1
         ? scenariosTextForModeration(payloads)
         : scenarioTextForModeration(payloads[0]),
       { languageName: language.name },
     )
 
     if (moderation.status === "blocked") {
-      console.warn("Scenario content blocked:", moderation.reason)
+      console.warn("Character content blocked:", moderation.reason)
       return NextResponse.json(
         {
           error: generationBlockedMessage(moderation),
@@ -378,31 +344,16 @@ export async function POST(request: Request) {
 
     if (moderation.status === "error") {
       console.warn(
-        "Scenario content safety check failed, allowing through:",
+        "Character content safety check failed, allowing through:",
         moderation.message,
       )
     }
 
-    const resolvedSourceLabel =
-      sourceLabel ??
-      fileName ??
-      (workspaceContext
-        ? workspaceContext.name
-        : sourceType === "prompt"
-          ? "Custom prompt"
-          : undefined)
-
-    const scenarios = payloads.map((payload) =>
-      toScenario(payload, languageId, resolvedSourceLabel),
-    )
-
-    return NextResponse.json(
-      trackCount > 1 ? { scenarios } : { scenario: scenarios[0] },
-    )
+    return NextResponse.json({ characters: payloads })
   } catch (error) {
-    console.error("Scenario generate route error:", error)
+    console.error("Character generate route error:", error)
     return NextResponse.json(
-      { error: "Failed to process scenario generation" },
+      { error: "Failed to process character generation" },
       { status: 500 }
     )
   }

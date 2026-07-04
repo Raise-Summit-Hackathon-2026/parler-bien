@@ -3,7 +3,7 @@
 import { Check, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 
-import { CustomScenarioBuilder } from "@/components/custom-scenario-builder"
+import { CharacterBuilder } from "@/components/character-builder"
 import { ScenarioScene } from "@/components/scenario-scene"
 import { useLanguage } from "@/components/language-provider"
 import type { CharacterRow } from "@/lib/workspace-types"
@@ -174,7 +174,7 @@ export function CharacterGrid({
       </div>
 
       {showBuilder && (
-        <CustomScenarioBuilder
+        <CharacterBuilder
           languageId={languageId}
           regionId={regionId}
           workspaceId={workspaceId}

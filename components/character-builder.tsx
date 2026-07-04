@@ -6,7 +6,10 @@ import { useRef, useState } from "react"
 import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { scenarioToCharacter } from "@/lib/character"
+import {
+  generatedPayloadToCharacter,
+  type GeneratedCharacterPayload,
+} from "@/lib/character-generate-schema"
 import { saveCharacter } from "@/lib/character-db"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import { authenticatedFetch } from "@/lib/supabase"
@@ -15,7 +18,7 @@ import { cn } from "@/lib/utils"
 
 type BuilderMode = "prompt" | "upload"
 
-type CustomScenarioBuilderProps = {
+type CharacterBuilderProps = {
   languageId: LanguageId
   regionId: RegionId
   workspaceId?: string
@@ -54,20 +57,20 @@ function isPdfFile(file: File) {
   )
 }
 
-export function CustomScenarioBuilder({
+export function CharacterBuilder({
   languageId,
   regionId,
   workspaceId,
   workspaceContext,
   onCreated,
   onCancel,
-}: CustomScenarioBuilderProps) {
+}: CharacterBuilderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<BuilderMode>("prompt")
   const [prompt, setPrompt] = useState("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState("")
-  const [trackCount, setTrackCount] = useState(1)
+  const [characterCount, setCharacterCount] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -105,7 +108,7 @@ export function CustomScenarioBuilder({
         throw new Error("Describe the scenario you want to practice")
       }
 
-      const response = await authenticatedFetch("/api/scenario/generate", {
+      const response = await authenticatedFetch("/api/character/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,31 +120,41 @@ export function CustomScenarioBuilder({
           fileName,
           sourceLabel,
           workspaceId,
-          trackCount,
+          characterCount,
         }),
       })
 
       if (!response.ok) {
         const data = (await response.json()) as { error?: string }
-        throw new Error(data.error ?? "Failed to generate scenario")
+        throw new Error(data.error ?? "Failed to generate character")
       }
 
       const data = (await response.json()) as {
-        scenario?: import("@/lib/scenarios").Scenario
-        scenarios?: import("@/lib/scenarios").Scenario[]
+        characters?: GeneratedCharacterPayload[]
       }
 
-      const scenarios =
-        data.scenarios ?? (data.scenario ? [data.scenario] : [])
+      const payloads = data.characters ?? []
 
-      if (scenarios.length === 0) {
-        throw new Error("No scenarios were generated")
+      if (payloads.length === 0) {
+        throw new Error("No characters were generated")
       }
+
+      const resolvedSourceLabel =
+        sourceLabel ??
+        (workspaceContext
+          ? workspaceContext.name
+          : sourceType === "prompt"
+            ? "Custom prompt"
+            : undefined)
 
       const characters = await Promise.all(
-        scenarios.map((scenario) =>
+        payloads.map((payload) =>
           saveCharacter(
-            scenarioToCharacter(scenario, crypto.randomUUID()),
+            generatedPayloadToCharacter(payload, {
+              id: crypto.randomUUID(),
+              languageId,
+              sourceLabel: resolvedSourceLabel,
+            }),
             workspaceId,
           ),
         ),
@@ -168,7 +181,7 @@ export function CustomScenarioBuilder({
         <div className="flex items-start justify-between gap-4 border-b p-6">
           <div className="space-y-1">
             <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-              Custom scenario
+              Custom character
             </p>
             <h2 className="text-xl font-semibold tracking-tight">
               Create your own practice
@@ -221,11 +234,11 @@ export function CustomScenarioBuilder({
 
           {mode === "prompt" ? (
             <div className="space-y-2">
-              <label htmlFor="scenario-prompt" className="text-sm font-medium">
+              <label htmlFor="character-prompt" className="text-sm font-medium">
                 Describe the scenario
               </label>
               <textarea
-                id="scenario-prompt"
+                id="character-prompt"
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="e.g. I'm at a pharmacy trying to explain my symptoms and get the right medicine. The pharmacist is busy but helpful."
@@ -261,11 +274,11 @@ export function CustomScenarioBuilder({
               </button>
 
               <div className="space-y-2">
-                <label htmlFor="scenario-notes" className="text-sm font-medium">
+                <label htmlFor="character-notes" className="text-sm font-medium">
                   Extra notes (optional)
                 </label>
                 <textarea
-                  id="scenario-notes"
+                  id="character-notes"
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Focus on hotel check-in vocabulary from chapter 3..."
@@ -278,27 +291,27 @@ export function CustomScenarioBuilder({
 
           <div className="space-y-3 rounded-2xl border bg-muted/20 px-4 py-4">
             <div className="flex items-center justify-between gap-3">
-              <label htmlFor="track-count" className="text-sm font-medium">
-                Tracks to generate
+              <label htmlFor="character-count" className="text-sm font-medium">
+                Characters to generate
               </label>
               <span className="text-sm font-semibold tabular-nums">
-                {trackCount} {trackCount === 1 ? "track" : "tracks"}
+                {characterCount} {characterCount === 1 ? "character" : "characters"}
               </span>
             </div>
             <Slider
-              id="track-count"
+              id="character-count"
               min={1}
               max={10}
               step={1}
-              value={[trackCount]}
+              value={[characterCount]}
               onValueChange={(value) => {
                 const next = Array.isArray(value) ? value[0] : value
-                setTrackCount(next ?? 1)
+                setCharacterCount(next ?? 1)
               }}
               disabled={isGenerating}
             />
             <p className="text-xs text-muted-foreground">
-              Each track becomes its own practice scenario
+              Each generated character becomes its own practice partner
               {workspaceContext ? " in this workspace" : ""}.
             </p>
           </div>
@@ -334,7 +347,7 @@ export function CustomScenarioBuilder({
             ) : (
               <>
                 <Sparkles />
-                Generate {trackCount === 1 ? "track" : `${trackCount} tracks`}
+                Generate {characterCount === 1 ? "character" : `${characterCount} characters`}
               </>
             )}
           </Button>
