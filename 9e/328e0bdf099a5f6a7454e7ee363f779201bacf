@@ -1,0 +1,46 @@
+supabase/migrations/20260704193000_create_user_workspaces.sql
+  s_25bb16db9fcacf::t_829a2484d2da7b 1-403
+components/track-catalogue.tsx
+  s_25bb16db9fcacf::t_73609fa0a2b07a 3,7-8,19,30,34-35,38,44,46-48,61-83,85-107
+  s_25bb16db9fcacf::t_369f007350a92f 108
+components/theme-provider.tsx
+  s_df778ebc8f53a1::t_8b2a5b7b4d737b 50
+supabase/migrations/20260704194000_set_updated_at_search_path.sql
+  s_25bb16db9fcacf::t_243633ff1d96af 1-10
+components/workspace-dashboard.tsx
+  s_25bb16db9fcacf::t_d0749e9cce06d1 144
+  s_25bb16db9fcacf::t_3d3791ffa78cbc 1-143,145-233,243-808
+  s_25bb16db9fcacf::t_f8cf6c27851b56 234-242
+app/page.tsx
+  s_25bb16db9fcacf::t_cc9b8953f797d6 205
+  s_25bb16db9fcacf::t_1fe3dbfb1b53d1 17,41,237-240,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9e328e0bdf099a5f6a7454e7ee363f779201bacf",
+  "prompts": {},
+  "humans": {
+    "h_813cbbe43c4b46": {
+      "author": "sno <serrnovik@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_25bb16db9fcacf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2e03-fce9-78b1-8a02-6425a2978dfa",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    },
+    "s_df778ebc8f53a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "67fa6510-6037-4361-bdf4-c46d25c590b0",
+        "model": "composer-2.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
