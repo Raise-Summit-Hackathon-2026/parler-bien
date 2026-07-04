@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import type { BuiltInScenarioId } from "@/lib/scenarios"
+import { authenticatedFetch } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const imageUrlCache = new Map<string, string>()
@@ -24,7 +25,11 @@ export function useScenarioImage({
   imagePrompt,
 }: UseScenarioImageOptions): UseScenarioImageResult {
   const prompt = imagePrompt?.trim()
-  const cacheKey = scenarioId ? `scenario:${scenarioId}` : prompt ? `prompt:${prompt}` : null
+  const cacheKey = scenarioId
+    ? `scenario:${scenarioId}`
+    : prompt
+      ? `prompt:${prompt}`
+      : null
   const cachedUrl = cacheKey ? imageUrlCache.get(cacheKey) : undefined
 
   const [url, setUrl] = useState<string | null>(cachedUrl ?? null)
@@ -54,7 +59,7 @@ export function useScenarioImage({
       try {
         let request = imageRequestCache.get(key)
         if (!request) {
-          request = fetch("/api/image", {
+          request = authenticatedFetch("/api/image", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(prompt ? { prompt } : { scenarioId }),
@@ -110,25 +115,21 @@ export function ScenarioScene({
   className,
   overlay = true,
 }: ScenarioSceneProps) {
-  const { url, isLoading, error } = useScenarioImage({ scenarioId, imagePrompt })
+  const { url, isLoading, error } = useScenarioImage({
+    scenarioId,
+    imagePrompt,
+  })
 
   return (
     <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl bg-muted",
-        className,
-      )}
+      className={cn("relative overflow-hidden rounded-2xl bg-muted", className)}
     >
       {isLoading && (
         <div className="absolute inset-0 animate-pulse bg-linear-to-br from-muted to-muted-foreground/10" />
       )}
       {!isLoading && !error && url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={url}
-          alt=""
-          className="size-full object-cover"
-        />
+        <img src={url} alt="" className="size-full object-cover" />
       )}
       {error && (
         <div className="absolute inset-0 bg-linear-to-br from-muted to-muted-foreground/20" />

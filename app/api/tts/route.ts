@@ -8,6 +8,7 @@ import {
   ttsCacheKey,
   type TtsStyle,
 } from "@/lib/tts"
+import { requireCurrentUser } from "@/lib/supabase"
 
 const OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
 
@@ -24,11 +25,16 @@ function isCharacterGender(value: string): value is "male" | "female" {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireCurrentUser(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     return NextResponse.json(
       { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 
@@ -62,23 +68,28 @@ export async function POST(request: Request) {
 
   if (!text?.trim() || !style || !isTtsStyle(style)) {
     return NextResponse.json(
-      { error: "text and style (coach | phrase | word | character) are required" },
-      { status: 400 },
+      {
+        error:
+          "text and style (coach | phrase | word | character) are required",
+      },
+      { status: 400 }
     )
   }
 
   const ttsOptions =
     style === "coach" || style === "character"
       ? {
-          gender:
-            gender && isCharacterGender(gender) ? gender : undefined,
+          gender: gender && isCharacterGender(gender) ? gender : undefined,
           voice: requestedVoice?.trim() || undefined,
           ageRange: ageRange?.trim() || undefined,
           tone: tone?.trim() || undefined,
           accent: accent?.trim() || undefined,
           deliveryStyle: deliveryStyle?.trim() || undefined,
         }
-      : { accent: accent?.trim() || undefined, voice: requestedVoice?.trim() || undefined }
+      : {
+          accent: accent?.trim() || undefined,
+          voice: requestedVoice?.trim() || undefined,
+        }
 
   const key = ttsCacheKey(text.trim(), style, ttsOptions)
   const cached = cache.get(key)
@@ -102,7 +113,8 @@ export async function POST(request: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
         "X-Title": "Parler Bien",
       },
       body: JSON.stringify({
@@ -116,7 +128,10 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error("OpenRouter TTS error:", errorText)
-      return NextResponse.json({ error: "Failed to generate speech" }, { status: 502 })
+      return NextResponse.json(
+        { error: "Failed to generate speech" },
+        { status: 502 }
+      )
     }
 
     const pcm = Buffer.from(await response.arrayBuffer())
@@ -131,6 +146,9 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("TTS route error:", error)
-    return NextResponse.json({ error: "Failed to process speech" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to process speech" },
+      { status: 500 }
+    )
   }
 }

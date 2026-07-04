@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import type { AgentType } from "@/lib/agents"
+import { requireCurrentUser } from "@/lib/supabase"
 import { moderateExchange } from "@/lib/content-safety"
 import {
   DEFAULT_LANGUAGE_ID,
@@ -119,11 +120,16 @@ function parseScore(content: string): PronunciationScore {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireCurrentUser(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     return NextResponse.json(
       { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 
@@ -184,7 +190,7 @@ export async function POST(request: Request) {
   if (!audioBase64 || !audioFormat) {
     return NextResponse.json(
       { error: "audioBase64 and audioFormat are required" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -195,7 +201,7 @@ export async function POST(request: Request) {
   if (isCustomScenarioId(scenarioId) && !customScenario) {
     return NextResponse.json(
       { error: "customScenario is required for custom scenarios" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -203,7 +209,10 @@ export async function POST(request: Request) {
   try {
     scenario = resolveScenario(scenarioId, customScenario)
   } catch {
-    return NextResponse.json({ error: "Invalid custom scenario" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid custom scenario" },
+      { status: 400 }
+    )
   }
 
   const cappedHistory = history.slice(-12)
@@ -240,7 +249,8 @@ export async function POST(request: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
         "X-Title": "Parler Bien",
       },
       body: JSON.stringify({
@@ -279,7 +289,7 @@ export async function POST(request: Request) {
       console.error("OpenRouter error:", errorText)
       return NextResponse.json(
         { error: "Failed to score pronunciation" },
-        { status: 502 },
+        { status: 502 }
       )
     }
 
@@ -291,7 +301,7 @@ export async function POST(request: Request) {
     if (!content) {
       return NextResponse.json(
         { error: "Empty response from model" },
-        { status: 502 },
+        { status: 502 }
       )
     }
 
@@ -319,20 +329,19 @@ export async function POST(request: Request) {
       console.warn("Content blocked:", moderation.reason)
       return NextResponse.json(
         {
-          error:
-            !moderation.userSafe
-              ? "That message wasn't appropriate for practice. Try rephrasing and stay in the scenario."
-              : "We couldn't generate a safe response. Please try again.",
+          error: !moderation.userSafe
+            ? "That message wasn't appropriate for practice. Try rephrasing and stay in the scenario."
+            : "We couldn't generate a safe response. Please try again.",
           code: "content_blocked",
         },
-        { status: 422 },
+        { status: 422 }
       )
     }
 
     if (moderation.status === "error") {
       console.warn(
         "Content safety check failed, allowing through:",
-        moderation.message,
+        moderation.message
       )
     }
 
@@ -341,7 +350,7 @@ export async function POST(request: Request) {
     console.error("Score route error:", error)
     return NextResponse.json(
       { error: "Failed to process pronunciation score" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }

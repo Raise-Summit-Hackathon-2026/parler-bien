@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { authenticatedFetch } from "@/lib/supabase"
 import type { TtsRequestOptions, TtsStyle } from "@/lib/tts"
 
 type ActivePlayback = {
@@ -59,7 +60,7 @@ export function useSpeaker() {
       cleanupPlayback()
 
       try {
-        const response = await fetch("/api/tts", {
+        const response = await authenticatedFetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -86,7 +87,7 @@ export function useSpeaker() {
         analyserNode.fftSize = 256
 
         const audioBuffer = await audioContext.decodeAudioData(
-          arrayBuffer.slice(0),
+          arrayBuffer.slice(0)
         )
         if (playbackVersion !== playbackId) {
           void audioContext.close()
@@ -119,7 +120,7 @@ export function useSpeaker() {
         }
       }
     },
-    [cleanupPlayback],
+    [cleanupPlayback]
   )
 
   return { isSpeaking, analyser, speak, stop }
