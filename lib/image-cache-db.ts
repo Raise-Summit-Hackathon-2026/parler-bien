@@ -4,7 +4,6 @@ const TABLE_NAME = "scenario_image_cache"
 
 type GlobalWithImageCacheDb = typeof globalThis & {
   imageCachePool?: pg.Pool
-  imageCacheSchemaReady?: Promise<void>
   imageCacheConfigWarningShown?: boolean
   imageCacheErrorWarningShown?: boolean
 }
@@ -65,35 +64,16 @@ function getPool() {
   return globalForImageCache.imageCachePool
 }
 
-async function ensureSchema(pool: pg.Pool) {
-  globalForImageCache.imageCacheSchemaReady ??= pool
-    .query(
-      `
-    create table if not exists public.${TABLE_NAME} (
-      cache_key text primary key,
-      image_prompt text not null,
-      image_url text not null,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now()
-    )
-  `
-    )
-    .then(() => undefined)
-
-  await globalForImageCache.imageCacheSchemaReady
-}
-
 async function withCacheDb<T>(operation: (pool: pg.Pool) => Promise<T>) {
   const pool = getPool()
   if (!pool) return null
 
   try {
-    await ensureSchema(pool)
     return await operation(pool)
   } catch (error) {
     if (!globalForImageCache.imageCacheErrorWarningShown) {
       console.warn(
-        "Image DB cache unavailable; falling back to generation.",
+        "Image DB cache unavailable; confirm Supabase migrations are applied.",
         error
       )
       globalForImageCache.imageCacheErrorWarningShown = true
