@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react"
 
 import { CharacterGrid } from "@/components/character-grid"
 import { Button } from "@/components/ui/button"
+import { rowToCharacter } from "@/lib/character-compat"
 import {
   createShareLink,
   deleteCharacter,
@@ -124,22 +125,20 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
         )}
 
         <CharacterGrid
-          builtInScenarios={[]}
-          characters={characters}
+          characters={characters.map(rowToCharacter)}
+          deletableIds={characters.map((c) => c.id)}
           workspaceId={workspaceId}
           workspaceContext={{
             name: workspace.name,
             description: workspace.description,
           }}
-          onSelect={({ characterId }) => {
-            if (characterId) {
-              router.push(
-                `/play/${characterId}?from=workspace:${workspaceId}`,
-              )
-            }
+          onSelect={({ character, rowId }) => {
+            router.push(
+              `/play/${rowId ?? character.id}?from=workspace:${workspaceId}`,
+            )
           }}
-          onCharacterCreated={(characters) =>
-            setCharacters((current) => [...characters, ...current])
+          onCharacterCreated={(created) =>
+            setCharacters((current) => [...created, ...current])
           }
           onCharacterDeleted={(characterId) => void handleDelete(characterId)}
         />
