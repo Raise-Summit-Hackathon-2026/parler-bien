@@ -10,9 +10,12 @@ export function agentCoachingBlock(agent?: {
   deliveryStyle?: string
   coachingStyle?: string
 }): string {
-  if (!agent) return COACHING_RULES
+  const lines = [
+    agent?.deliveryStyle ? `Agent delivery: ${agent.deliveryStyle}` : null,
+    agent?.coachingStyle ? `Feedback voice: ${agent.coachingStyle}` : null,
+  ].filter(Boolean)
+  if (!lines.length) return COACHING_RULES
   return `${COACHING_RULES}
-Agent delivery: ${agent.deliveryStyle}
-Feedback voice: ${agent.coachingStyle}
+${lines.join("\n")}
 `
 }
