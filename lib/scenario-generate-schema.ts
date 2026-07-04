@@ -15,9 +15,26 @@ export const generatedScenarioJsonSchema = {
       type: "object",
       properties: {
         ageRange: { type: "string" },
+        gender: {
+          type: "string",
+          enum: ["male", "female", "random", "opposite-speaker"],
+          description:
+            "Character voice gender behavior. Prefer random unless the source clearly implies a specific gender. Use opposite-speaker only for coach/teacher-style agents.",
+        },
+        voices: {
+          type: "object",
+          description:
+            "Optional Gemini voice overrides by resolved character gender. Choose distinct voices only when it helps the agent feel specific.",
+          properties: {
+            female: { type: "string" },
+            male: { type: "string" },
+            default: { type: "string" },
+          },
+          additionalProperties: false,
+        },
         tone: { type: "string" },
       },
-      required: ["ageRange", "tone"],
+      required: ["ageRange", "gender", "tone"],
       additionalProperties: false,
     },
     openingLine: {
@@ -70,7 +87,12 @@ export type GeneratedScenarioPayload = {
   meterLabel: string
   winMessage: string
   persona: string
-  voice: { ageRange: string; tone: string }
+  voice: {
+    ageRange: string
+    gender: "male" | "female" | "random" | "opposite-speaker"
+    voices?: { female?: string; male?: string; default?: string }
+    tone: string
+  }
   openingLine: { text: string; hint: string }
   starters: Array<{ text: string; hint: string }>
   imagePrompt: string

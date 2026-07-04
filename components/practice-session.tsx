@@ -17,12 +17,15 @@ import {
   getScenarioContent,
   isBuiltInScenarioId,
   isCustomScenarioId,
+  randomCharacterGender,
   resolveCharacterGender,
+  resolveCharacterVoice,
   type CharacterGender,
   type Scenario,
 } from "@/lib/scenarios"
 import { getLanguage, getRegion, type LanguageId, type RegionId } from "@/lib/languages"
 import type {
+  CharacterReply,
   ConversationTurn,
   PronunciationScore,
   SentenceSuggestion,
@@ -180,7 +183,7 @@ function ReplyBubble({
   onHear,
   disabled,
 }: {
-  reply: { text: string; hint: string }
+  reply: CharacterReply
   onHear: () => void
   disabled: boolean
 }) {
@@ -204,6 +207,15 @@ function ReplyBubble({
       </div>
     </div>
   )
+}
+
+function replySpeechText(reply: CharacterReply) {
+  return reply.tts_text.trim() || reply.text
+}
+
+function randomCharacterGenderForScenario(_scenarioId: string): CharacterGender {
+  void _scenarioId
+  return randomCharacterGender()
 }
 
 export function PracticeSession({
@@ -240,9 +252,15 @@ export function PracticeSession({
   const [score, setScore] = useState<PronunciationScore | null>(null)
   const [selectedWord, setSelectedWord] = useState<WordScore | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
+  const randomScenarioGender = useMemo(
+    () => randomCharacterGenderForScenario(scenario.id),
+    [scenario.id],
+  )
 
   const characterGender: CharacterGender = resolveCharacterGender(
+    scenario,
     lastSpeaker?.gender ?? score?.speaker.gender,
+    randomScenarioGender,
   )
 
   const displayError = error ?? requestError
@@ -264,19 +282,21 @@ export function PracticeSession({
       style: "coach" | "character" | "phrase" | "word",
       speaker?: SpeakerProfile | null,
     ) => {
-      const gender = resolveCharacterGender(speaker?.gender)
+      const gender = resolveCharacterGender(scenario, speaker?.gender, randomScenarioGender)
+      const voice = resolveCharacterVoice(scenario, gender)
       const ageRange =
         scenario.id === "parisian" && speaker?.age_range
           ? speaker.age_range
           : scenario.voice.ageRange
       void speak(text, style, {
         gender,
+        voice,
         ageRange,
         tone: scenario.voice.tone,
         accent: region.accent,
       })
     },
-    [scenario, region.accent, speak],
+    [scenario, randomScenarioGender, region.accent, speak],
   )
 
   useEffect(() => {
@@ -359,9 +379,9 @@ export function PracticeSession({
             { role: "user", text: result.transcript },
             { role: "character", text: result.reply.text },
           ])
-          speakCharacterLine(result.reply.text, "character", result.speaker)
+          speakCharacterLine(replySpeechText(result.reply), "character", result.speaker)
         } else {
-          speakCharacterLine(result.reply.text, "coach", result.speaker)
+          speakCharacterLine(replySpeechText(result.reply), "coach", result.speaker)
         }
       } catch (err) {
         setRequestError(
@@ -516,7 +536,9 @@ export function PracticeSession({
         {!isTeacher && score?.reply && !hasWon && (
           <ReplyBubble
             reply={score.reply}
-            onHear={() => speakCharacterLine(score.reply.text, "character", score.speaker)}
+            onHear={() =>
+              speakCharacterLine(replySpeechText(score.reply), "character", score.speaker)
+            }
             disabled={isRecording || isScoring}
           />
         )}

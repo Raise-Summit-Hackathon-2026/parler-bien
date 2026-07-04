@@ -56,7 +56,9 @@ Listen to their recording and score their pronunciation against native ${region.
 
 Also infer speaker metadata from the voice: accent (native/source language influencing their ${languageName}), age_range (rough estimate like "20-30"), gender (male | female | unsure), and notes (one short sentence on how this profile affects their ${languageName}). Use this profile to tailor coaching, per-word tips, and reply to accent-specific pitfalls. Keep estimates non-judgmental.
 
-The coach character speaking in reply is the OPPOSITE gender of the speaker (male speaker → female coach, female speaker → male coach, unsure → female coach). Write reply.text as the coach's spoken feedback (2-3 sentences max): warm, clear, professional teacher tone in ${replyLanguage}. Not flirtatious. reply.hint is a short English summary unless the conversation is already in English.
+The coach character speaking in reply is the OPPOSITE gender of the speaker (male speaker → female coach, female speaker → male coach, unsure → female coach). Write reply.text as the coach's visible spoken feedback (2-3 sentences max): warm, clear, professional teacher tone in ${replyLanguage}. Not flirtatious. reply.hint is a short English summary unless the conversation is already in English.
+
+Set reply.tts_text to the audio-only version of reply.text: same words and language, but add Gemini TTS bracket cues only when they improve delivery. Use cues like [curious], [excited], [sighs], [laughs softly], [whispers], or natural cues like [slowly, encouragingly]. Put cues exactly where the delivery should shift. Do not put bracket cues in reply.text or reply.hint.
 
 Set meter to 0 and goal_achieved to false.
 
@@ -88,7 +90,9 @@ ${formatHistory(history)}
 Current meter: ${currentMeter}
 ${targetNote}
 
-Listen to the latest user audio turn. Stay in character. Update meter per the rules (current meter is ${currentMeter}). Set reply.text to your in-character response in ${languageName} (short). Set reply.hint to an English gloss.
+Listen to the latest user audio turn. Stay in character. Update meter per the rules (current meter is ${currentMeter}). Set reply.text to your visible in-character response in ${languageName} (short). Set reply.hint to an English gloss.
+
+Set reply.tts_text to the audio-only version of reply.text: same words and language, but add Gemini TTS bracket cues only when they make the character more believable. Use cues like [whispers], [laughs softly], [excited], [sighs], [curious], [teasing], or natural cues like [slowly, with gravity]. Put cues exactly where the delivery should shift. Do not put bracket cues in reply.text, reply.hint, next_sentences, or the conversation history.
 
 IMPORTANT — goal_achieved consistency: if your reply concedes or grants the user's goal in ANY way (handing over the item, agreeing to the deal, giving the number, offering the table/lease/invitation, letting them in, accepting their proof or story), you MUST set goal_achieved to true and meter to at least 95. Never write a conceding reply while leaving goal_achieved false.
 
@@ -133,6 +137,7 @@ function parseScore(content: string): PronunciationScore {
     typeof parsed.transcript !== "string" ||
     !parsed.reply ||
     typeof parsed.reply.text !== "string" ||
+    typeof parsed.reply.tts_text !== "string" ||
     typeof parsed.reply.hint !== "string" ||
     typeof parsed.meter !== "number" ||
     typeof parsed.goal_achieved !== "boolean" ||
@@ -308,6 +313,7 @@ export async function POST(request: Request) {
     const language = getLanguage(languageId)
     const assistantText = [
       score.reply.text,
+      score.reply.tts_text,
       score.coaching,
       ...score.next_sentences.map((sentence) => sentence.text),
     ].join("\n")

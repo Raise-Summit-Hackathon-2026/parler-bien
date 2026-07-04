@@ -29,10 +29,22 @@ function buildInstructions(languageName: string, regionLabel: string, city: stri
 The scenario must:
 - Have a clear win condition tracked by a 0-100 meter
 - Include persona text with {characterGender} placeholder, character age, short spoken lines only, meter rules, goal_achieved at meter >= 90, and instruction to score pronunciation
+- Set voice.gender to "random" unless the source clearly implies a specific character gender; use "opposite-speaker" only for coach/teacher-style agents
+- Optionally set voice.voices with distinct Gemini voices for this agent. Valid examples include Charon, Kore, Fenrir, Puck, Aoede, Callirrhoe, Iapetus, Algieba, Rasalgethi, Laomedeia, Vindemiatrix, and Sulafat.
 - openingLine.text and all starters must be in ${languageName}
 - hints are short English glosses
 - Be appropriate for language practice (no explicit content)
 - Feel specific and fun, inspired by the user's source material when provided`
+}
+
+function isGeneratedVoiceMap(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const voices = value as { female?: unknown; male?: unknown; default?: unknown }
+  return (
+    (voices.female === undefined || typeof voices.female === "string") &&
+    (voices.male === undefined || typeof voices.male === "string") &&
+    (voices.default === undefined || typeof voices.default === "string")
+  )
 }
 
 function parseGenerated(content: string): GeneratedScenarioPayload {
@@ -47,6 +59,8 @@ function parseGenerated(content: string): GeneratedScenarioPayload {
     typeof parsed.persona !== "string" ||
     !parsed.voice ||
     typeof parsed.voice.ageRange !== "string" ||
+    !["male", "female", "random", "opposite-speaker"].includes(parsed.voice.gender) ||
+    (parsed.voice.voices !== undefined && !isGeneratedVoiceMap(parsed.voice.voices)) ||
     typeof parsed.voice.tone !== "string" ||
     !parsed.openingLine ||
     typeof parsed.openingLine.text !== "string" ||

@@ -40,6 +40,7 @@ export function useSpeaker() {
             text: text.trim(),
             style,
             gender: options?.gender,
+            voice: options?.voice,
             ageRange: options?.ageRange,
             tone: options?.tone,
             accent: options?.accent,
