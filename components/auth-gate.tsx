@@ -1,14 +1,11 @@
 "use client"
 
 import { LogOut } from "lucide-react"
+import type { User } from "@supabase/supabase-js"
 import { type FormEvent, type ReactNode, useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-
-type User = {
-  id: string
-  email: string
-}
+import { getSupabaseBrowserClient } from "@/lib/supabase"
 
 type AuthMode = "login" | "register"
 
@@ -19,40 +16,67 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((response) => response.json())
-      .then((data: { user: User | null }) => setUser(data.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false))
+    let mounted = true
+    const supabase = getSupabaseBrowserClient()
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (mounted) {
+          setUser(data.session?.user ?? null)
+        }
+      })
+      .catch(() => {
+        if (mounted) setUser(null)
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
+    setNotice("")
     setSubmitting(true)
 
-    const response = await fetch(`/api/auth/${mode}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-    const data = (await response.json()) as { user?: User; error?: string }
+    const supabase = getSupabaseBrowserClient()
+    const result =
+      mode === "login"
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password })
 
     setSubmitting(false)
-    if (!response.ok || !data.user) {
-      setError(data.error ?? "Authentication failed")
+    if (result.error) {
+      setError(result.error.message)
       return
     }
 
-    setUser(data.user)
+    if (result.data.user && !result.data.session) {
+      setNotice("Check your email to confirm the account, then sign in.")
+    }
+
+    setUser(result.data.session?.user ?? null)
     setPassword("")
   }
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" })
+    await getSupabaseBrowserClient().auth.signOut()
     setUser(null)
     setPassword("")
   }
@@ -111,6 +135,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
                 {error}
               </p>
             )}
+            {notice && (
+              <p className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                {notice}
+              </p>
+            )}
 
             <Button
               className="w-full"
@@ -133,6 +162,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             onClick={() => {
               setMode(mode === "login" ? "register" : "login")
               setError("")
+              setNotice("")
             }}
           >
             {mode === "login"
@@ -148,7 +178,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     <>
       <div className="fixed top-3 right-3 z-50 flex items-center gap-2 rounded-lg border bg-background/95 px-3 py-2 text-sm shadow-sm backdrop-blur">
         <span className="max-w-[38vw] truncate text-muted-foreground">
-          {user.email}
+          {user.email ?? "Signed in"}
         </span>
         <Button
           variant="ghost"

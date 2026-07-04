@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { requireCurrentUser } from "@/lib/auth"
+import { requireCurrentUser } from "@/lib/supabase"
 import { getScenario, isBuiltInScenarioId } from "@/lib/scenarios"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -28,7 +28,7 @@ function extractImageUrl(data: unknown): string | null {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireCurrentUser()
+  const auth = await requireCurrentUser(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: 401 })
   }

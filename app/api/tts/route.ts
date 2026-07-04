@@ -8,7 +8,7 @@ import {
   ttsCacheKey,
   type TtsStyle,
 } from "@/lib/tts"
-import { requireCurrentUser } from "@/lib/auth"
+import { requireCurrentUser } from "@/lib/supabase"
 
 const OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
 
@@ -25,7 +25,7 @@ function isCharacterGender(value: string): value is "male" | "female" {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireCurrentUser()
+  const auth = await requireCurrentUser(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: 401 })
   }

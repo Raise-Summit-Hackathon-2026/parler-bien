@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 
 import { NextResponse } from "next/server"
 
-import { requireCurrentUser } from "@/lib/auth"
+import { requireCurrentUser } from "@/lib/supabase"
 import {
   getLanguage,
   getRegion,
@@ -96,7 +96,7 @@ function toScenario(
 }
 
 export async function POST(request: Request) {
-  const auth = await requireCurrentUser()
+  const auth = await requireCurrentUser(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: 401 })
   }

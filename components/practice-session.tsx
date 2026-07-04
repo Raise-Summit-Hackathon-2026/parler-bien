@@ -13,6 +13,7 @@ import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useSpeaker } from "@/hooks/use-speaker"
 import { markScenarioCompleted } from "@/lib/completions"
 import { pickRandomSentences } from "@/lib/sentences"
+import { authenticatedFetch } from "@/lib/supabase"
 import {
   getScenarioContent,
   isBuiltInScenarioId,
@@ -21,7 +22,12 @@ import {
   type CharacterGender,
   type Scenario,
 } from "@/lib/scenarios"
-import { getLanguage, getRegion, type LanguageId, type RegionId } from "@/lib/languages"
+import {
+  getLanguage,
+  getRegion,
+  type LanguageId,
+  type RegionId,
+} from "@/lib/languages"
 import type {
   ConversationTurn,
   PronunciationScore,
@@ -77,7 +83,7 @@ function WordChip({
         "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-lg font-medium ring-1 transition-all",
         scoreBg(word.score),
         scoreColor(word.score),
-        selected && "ring-2 ring-foreground/30",
+        selected && "ring-2 ring-foreground/30"
       )}
     >
       <Volume2 className="size-3.5 opacity-60" />
@@ -114,11 +120,17 @@ function SpeakerProfileStrip({ speaker }: { speaker: SpeakerProfile }) {
   return (
     <div className="space-y-2 border-t pt-4">
       <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-        <span className="rounded-full bg-muted px-2.5 py-1">{speaker.accent}</span>
-        <span className="rounded-full bg-muted px-2.5 py-1">{speaker.age_range}</span>
+        <span className="rounded-full bg-muted px-2.5 py-1">
+          {speaker.accent}
+        </span>
+        <span className="rounded-full bg-muted px-2.5 py-1">
+          {speaker.age_range}
+        </span>
         <span className="rounded-full bg-muted px-2.5 py-1">{genderLabel}</span>
       </div>
-      <p className="text-center text-xs text-muted-foreground">{speaker.notes}</p>
+      <p className="text-center text-xs text-muted-foreground">
+        {speaker.notes}
+      </p>
     </div>
   )
 }
@@ -138,11 +150,14 @@ function MeterBar({
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">{label}</span>
-        <span className="tabular-nums text-muted-foreground">{clamped}%</span>
+        <span className="text-muted-foreground tabular-nums">{clamped}%</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">
         <div
-          className={cn("h-full rounded-full transition-all duration-700", meterColor(clamped))}
+          className={cn(
+            "h-full rounded-full transition-all duration-700",
+            meterColor(clamped)
+          )}
           style={{ width: `${clamped}%` }}
         />
       </div>
@@ -162,7 +177,7 @@ function HistoryLog({ history }: { history: ConversationTurn[] }) {
           key={`${turn.role}-${index}-${turn.text.slice(0, 12)}`}
           className={cn(
             "rounded-xl px-3 py-2",
-            turn.role === "user" ? "bg-background" : "bg-primary/5",
+            turn.role === "user" ? "bg-background" : "bg-primary/5"
           )}
         >
           <p className="text-xs font-medium text-muted-foreground uppercase">
@@ -188,7 +203,9 @@ function ReplyBubble({
     <div className="rounded-2xl border bg-primary/5 p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase">Character</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase">
+            Character
+          </p>
           <p className="mt-1 font-medium">{reply.text}</p>
           <p className="mt-1 text-sm text-muted-foreground">{reply.hint}</p>
         </div>
@@ -219,17 +236,26 @@ export function PracticeSession({
   const region = getRegion(languageId, regionId)
   const scenarioContent = getScenarioContent(scenario, languageId)
 
-  const { isRecording, analyser: recorderAnalyser, error, startRecording, stopRecording } =
-    useAudioRecorder()
-  const { isSpeaking, analyser: speakerAnalyser, speak, stop: stopSpeaking } =
-    useSpeaker()
+  const {
+    isRecording,
+    analyser: recorderAnalyser,
+    error,
+    startRecording,
+    stopRecording,
+  } = useAudioRecorder()
+  const {
+    isSpeaking,
+    analyser: speakerAnalyser,
+    speak,
+    stop: stopSpeaking,
+  } = useSpeaker()
 
   const openingPlayed = useRef(false)
 
   const [examples, setExamples] = useState<SentenceSuggestion[]>(() =>
     isTeacher
       ? pickRandomSentences(EXAMPLE_COUNT, languageId)
-      : scenarioContent.starters,
+      : scenarioContent.starters
   )
   const [targetPhrase, setTargetPhrase] = useState<string | null>(null)
   const [history, setHistory] = useState<ConversationTurn[]>([])
@@ -242,7 +268,7 @@ export function PracticeSession({
   const [requestError, setRequestError] = useState<string | null>(null)
 
   const characterGender: CharacterGender = resolveCharacterGender(
-    lastSpeaker?.gender ?? score?.speaker.gender,
+    lastSpeaker?.gender ?? score?.speaker.gender
   )
 
   const displayError = error ?? requestError
@@ -262,7 +288,7 @@ export function PracticeSession({
     (
       text: string,
       style: "coach" | "character" | "phrase" | "word",
-      speaker?: SpeakerProfile | null,
+      speaker?: SpeakerProfile | null
     ) => {
       const gender = resolveCharacterGender(speaker?.gender)
       const ageRange =
@@ -276,11 +302,12 @@ export function PracticeSession({
         accent: region.accent,
       })
     },
-    [scenario, region.accent, speak],
+    [scenario, region.accent, speak]
   )
 
   useEffect(() => {
-    if (isTeacher || !scenarioContent.openingLine || openingPlayed.current) return
+    if (isTeacher || !scenarioContent.openingLine || openingPlayed.current)
+      return
 
     openingPlayed.current = true
     setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
@@ -323,7 +350,7 @@ export function PracticeSession({
       }
 
       try {
-        const response = await fetch("/api/score", {
+        const response = await authenticatedFetch("/api/score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -333,7 +360,9 @@ export function PracticeSession({
             languageId,
             regionId,
             scenarioId: scenario.id,
-            customScenario: isCustomScenarioId(scenario.id) ? scenario : undefined,
+            customScenario: isCustomScenarioId(scenario.id)
+              ? scenario
+              : undefined,
             history,
             characterGender,
             currentMeter: meter,
@@ -349,7 +378,9 @@ export function PracticeSession({
         setScore(result)
         setTargetPhrase(result.transcript)
         setLastSpeaker(result.speaker)
-        setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
+        setSelectedWord(
+          result.words.find((w) => w.score < 80) ?? result.words[0]
+        )
 
         if (!isTeacher) {
           setMeter(result.meter)
@@ -365,7 +396,7 @@ export function PracticeSession({
         }
       } catch (err) {
         setRequestError(
-          err instanceof Error ? err.message : "Something went wrong",
+          err instanceof Error ? err.message : "Something went wrong"
         )
       } finally {
         setIsScoring(false)
@@ -398,7 +429,9 @@ export function PracticeSession({
     setLastSpeaker(null)
 
     if (scenarioContent.openingLine) {
-      setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
+      setHistory([
+        { role: "character", text: scenarioContent.openingLine.text },
+      ])
       speakCharacterLine(scenarioContent.openingLine.text, "character")
     } else {
       setHistory([])
@@ -486,229 +519,256 @@ export function PracticeSession({
 
       <div className="w-full space-y-6 overflow-hidden rounded-3xl border bg-card shadow-sm">
         <ScenarioScene
-          scenarioId={isBuiltInScenarioId(scenario.id) ? scenario.id : undefined}
-          imagePrompt={isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt}
+          scenarioId={
+            isBuiltInScenarioId(scenario.id) ? scenario.id : undefined
+          }
+          imagePrompt={
+            isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt
+          }
           className="h-40 w-full rounded-none"
           overlay
         />
 
         <div className="space-y-6 p-6 pt-0">
-        {!isTeacher && scenario.meterLabel && scenario.goal && !hasWon && (
-          <MeterBar meter={meter} label={scenario.meterLabel} goal={scenario.goal} />
-        )}
+          {!isTeacher && scenario.meterLabel && scenario.goal && !hasWon && (
+            <MeterBar
+              meter={meter}
+              label={scenario.meterLabel}
+              goal={scenario.goal}
+            />
+          )}
 
-        {hasWon && scenario.winMessage && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
-            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-              {scenario.winMessage}
-            </p>
-            <Button className="mt-4" variant="outline" onClick={handleReplayScenario}>
-              <RotateCcw />
-              Play again
-            </Button>
-          </div>
-        )}
-
-        {!isTeacher && history.length > 0 && !hasWon && (
-          <HistoryLog history={history} />
-        )}
-
-        {!isTeacher && score?.reply && !hasWon && (
-          <ReplyBubble
-            reply={score.reply}
-            onHear={() => speakCharacterLine(score.reply.text, "character", score.speaker)}
-            disabled={isRecording || isScoring}
-          />
-        )}
-
-        {isTeacher && displayedPhrase && (
-          <div className="space-y-3 text-center">
-            <p className="text-xs tracking-wide text-muted-foreground uppercase">
-              {score ? "You said" : `${language.name} · ${region.label}`}
-            </p>
-            <div className="flex items-center justify-center gap-2">
-              <p className="text-xl font-medium">{displayedPhrase}</p>
+          {hasWon && scenario.winMessage && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                {scenario.winMessage}
+              </p>
               <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => handleHearPhrase(displayedPhrase)}
-                disabled={isRecording || isScoring}
-                aria-label="Hear phrase"
+                className="mt-4"
+                variant="outline"
+                onClick={handleReplayScenario}
               >
-                <Volume2 className="size-4" />
+                <RotateCcw />
+                Play again
               </Button>
-              {!score && targetPhrase && (
+            </div>
+          )}
+
+          {!isTeacher && history.length > 0 && !hasWon && (
+            <HistoryLog history={history} />
+          )}
+
+          {!isTeacher && score?.reply && !hasWon && (
+            <ReplyBubble
+              reply={score.reply}
+              onHear={() =>
+                speakCharacterLine(score.reply.text, "character", score.speaker)
+              }
+              disabled={isRecording || isScoring}
+            />
+          )}
+
+          {isTeacher && displayedPhrase && (
+            <div className="space-y-3 text-center">
+              <p className="text-xs tracking-wide text-muted-foreground uppercase">
+                {score ? "You said" : `${language.name} · ${region.label}`}
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-xl font-medium">{displayedPhrase}</p>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={handleClearTarget}
+                  onClick={() => handleHearPhrase(displayedPhrase)}
                   disabled={isRecording || isScoring}
-                  aria-label="Clear phrase"
+                  aria-label="Hear phrase"
                 >
-                  <X className="size-4" />
+                  <Volume2 className="size-4" />
                 </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <Waveform analyser={waveformAnalyser} active={waveformActive} />
-
-        {!hasWon && (
-          <div className="flex flex-col items-center gap-3">
-            <Button
-              size="icon-lg"
-              className={cn(
-                "size-16 rounded-full shadow-md transition-transform",
-                isRecording && "scale-105 bg-destructive hover:bg-destructive/90",
-              )}
-              onClick={handleMicPress}
-              disabled={isBusy}
-              aria-label={isRecording ? "Stop recording" : "Start recording"}
-            >
-              {isScoring ? (
-                <Loader2 className="size-7 animate-spin" />
-              ) : isRecording ? (
-                <Square className="size-6 fill-current" />
-              ) : (
-                <Mic className="size-7" />
-              )}
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              {isScoring
-                ? "Analyzing…"
-                : isSpeaking
-                  ? isTeacher
-                    ? "Your coach is speaking…"
-                    : "Character is speaking…"
-                  : isRecording
-                    ? "Tap to stop"
-                    : "Tap to speak"}
-            </p>
-          </div>
-        )}
-
-        {displayError && (
-          <p className="text-center text-sm text-destructive">{displayError}</p>
-        )}
-
-        {score && !hasWon && (
-          <div className="space-y-5 border-t pt-5">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Pronunciation</p>
-              <p
-                className={cn(
-                  "text-4xl font-semibold tabular-nums",
-                  scoreColor(score.overall_score),
-                )}
-              >
-                {Math.round(score.overall_score)}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">{score.coaching}</p>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2">
-              {score.words.map((word, index) => (
-                <WordChip
-                  key={`${word.word}-${index}`}
-                  word={word}
-                  selected={selectedIndex === index}
-                  onSelect={() => handleWordSelect(word)}
-                />
-              ))}
-            </div>
-
-            {selectedWord && selectedWord.score < 80 && (
-              <div className="rounded-2xl bg-muted/60 p-4 text-sm">
-                <p className="font-medium">{selectedWord.word}</p>
-                {selectedWord.issue && (
-                  <p className="mt-1 text-muted-foreground">{selectedWord.issue}</p>
-                )}
-                {selectedWord.tip && (
-                  <p className="mt-2 text-foreground">{selectedWord.tip}</p>
+                {!score && targetPhrase && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleClearTarget}
+                    disabled={isRecording || isScoring}
+                    aria-label="Clear phrase"
+                  >
+                    <X className="size-4" />
+                  </Button>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            <Button variant="outline" className="w-full" onClick={handleReset}>
-              <RotateCcw />
-              Try again
-            </Button>
+          <Waveform analyser={waveformAnalyser} active={waveformActive} />
 
-            <SpeakerProfileStrip speaker={score.speaker} />
-
-            {suggestionList.length > 0 && (
-              <div className="space-y-3 border-t pt-5">
-                <p className="text-center text-sm font-medium">
-                  {score ? "Continue the conversation" : "Try a phrase"}
-                </p>
-                {isTeacher && !score && (
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleShuffleExamples}
-                      disabled={isRecording || isScoring}
-                    >
-                      Shuffle
-                    </Button>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  {suggestionList.map((sentence, index) => (
-                    <SentenceChip
-                      key={`${sentence.text}-${index}`}
-                      sentence={sentence}
-                      onSelect={() =>
-                        score ? handleSelectNext(sentence) : handleSelectExample(sentence)
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!score && !hasWon && suggestionList.length > 0 && isTeacher && (
-          <div className="space-y-3 border-t pt-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Try a phrase</p>
+          {!hasWon && (
+            <div className="flex flex-col items-center gap-3">
               <Button
-                variant="ghost"
-                size="xs"
-                onClick={handleShuffleExamples}
-                disabled={isRecording || isScoring}
+                size="icon-lg"
+                className={cn(
+                  "size-16 rounded-full shadow-md transition-transform",
+                  isRecording &&
+                    "scale-105 bg-destructive hover:bg-destructive/90"
+                )}
+                onClick={handleMicPress}
+                disabled={isBusy}
+                aria-label={isRecording ? "Stop recording" : "Start recording"}
               >
-                Shuffle
+                {isScoring ? (
+                  <Loader2 className="size-7 animate-spin" />
+                ) : isRecording ? (
+                  <Square className="size-6 fill-current" />
+                ) : (
+                  <Mic className="size-7" />
+                )}
               </Button>
+              <p className="text-sm text-muted-foreground">
+                {isScoring
+                  ? "Analyzing…"
+                  : isSpeaking
+                    ? isTeacher
+                      ? "Your coach is speaking…"
+                      : "Character is speaking…"
+                    : isRecording
+                      ? "Tap to stop"
+                      : "Tap to speak"}
+              </p>
             </div>
-            <div className="space-y-2">
-              {suggestionList.map((sentence, index) => (
-                <SentenceChip
-                  key={`${sentence.text}-${index}`}
-                  sentence={sentence}
-                  onSelect={() => handleSelectExample(sentence)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+          )}
 
-        {!score && !hasWon && !isTeacher && suggestionList.length > 0 && (
-          <div className="space-y-3 border-t pt-5">
-            <p className="text-sm font-medium">Try saying</p>
-            <div className="space-y-2">
-              {suggestionList.map((sentence, index) => (
-                <SentenceChip
-                  key={`${sentence.text}-${index}`}
-                  sentence={sentence}
-                  onSelect={() => handleSelectExample(sentence)}
-                />
-              ))}
+          {displayError && (
+            <p className="text-center text-sm text-destructive">
+              {displayError}
+            </p>
+          )}
+
+          {score && !hasWon && (
+            <div className="space-y-5 border-t pt-5">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Pronunciation</p>
+                <p
+                  className={cn(
+                    "text-4xl font-semibold tabular-nums",
+                    scoreColor(score.overall_score)
+                  )}
+                >
+                  {Math.round(score.overall_score)}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {score.coaching}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-2">
+                {score.words.map((word, index) => (
+                  <WordChip
+                    key={`${word.word}-${index}`}
+                    word={word}
+                    selected={selectedIndex === index}
+                    onSelect={() => handleWordSelect(word)}
+                  />
+                ))}
+              </div>
+
+              {selectedWord && selectedWord.score < 80 && (
+                <div className="rounded-2xl bg-muted/60 p-4 text-sm">
+                  <p className="font-medium">{selectedWord.word}</p>
+                  {selectedWord.issue && (
+                    <p className="mt-1 text-muted-foreground">
+                      {selectedWord.issue}
+                    </p>
+                  )}
+                  {selectedWord.tip && (
+                    <p className="mt-2 text-foreground">{selectedWord.tip}</p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleReset}
+              >
+                <RotateCcw />
+                Try again
+              </Button>
+
+              <SpeakerProfileStrip speaker={score.speaker} />
+
+              {suggestionList.length > 0 && (
+                <div className="space-y-3 border-t pt-5">
+                  <p className="text-center text-sm font-medium">
+                    {score ? "Continue the conversation" : "Try a phrase"}
+                  </p>
+                  {isTeacher && !score && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleShuffleExamples}
+                        disabled={isRecording || isScoring}
+                      >
+                        Shuffle
+                      </Button>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {suggestionList.map((sentence, index) => (
+                      <SentenceChip
+                        key={`${sentence.text}-${index}`}
+                        sentence={sentence}
+                        onSelect={() =>
+                          score
+                            ? handleSelectNext(sentence)
+                            : handleSelectExample(sentence)
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          {!score && !hasWon && suggestionList.length > 0 && isTeacher && (
+            <div className="space-y-3 border-t pt-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Try a phrase</p>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={handleShuffleExamples}
+                  disabled={isRecording || isScoring}
+                >
+                  Shuffle
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {suggestionList.map((sentence, index) => (
+                  <SentenceChip
+                    key={`${sentence.text}-${index}`}
+                    sentence={sentence}
+                    onSelect={() => handleSelectExample(sentence)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!score && !hasWon && !isTeacher && suggestionList.length > 0 && (
+            <div className="space-y-3 border-t pt-5">
+              <p className="text-sm font-medium">Try saying</p>
+              <div className="space-y-2">
+                {suggestionList.map((sentence, index) => (
+                  <SentenceChip
+                    key={`${sentence.text}-${index}`}
+                    sentence={sentence}
+                    onSelect={() => handleSelectExample(sentence)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,53 +1,32 @@
 # Parler Bien
 
-AI pronunciation practice with a local Rancher Desktop PostgreSQL database.
+AI pronunciation practice with Supabase Auth and OpenRouter.
 
 ## Teammate setup
 
-The one-shot setup expects Rancher Desktop plus the SUSE/Rancher hackathon repo.
-It will run the hackathon `init.sh` when Rancher Desktop or the Application
-Collection pull secret is not ready, install PostgreSQL, write `.env`, run
-migrations, port-forward Postgres, and start Next.js.
+No local Kubernetes or database setup is required. The app uses the shared
+Supabase project for login.
 
 ```bash
 git clone <this-repo>
 cd Raise-Hack
+cp .env.example .env
 npm install
-
-# Optional if the hackathon repo is not in ~/Data/GitPlay/rancher-hack/rancher-hackathon-paris
-export RANCHER_HACK_DIR=/path/to/rancher-hackathon-paris
-
-npm run dev:up
-```
-
-If `init.sh` asks for an attendee email, use the email assigned by the hackathon
-organizers. Each laptop gets its own local Rancher Desktop database; for a shared
-team dev server, run this on one shared machine or cluster and share the app URL.
-
-## Manual database commands
-
-```bash
-/path/to/rancher-hackathon-paris/init.sh
-kubectl --context rancher-desktop -n hackathon get secret application-collection
-
-kubectl --context rancher-desktop -n hackathon create secret generic parler-bien-db-auth \
-  --from-literal=password="$(openssl rand -base64 24)" \
-  --from-literal=postgresPassword="$(openssl rand -base64 24)" \
-  --from-literal=replicationPassword="$(openssl rand -base64 24)"
-
-helm upgrade --install parler-bien-db oci://dp.apps.rancher.io/charts/postgresql \
-  --kube-context rancher-desktop \
-  --namespace hackathon \
-  --set auth.database=parler_bien \
-  --set auth.username=parler_bien \
-  --set auth.existingSecret=parler-bien-db-auth \
-  --set 'global.imagePullSecrets[0].name=application-collection' \
-  --wait --timeout 5m
-
-kubectl --context rancher-desktop -n hackathon port-forward svc/parler-bien-db-postgresql 5432:5432
-npm run db:migrate
 npm run dev
 ```
+
+Fill `.env` with the shared OpenRouter key and Supabase publishable key:
+
+```env
+OPENROUTER_API_KEY=...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+CONTENT_SAFETY_ENABLED=true
+NEXT_PUBLIC_SUPABASE_URL=https://tvpeojtagsagycyjqmys.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+If signups require email confirmation, either confirm through the email link or
+disable email confirmations in the Supabase Auth settings for hackathon demos.
 
 ## Adding components
 

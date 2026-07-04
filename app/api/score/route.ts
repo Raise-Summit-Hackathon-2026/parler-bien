@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { requireCurrentUser } from "@/lib/auth"
+import { requireCurrentUser } from "@/lib/supabase"
 import { moderateExchange } from "@/lib/content-safety"
 import {
   DEFAULT_LANGUAGE_ID,
@@ -154,7 +154,7 @@ function parseScore(content: string): PronunciationScore {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireCurrentUser()
+  const auth = await requireCurrentUser(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: 401 })
   }
