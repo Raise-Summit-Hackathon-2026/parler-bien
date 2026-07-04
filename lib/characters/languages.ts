@@ -23,7 +23,12 @@ export const LANGUAGES_CHARACTERS: Character[] = [
         title: "The Teacher",
         subtitle: "Practice pronunciation with a patient coach.",
         mode: "coach",
-        content: { openingLine: null, starters: [] },
+        content: {
+          fr: { openingLine: null, starters: [] },
+          en: { openingLine: null, starters: [] },
+          es: { openingLine: null, starters: [] },
+          ru: { openingLine: null, starters: [] },
+        },
       },
     ],
   },
@@ -63,15 +68,50 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
         meterLabel: "Charm",
         winMessage: "The last croissant is yours! The baker caved.",
         content: {
-          openingLine: {
-            text: "Ah, désolé — le dernier croissant est réservé.",
-            hint: "Ah, sorry — the last croissant is reserved.",
+          fr: {
+            openingLine: {
+              text: "Ah, désolé — le dernier croissant est réservé.",
+              hint: "Ah, sorry — the last croissant is reserved.",
+            },
+            starters: [
+              { text: "Ça sent tellement bon ici!", hint: "It smells so good in here!" },
+              { text: "On m'a dit que c'est la meilleure boulangerie du quartier.", hint: "I was told this is the best bakery in the neighborhood." },
+              { text: "Qu'est-ce que vous me conseillez alors?", hint: "What do you recommend then?" },
+            ],
           },
-          starters: [
-            { text: "Ça sent tellement bon ici!", hint: "It smells so good in here!" },
-            { text: "On m'a dit que c'est la meilleure boulangerie du quartier.", hint: "I was told this is the best bakery in the neighborhood." },
-            { text: "Qu'est-ce que vous me conseillez alors?", hint: "What do you recommend then?" },
-          ],
+          en: {
+            openingLine: {
+              text: "Ah, sorry — that last croissant is spoken for.",
+              hint: "The challenge begins.",
+            },
+            starters: [
+              { text: "It smells incredible in here.", hint: "Open with a compliment" },
+              { text: "I heard this is the best bakery in the city.", hint: "Flatter the craft" },
+              { text: "What would you recommend instead?", hint: "Show humility" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "Ay, lo siento — el último cruasán está reservado.",
+              hint: "Oh, sorry — the last croissant is reserved.",
+            },
+            starters: [
+              { text: "¡Qué bien huele aquí!", hint: "It smells so good in here!" },
+              { text: "Me han dicho que es la mejor panadería del barrio.", hint: "I've heard it's the best bakery in the neighborhood." },
+              { text: "¿Qué me recomienda entonces?", hint: "What do you recommend then?" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Ой, простите — последний круассан уже зарезервирован.",
+              hint: "Oh, sorry — the last croissant is reserved.",
+            },
+            starters: [
+              { text: "Как здесь вкусно пахнет!", hint: "It smells so good in here!" },
+              { text: "Мне сказали, что это лучшая пекарня в районе.", hint: "I've heard it's the best bakery in the neighborhood." },
+              { text: "Тогда что вы посоветуете?", hint: "What do you recommend then?" },
+            ],
+          },
         },
       },
     ],
@@ -112,15 +152,50 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
         meterLabel: "Impressed",
         winMessage: "Welcome to the private cellar! You're in.",
         content: {
-          openingLine: {
-            text: "Bienvenue! Vous cherchez quelque chose de particulier?",
-            hint: "Welcome! Are you looking for something particular?",
+          fr: {
+            openingLine: {
+              text: "Bienvenue! Vous cherchez quelque chose de particulier?",
+              hint: "Welcome! Are you looking for something particular?",
+            },
+            starters: [
+              { text: "Je ne connais rien au vin, mais je veux apprendre.", hint: "I know nothing about wine, but I want to learn." },
+              { text: "Qu'est-ce que vous buvez en ce moment?", hint: "What are you drinking at the moment?" },
+              { text: "C'est quoi votre bouteille préférée ici?", hint: "What's your favorite bottle here?" },
+            ],
           },
-          starters: [
-            { text: "Je ne connais rien au vin, mais je veux apprendre.", hint: "I know nothing about wine, but I want to learn." },
-            { text: "Qu'est-ce que vous buvez en ce moment?", hint: "What are you drinking at the moment?" },
-            { text: "C'est quoi votre bouteille préférée ici?", hint: "What's your favorite bottle here?" },
-          ],
+          en: {
+            openingLine: {
+              text: "Welcome! Looking for anything in particular?",
+              hint: "Show curiosity, not expertise.",
+            },
+            starters: [
+              { text: "Honestly, I know nothing about wine — but I'd love to learn.", hint: "Humble curiosity wins" },
+              { text: "What are you excited about pouring lately?", hint: "Ask about their passion" },
+              { text: "What's your favorite bottle in the shop?", hint: "Invite a story" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "¡Bienvenido! ¿Busca algo en particular?",
+              hint: "Welcome! Are you looking for something particular?",
+            },
+            starters: [
+              { text: "No sé nada de vino, pero quiero aprender.", hint: "I know nothing about wine, but I want to learn." },
+              { text: "¿Qué está bebiendo usted últimamente?", hint: "What have you been drinking lately?" },
+              { text: "¿Cuál es su botella favorita de la tienda?", hint: "What's your favorite bottle in the shop?" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Добро пожаловать! Ищете что-то особенное?",
+              hint: "Welcome! Are you looking for something particular?",
+            },
+            starters: [
+              { text: "Я ничего не понимаю в вине, но хочу научиться.", hint: "I know nothing about wine, but I want to learn." },
+              { text: "А что вы сейчас пьёте?", hint: "What are you drinking at the moment?" },
+              { text: "Какая у вас любимая бутылка в магазине?", hint: "What's your favorite bottle in the shop?" },
+            ],
+          },
         },
       },
     ],
@@ -161,15 +236,50 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
         meterLabel: "Street cred",
         winMessage: "You're a real local now! Secret route unlocked.",
         content: {
-          openingLine: {
-            text: "Montez! Alors, touriste? C'est cinquante euros pour la Tour Eiffel.",
-            hint: "Get in! So, tourist? It's fifty euros to the Eiffel Tower.",
+          fr: {
+            openingLine: {
+              text: "Montez! Alors, touriste? C'est cinquante euros pour la Tour Eiffel.",
+              hint: "Get in! So, tourist? It's fifty euros to the Eiffel Tower.",
+            },
+            starters: [
+              { text: "Cinquante euros? Vous me prenez pour un touriste!", hint: "Fifty euros? You take me for a tourist!" },
+              { text: "Prenez par les quais, c'est plus rapide.", hint: "Take the riverside, it's faster." },
+              { text: "Alors, ça roule bien aujourd'hui?", hint: "So, how's traffic today?" },
+            ],
           },
-          starters: [
-            { text: "Cinquante euros? Vous me prenez pour un touriste!", hint: "Fifty euros? You take me for a tourist!" },
-            { text: "Prenez par les quais, c'est plus rapide.", hint: "Take the riverside, it's faster." },
-            { text: "Alors, ça roule bien aujourd'hui?", hint: "So, how's traffic today?" },
-          ],
+          en: {
+            openingLine: {
+              text: "Hop in! Tourist, huh? Fifty bucks to downtown.",
+              hint: "The tourist price. Push back.",
+            },
+            starters: [
+              { text: "Fifty? Do I look like a tourist to you?", hint: "Call the bluff" },
+              { text: "Take the bridge, it's faster this time of day.", hint: "Show local knowledge" },
+              { text: "So, how's traffic been today?", hint: "Start the banter" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "¡Suba! ¿Turista, no? Cincuenta euros al centro.",
+              hint: "Get in! Tourist, right? Fifty euros to the center.",
+            },
+            starters: [
+              { text: "¿Cincuenta? ¿Me toma por turista?", hint: "Fifty? Do you take me for a tourist?" },
+              { text: "Vaya por la avenida, es más rápido.", hint: "Take the avenue, it's faster." },
+              { text: "¿Qué tal el tráfico hoy?", hint: "How's traffic today?" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Садитесь! Ну что, турист? До Эйфелевой башни — пятьдесят евро.",
+              hint: "Get in! So, tourist? Fifty euros to the Eiffel Tower.",
+            },
+            starters: [
+              { text: "Пятьдесят? Вы что, принимаете меня за туриста?", hint: "Fifty? Do you take me for a tourist?" },
+              { text: "По набережной быстрее, поверьте.", hint: "The riverside is faster, trust me." },
+              { text: "Ну как, пробки сегодня?", hint: "So, how's traffic today?" },
+            ],
+          },
         },
       },
     ],

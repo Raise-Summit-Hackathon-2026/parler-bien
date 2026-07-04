@@ -18,15 +18,17 @@ export const COACHING_CHARACTERS: Character[] = [
         subtitle: "An open conversation to untangle whatever is on your mind.",
         mode: "open",
         content: {
-          openingLine: {
-            text: "Sit with me a moment. What is occupying your mind today?",
-            hint: "Just start talking — there's no wrong answer",
+          en: {
+            openingLine: {
+              text: "Sit with me a moment. What is occupying your mind today?",
+              hint: "Just start talking — there's no wrong answer",
+            },
+            starters: [
+              { text: "I've been going back and forth on a decision...", hint: "Bring a real dilemma" },
+              { text: "Lately I feel busy but not productive.", hint: "Name a feeling" },
+              { text: "I want to talk through a goal I keep postponing.", hint: "Surface a stuck goal" },
+            ],
           },
-          starters: [
-            { text: "I've been going back and forth on a decision...", hint: "Bring a real dilemma" },
-            { text: "Lately I feel busy but not productive.", hint: "Name a feeling" },
-            { text: "I want to talk through a goal I keep postponing.", hint: "Surface a stuck goal" },
-          ],
         },
       },
     ],

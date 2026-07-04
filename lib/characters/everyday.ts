@@ -37,15 +37,50 @@ Always score the user's pronunciation of what they said. Provide 3 next_sentence
         meterLabel: "Deal likelihood",
         winMessage: "Deal! You talked them down.",
         content: {
-          openingLine: {
-            text: "Cette lampe? Trente-cinq euros. C'est une affaire.",
-            hint: "This lamp? Thirty-five euros. It's a bargain.",
+          fr: {
+            openingLine: {
+              text: "Cette lampe? Trente-cinq euros. C'est une affaire.",
+              hint: "This lamp? Thirty-five euros. It's a bargain.",
+            },
+            starters: [
+              { text: "C'est trop cher pour moi.", hint: "That's too expensive for me." },
+              { text: "Vingt euros, et on conclut?", hint: "Twenty euros, and we have a deal?" },
+              { text: "Vous pouvez faire un prix?", hint: "Can you give me a better price?" },
+            ],
           },
-          starters: [
-            { text: "C'est trop cher pour moi.", hint: "That's too expensive for me." },
-            { text: "Vingt euros, et on conclut?", hint: "Twenty euros, and we have a deal?" },
-            { text: "Vous pouvez faire un prix?", hint: "Can you give me a better price?" },
-          ],
+          en: {
+            openingLine: {
+              text: "This lamp? Thirty-five bucks. That's a steal.",
+              hint: "Opening offer — time to haggle.",
+            },
+            starters: [
+              { text: "Thirty-five? That's way too steep for me.", hint: "Push back on the price" },
+              { text: "I'll give you twenty, cash, right now.", hint: "Make a firm offer" },
+              { text: "Come on, can you do me a better price?", hint: "Ask for a discount" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "¿Esta lámpara? Treinta y cinco euros. Una ganga.",
+              hint: "This lamp? Thirty-five euros. A bargain.",
+            },
+            starters: [
+              { text: "Es demasiado caro para mí.", hint: "It's too expensive for me." },
+              { text: "¿Veinte euros y cerramos el trato?", hint: "Twenty euros and we close the deal?" },
+              { text: "¿Me puede hacer un descuento?", hint: "Can you give me a discount?" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Эта лампа? Тридцать пять евро. Выгодная цена.",
+              hint: "This lamp? Thirty-five euros. A bargain.",
+            },
+            starters: [
+              { text: "Для меня это слишком дорого.", hint: "That's too expensive for me." },
+              { text: "Двадцать евро — и договорились?", hint: "Twenty euros — deal?" },
+              { text: "Можете сделать скидку?", hint: "Can you give me a discount?" },
+            ],
+          },
         },
       },
     ],
@@ -86,15 +121,50 @@ Always score pronunciation. Provide 3 next_sentences the user could say to conti
         meterLabel: "Interest",
         winMessage: "You got the number! Mission accomplished.",
         content: {
-          openingLine: {
-            text: "Bonjour. Vous êtes d'ici?",
-            hint: "Hello. Are you from here?",
+          fr: {
+            openingLine: {
+              text: "Bonjour. Vous êtes d'ici?",
+              hint: "Hello. Are you from here?",
+            },
+            starters: [
+              { text: "Non, je suis touriste. Et vous?", hint: "No, I'm a tourist. And you?" },
+              { text: "J'adore ce quartier.", hint: "I love this neighborhood." },
+              { text: "Pardon, est-ce que je peux m'asseoir?", hint: "Sorry, can I sit down?" },
+            ],
           },
-          starters: [
-            { text: "Non, je suis touriste. Et vous?", hint: "No, I'm a tourist. And you?" },
-            { text: "J'adore ce quartier.", hint: "I love this neighborhood." },
-            { text: "Pardon, est-ce que je peux m'asseoir?", hint: "Sorry, can I sit down?" },
-          ],
+          en: {
+            openingLine: {
+              text: "Hi there. You from around here?",
+              hint: "Casual opener — keep it light.",
+            },
+            starters: [
+              { text: "Just visiting, actually. Any tips for the area?", hint: "Turn it into a conversation" },
+              { text: "I love this spot — great coffee, right?", hint: "Find common ground" },
+              { text: "Mind if I join you for a minute?", hint: "Bold but polite" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "Hola. ¿Eres de aquí?",
+              hint: "Hello. Are you from here?",
+            },
+            starters: [
+              { text: "No, estoy de visita. ¿Y tú?", hint: "No, I'm visiting. And you?" },
+              { text: "Me encanta este barrio.", hint: "I love this neighborhood." },
+              { text: "Perdona, ¿me puedo sentar?", hint: "Sorry, can I sit down?" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Здравствуйте. Вы местный?",
+              hint: "Hello. Are you from here?",
+            },
+            starters: [
+              { text: "Нет, я турист. А вы?", hint: "No, I'm a tourist. And you?" },
+              { text: "Мне очень нравится этот район.", hint: "I love this neighborhood." },
+              { text: "Извините, можно присесть?", hint: "Sorry, can I sit down?" },
+            ],
+          },
         },
       },
     ],
@@ -135,15 +205,50 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
         meterLabel: "Respect",
         winMessage: "Your table is ready! You earned your seat.",
         content: {
-          openingLine: {
-            text: "Bonsoir. Vous avez réservé? Non? C'est complet.",
-            hint: "Good evening. Do you have a reservation? No? We're full.",
+          fr: {
+            openingLine: {
+              text: "Bonsoir. Vous avez réservé? Non? C'est complet.",
+              hint: "Good evening. Do you have a reservation? No? We're full.",
+            },
+            starters: [
+              { text: "Bonsoir! Une petite table pour deux, c'est possible?", hint: "Good evening! A little table for two, is it possible?" },
+              { text: "On m'a dit que votre bœuf bourguignon est légendaire.", hint: "I've heard your beef bourguignon is legendary." },
+              { text: "C'est notre dernière soirée à Paris.", hint: "It's our last evening in Paris." },
+            ],
           },
-          starters: [
-            { text: "Bonsoir! Une petite table pour deux, c'est possible?", hint: "Good evening! A little table for two, is it possible?" },
-            { text: "On m'a dit que votre bœuf bourguignon est légendaire.", hint: "I've heard your beef bourguignon is legendary." },
-            { text: "C'est notre dernière soirée à Paris.", hint: "It's our last evening in Paris." },
-          ],
+          en: {
+            openingLine: {
+              text: "Good evening. Do you have a reservation? No? We're fully booked.",
+              hint: "The gatekeeping begins.",
+            },
+            starters: [
+              { text: "Good evening! Any chance of a small table for two?", hint: "Polite and confident" },
+              { text: "I've heard your roast is legendary.", hint: "Flatter the kitchen" },
+              { text: "It's our last night in town — we'd love to eat here.", hint: "A touching angle" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "Buenas noches. ¿Tienen reserva? ¿No? Está completo.",
+              hint: "Good evening. Do you have a reservation? No? We're full.",
+            },
+            starters: [
+              { text: "¡Buenas noches! ¿Habría una mesita para dos?", hint: "Good evening! Would there be a small table for two?" },
+              { text: "Me han dicho que su cocina es legendaria.", hint: "I've heard your kitchen is legendary." },
+              { text: "Es nuestra última noche en la ciudad.", hint: "It's our last night in the city." },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Добрый вечер. У вас есть бронь? Нет? У нас всё занято.",
+              hint: "Good evening. Do you have a reservation? No? We're full.",
+            },
+            starters: [
+              { text: "Добрый вечер! Не найдётся столик на двоих?", hint: "Good evening! Any chance of a table for two?" },
+              { text: "Мне говорили, что у вас легендарная кухня.", hint: "I've heard your kitchen is legendary." },
+              { text: "Это наш последний вечер в городе.", hint: "It's our last night in the city." },
+            ],
+          },
         },
       },
     ],
@@ -184,15 +289,50 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
         meterLabel: "Trust",
         winMessage: "The apartment is yours! You got the lease.",
         content: {
-          openingLine: {
-            text: "Entrez, entrez. Alors, vous faites quoi dans la vie?",
-            hint: "Come in, come in. So, what do you do for a living?",
+          fr: {
+            openingLine: {
+              text: "Entrez, entrez. Alors, vous faites quoi dans la vie?",
+              hint: "Come in, come in. So, what do you do for a living?",
+            },
+            starters: [
+              { text: "Je travaille dans la tech, c'est très stable.", hint: "I work in tech, it's very stable." },
+              { text: "Quel appartement magnifique, cette lumière!", hint: "What a magnificent apartment, this light!" },
+              { text: "Je suis quelqu'un de très calme.", hint: "I'm a very quiet person." },
+            ],
           },
-          starters: [
-            { text: "Je travaille dans la tech, c'est très stable.", hint: "I work in tech, it's very stable." },
-            { text: "Quel appartement magnifique, cette lumière!", hint: "What a magnificent apartment, this light!" },
-            { text: "Je suis quelqu'un de très calme.", hint: "I'm a very quiet person." },
-          ],
+          en: {
+            openingLine: {
+              text: "Come in, come in. So, what do you do for a living?",
+              hint: "The vetting begins.",
+            },
+            starters: [
+              { text: "I work in tech — very steady, very boring.", hint: "Stability with charm" },
+              { text: "What a gorgeous apartment — that light!", hint: "Compliment the place" },
+              { text: "I'm about as quiet as tenants get.", hint: "Address the classic worry" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "Pase, pase. ¿Y usted a qué se dedica?",
+              hint: "Come in, come in. And what do you do for a living?",
+            },
+            starters: [
+              { text: "Trabajo en tecnología, es muy estable.", hint: "I work in tech, it's very stable." },
+              { text: "¡Qué piso tan bonito, cuánta luz!", hint: "What a beautiful apartment, so much light!" },
+              { text: "Soy una persona muy tranquila.", hint: "I'm a very quiet person." },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Проходите, проходите. Так, чем вы занимаетесь?",
+              hint: "Come in, come in. So, what do you do for a living?",
+            },
+            starters: [
+              { text: "Я работаю в IT, всё очень стабильно.", hint: "I work in tech, it's very stable." },
+              { text: "Какая прекрасная квартира, столько света!", hint: "What a beautiful apartment, so much light!" },
+              { text: "Я очень спокойный человек.", hint: "I'm a very quiet person." },
+            ],
+          },
         },
       },
     ],

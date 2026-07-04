@@ -37,8 +37,10 @@ const sampleCharacter: Character = {
       winMessage: "Done",
       personaOverlay: "OVERLAY",
       content: {
-        openingLine: { text: "Bonjour", hint: "Hello" },
-        starters: [{ text: "Salut", hint: "Hi" }],
+        fr: {
+          openingLine: { text: "Bonjour", hint: "Hello" },
+          starters: [{ text: "Salut", hint: "Hi" }],
+        },
       },
     },
     {
@@ -101,7 +103,7 @@ describe("scenarioToCharacter", () => {
     expect(level.kind).toBe("voice")
     if (level.kind === "voice") {
       expect(level.goal).toBe("Get a room")
-      expect(level.content?.openingLine?.text).toBe("Oui?")
+      expect(level.content?.fr?.openingLine?.text).toBe("Oui?")
     }
     // round-trip: converting back yields the same persona/goal
     const back = characterLevelScenario(character, 0, "fr")

@@ -57,7 +57,8 @@ export type VoiceLevel = {
   winMessage?: string
   /** Appended to Character.persona for this level */
   personaOverlay?: string
-  content?: ScenarioContent
+  /** Per-language opening line + starters, same shape Scenario carries */
+  content?: Partial<Record<LanguageId, ScenarioContent>>
 }
 
 export type GestureLevel = {
@@ -116,9 +117,7 @@ export function characterLevelScenario(
     mode: level.mode ?? "roleplay",
     deliveryStyle: character.deliveryStyle,
     coachingStyle: character.coachingStyle,
-    content: level.content
-      ? { [languageId]: level.content }
-      : {},
+    content: level.content ?? {},
     imagePrompt: character.avatarPrompt,
     primaryLanguageId: character.primaryLanguageId ?? languageId,
     sourceLabel: character.sourceLabel,
@@ -130,12 +129,6 @@ export function scenarioToCharacter(
   id: string,
   category: CharacterCategoryId = "everyday",
 ): Character {
-  const contents = Object.entries(scenario.content)
-  const primary =
-    (scenario.primaryLanguageId &&
-      scenario.content[scenario.primaryLanguageId]) ||
-    contents[0]?.[1]
-
   return {
     id,
     name: scenario.title,
@@ -158,7 +151,7 @@ export function scenarioToCharacter(
         goal: scenario.goal ?? undefined,
         meterLabel: scenario.meterLabel ?? undefined,
         winMessage: scenario.winMessage ?? undefined,
-        content: primary ?? undefined,
+        content: scenario.content,
       },
     ],
   }

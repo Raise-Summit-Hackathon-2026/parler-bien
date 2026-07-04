@@ -20,15 +20,17 @@ export const SPORTS_CHARACTERS: Character[] = [
         meterLabel: "Team morale",
         winMessage: "The room erupts. They'd run through a wall for you.",
         content: {
-          openingLine: {
-            text: "Coach... we're down two. Nothing's working out there. What do you want from us?",
-            hint: "The room is waiting — set the tone",
+          en: {
+            openingLine: {
+              text: "Coach... we're down two. Nothing's working out there. What do you want from us?",
+              hint: "The room is waiting — set the tone",
+            },
+            starters: [
+              { text: "Heads up, all of you. That half is gone — the next one is ours.", hint: "Reset the energy" },
+              { text: "We're losing every second ball. That changes now, starting with midfield.", hint: "Specific tactical point" },
+              { text: "Marco, you've won us games before. I need that player for 45 minutes.", hint: "Personal call-out" },
+            ],
           },
-          starters: [
-            { text: "Heads up, all of you. That half is gone — the next one is ours.", hint: "Reset the energy" },
-            { text: "We're losing every second ball. That changes now, starting with midfield.", hint: "Specific tactical point" },
-            { text: "Marco, you've won us games before. I need that player for 45 minutes.", hint: "Personal call-out" },
-          ],
         },
       },
     ],

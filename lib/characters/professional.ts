@@ -30,24 +30,26 @@ export const PROFESSIONAL_CHARACTERS: Character[] = [
         winMessage: "Perfect welcome — they're relaxed and settled in.",
         personaOverlay: `SCENARIO: Pre-flight boarding on flight 959. Passengers are finding their seats. You are at the cabin door or in the aisle. Goal: warm professional welcome — greet by name if possible, mention the flight, offer help with luggage or seat direction. Bright PA-friendly tone is fine here.`,
         content: {
-          openingLine: {
-            text: "Boarding is almost complete on flight 959. A couple at 12A just stepped on — they're scanning for seats, looking a little lost. How do you welcome them?",
-            hint: "Warm, professional greeting",
+          en: {
+            openingLine: {
+              text: "Boarding is almost complete on flight 959. A couple at 12A just stepped on — they're scanning for seats, looking a little lost. How do you welcome them?",
+              hint: "Warm, professional greeting",
+            },
+            starters: [
+              {
+                text: "Good morning! Welcome aboard flight 959. Can I help you find your seats?",
+                hint: "Warm door greeting",
+              },
+              {
+                text: "Welcome! You're in 12A and 12B — just down the aisle on your left.",
+                hint: "Direct and helpful",
+              },
+              {
+                text: "Lovely to have you with us today. Let me know if you need anything stowed.",
+                hint: "Personable service tone",
+              },
+            ],
           },
-          starters: [
-            {
-              text: "Good morning! Welcome aboard flight 959. Can I help you find your seats?",
-              hint: "Warm door greeting",
-            },
-            {
-              text: "Welcome! You're in 12A and 12B — just down the aisle on your left.",
-              hint: "Direct and helpful",
-            },
-            {
-              text: "Lovely to have you with us today. Let me know if you need anything stowed.",
-              hint: "Personable service tone",
-            },
-          ],
         },
       },
       {
@@ -70,24 +72,26 @@ export const PROFESSIONAL_CHARACTERS: Character[] = [
         winMessage: "Well handled — 23B is calm, and the cabin stayed peaceful.",
         personaOverlay: `SCENARIO: Moderate turbulence. Nervous passenger in seat 23B. CRITICAL: The user must speak in a hushed whisper — close to the passenger, under their breath. If they speak loudly, shout, or use PA-announcement voice, neighbors stir and the meter drops sharply. Reward quiet, calm, intimate reassurance. Goal: get them to breathe, fasten seatbelt, and stay seated without disturbing other passengers.`,
         content: {
-          openingLine: {
-            text: "We're in light turbulence. The guest in 23B is gripping the armrest — white-knuckled. The cabin around them is quiet. Help them calm down, but keep your voice low.",
-            hint: "Hushed, intimate reassurance",
+          en: {
+            openingLine: {
+              text: "We're in light turbulence. The guest in 23B is gripping the armrest — white-knuckled. The cabin around them is quiet. Help them calm down, but keep your voice low.",
+              hint: "Hushed, intimate reassurance",
+            },
+            starters: [
+              {
+                text: "Sir... it's alright. Just a little bumpiness. I'm right here with you.",
+                hint: "Soft whisper at the seat",
+              },
+              {
+                text: "We're through the worst of it. Could you buckle up for me? Nice and easy.",
+                hint: "Quiet, steady tone",
+              },
+              {
+                text: "Take a slow breath with me. The pilots have everything under control.",
+                hint: "Intimate calming voice",
+              },
+            ],
           },
-          starters: [
-            {
-              text: "Sir... it's alright. Just a little bumpiness. I'm right here with you.",
-              hint: "Soft whisper at the seat",
-            },
-            {
-              text: "We're through the worst of it. Could you buckle up for me? Nice and easy.",
-              hint: "Quiet, steady tone",
-            },
-            {
-              text: "Take a slow breath with me. The pilots have everything under control.",
-              hint: "Intimate calming voice",
-            },
-          ],
         },
       },
     ],
@@ -111,15 +115,17 @@ export const PROFESSIONAL_CHARACTERS: Character[] = [
         meterLabel: "Hiring confidence",
         winMessage: "They're reaching for the offer letter. You nailed it.",
         content: {
-          openingLine: {
-            text: "Thanks for coming in. So — tell me a little about yourself, and why this role?",
-            hint: "Open with a confident, structured intro",
+          en: {
+            openingLine: {
+              text: "Thanks for coming in. So — tell me a little about yourself, and why this role?",
+              hint: "Open with a confident, structured intro",
+            },
+            starters: [
+              { text: "Thank you for having me. I've spent the last three years leading...", hint: "Structured self-intro" },
+              { text: "What drew me here is the team's focus on...", hint: "Motivation, specific" },
+              { text: "Could you tell me what success looks like in the first six months?", hint: "Turn it around thoughtfully" },
+            ],
           },
-          starters: [
-            { text: "Thank you for having me. I've spent the last three years leading...", hint: "Structured self-intro" },
-            { text: "What drew me here is the team's focus on...", hint: "Motivation, specific" },
-            { text: "Could you tell me what success looks like in the first six months?", hint: "Turn it around thoughtfully" },
-          ],
         },
       },
     ],
