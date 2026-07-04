@@ -3,13 +3,7 @@
 import { ArrowRight, BriefcaseBusiness, Mic, Sparkles } from "lucide-react"
 import Link from "next/link"
 
-import { useLanguage } from "@/components/language-provider"
-import { getLanguage } from "@/lib/languages"
-
 export function HomeHero() {
-  const { languageId } = useLanguage()
-  const language = getLanguage(languageId)
-
   return (
     <section className="relative overflow-hidden border-b">
       <div
@@ -27,12 +21,12 @@ export function HomeHero() {
         </span>
 
         <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-          Practice real conversations in {language.name}
+          Talk your way to any skill.
         </h1>
 
         <p className="max-w-2xl text-lg text-muted-foreground text-pretty">
-          Practice real conversations with AI feedback — solo in free play, or
-          together in shared workspaces.
+          Voice-first training with AI characters, from languages to leadership.
+          Speak — they listen, respond in character, and coach you word by word.
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -66,10 +60,11 @@ export function WorkspacesCta() {
               <BriefcaseBusiness className="size-5" />
             </span>
             <div className="space-y-1">
-              <p className="text-xl font-semibold">Build your training workspace</p>
+              <p className="text-xl font-semibold">Build your own characters</p>
               <p className="max-w-xl text-sm text-muted-foreground">
-                Create a group, invite teammates, and share custom practice
-                characters generated from prompts or PDFs.
+                Everything above was built with the same engine. Create a
+                workspace, generate characters from a prompt or a PDF, and share
+                them with your team via one link.
               </p>
             </div>
           </div>
@@ -77,7 +72,7 @@ export function WorkspacesCta() {
             href="/workspaces"
             className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Manage workspaces
+            Open workspaces
             <ArrowRight className="size-4" />
           </Link>
         </div>

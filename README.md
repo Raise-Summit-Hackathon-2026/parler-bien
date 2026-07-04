@@ -1,6 +1,6 @@
 # Parler Bien
 
-AI pronunciation practice with Supabase Auth and OpenRouter.
+Talk your way to any skill — voice-first training with AI characters, from languages to leadership. Built on Supabase Auth and OpenRouter.
 
 ## Teammate setup
 
@@ -9,7 +9,7 @@ Supabase project for login.
 
 ```bash
 git clone <this-repo>
-cd Raise-Hack
+cd parler-bien
 cp .env.example .env
 bun install
 bun run dev

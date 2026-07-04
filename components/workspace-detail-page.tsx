@@ -14,6 +14,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react"
 
 import { CharacterGrid } from "@/components/character-grid"
 import { Button } from "@/components/ui/button"
+import { rowToCharacter } from "@/lib/character-compat"
 import {
   createShareLink,
   deleteCharacter,
@@ -22,7 +23,7 @@ import {
   inviteWorkspaceMember,
   listWorkspaceMembers,
   listWorkspaceCharacters,
-} from "@/lib/characters"
+} from "@/lib/character-db"
 import type {
   CharacterRow,
   WorkspaceMemberWithEmail,
@@ -248,20 +249,20 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
         </section>
 
         <CharacterGrid
-          builtInScenarios={[]}
-          characters={characters}
+          characters={characters.map(rowToCharacter)}
+          deletableIds={characters.map((c) => c.id)}
           workspaceId={workspaceId}
           workspaceContext={{
             name: workspace.name,
             description: workspace.description,
           }}
-          onSelect={({ characterId }) => {
-            if (characterId) {
-              router.push(`/workspaces/${workspaceId}/play/${characterId}`)
-            }
+          onSelect={({ character, rowId }) => {
+            router.push(
+              `/play/${rowId ?? character.id}?from=workspace:${workspaceId}`,
+            )
           }}
-          onCharacterCreated={(characters) =>
-            setCharacters((current) => [...characters, ...current])
+          onCharacterCreated={(created) =>
+            setCharacters((current) => [...created, ...current])
           }
           onCharacterDeleted={(characterId) => void handleDelete(characterId)}
         />

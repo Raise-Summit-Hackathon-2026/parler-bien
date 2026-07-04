@@ -27,19 +27,19 @@ export type Language = {
 
 export const LANGUAGES: Language[] = [
   {
-    id: "fr",
-    name: "French",
-    regions: [
-      { id: "fr-FR", label: "France", city: "Paris", accent: "Parisian French" },
-      { id: "fr-CA", label: "Québec", city: "Montréal", accent: "Québécois French" },
-    ],
-  },
-  {
     id: "en",
     name: "English",
     regions: [
       { id: "en-US", label: "United States", city: "New York", accent: "American English" },
       { id: "en-GB", label: "United Kingdom", city: "London", accent: "British English" },
+    ],
+  },
+  {
+    id: "fr",
+    name: "French",
+    regions: [
+      { id: "fr-FR", label: "France", city: "Paris", accent: "Parisian French" },
+      { id: "fr-CA", label: "Québec", city: "Montréal", accent: "Québécois French" },
     ],
   },
   {
@@ -60,8 +60,8 @@ export const LANGUAGES: Language[] = [
   },
 ]
 
-export const DEFAULT_LANGUAGE_ID: LanguageId = "fr"
-export const DEFAULT_REGION_ID: RegionId = "fr-FR"
+export const DEFAULT_LANGUAGE_ID: LanguageId = "en"
+export const DEFAULT_REGION_ID: RegionId = "en-US"
 
 export function getLanguage(id: LanguageId): Language {
   const language = LANGUAGES.find((l) => l.id === id)

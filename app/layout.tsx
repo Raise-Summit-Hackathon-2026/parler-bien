@@ -30,7 +30,7 @@ const themeScript = `
 `
 
 export const metadata = {
-  title: "Parler Bien — Pronunciation Practice",
+  title: "Parler Bien — Talk your way to any skill",
   description: "Practice your pronunciation with AI feedback",
 }
 

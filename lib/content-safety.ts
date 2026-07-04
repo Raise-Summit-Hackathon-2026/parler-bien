@@ -1,4 +1,4 @@
-import type { GeneratedScenarioPayload } from "@/lib/scenario-generate-schema"
+import type { GeneratedCharacterPayload } from "@/lib/character-generate-schema"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const CONTENT_SAFETY_MODEL = "nvidia/nemotron-3.5-content-safety:free"
@@ -29,7 +29,7 @@ function parseModerationResponse(text: string) {
   }
 }
 
-export function scenarioTextForModeration(payload: GeneratedScenarioPayload) {
+export function scenarioTextForModeration(payload: GeneratedCharacterPayload) {
   return [
     payload.title,
     payload.tagline,
@@ -43,7 +43,7 @@ export function scenarioTextForModeration(payload: GeneratedScenarioPayload) {
     .join("\n")
 }
 
-export function scenariosTextForModeration(payloads: GeneratedScenarioPayload[]) {
+export function scenariosTextForModeration(payloads: GeneratedCharacterPayload[]) {
   return payloads.map(scenarioTextForModeration).join("\n\n---\n\n")
 }
 

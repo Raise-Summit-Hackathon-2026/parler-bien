@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import { AuthGate } from "@/components/auth-gate"
-import { joinWorkspaceViaToken } from "@/lib/characters"
+import { joinWorkspaceViaToken } from "@/lib/character-db"
 
 export default function ShareJoinPage() {
   const params = useParams<{ token: string }>()
