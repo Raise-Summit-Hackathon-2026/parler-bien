@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { type FormEvent, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { LiveAvatarPicker } from "@/components/live-avatar-picker"
 import {
   AGENT_CAPABILITY_OPTIONS,
   type AgentCapability,
@@ -30,6 +31,7 @@ export type PersonaFormValues = {
   avatar_prompt: string
   greeting: string
   theme_color: string
+  live_avatar_id: string
 }
 
 export function personaToFormValues(persona?: WorkspacePersonaRow): PersonaFormValues {
@@ -51,6 +53,7 @@ export function personaToFormValues(persona?: WorkspacePersonaRow): PersonaFormV
     avatar_prompt: persona?.avatar_prompt ?? "",
     greeting: persona?.greeting ?? "",
     theme_color: persona?.theme_color ?? "#3b82f6",
+    live_avatar_id: persona?.live_avatar_id ?? "",
   }
 }
 
@@ -211,6 +214,18 @@ export function PersonaEditorForm({
           onChange={(e) => update("delivery_style", e.target.value)}
           placeholder="Delivery style (whisper, PA voice, sigh, etc.)"
         />
+        <div className="space-y-1">
+          <label className="text-sm font-medium">LiveAvatar character</label>
+          <LiveAvatarPicker
+            className={inputClass}
+            value={values.live_avatar_id}
+            onChange={(live_avatar_id) => update("live_avatar_id", live_avatar_id)}
+            inheritLabel="Auto (match voice gender)"
+          />
+          <p className="text-xs text-muted-foreground">
+            Real-time video avatar used during practice sessions for this persona.
+          </p>
+        </div>
       </section>
 
       <section className="space-y-3">

@@ -338,8 +338,14 @@ export function PracticeSession({
         levelContext?.agent ?? null,
         characterGender,
         scenario.id,
+        levelContext?.level.room.liveAvatarId,
       ),
-    [levelContext?.agent, characterGender, scenario.id],
+    [
+      levelContext?.agent,
+      levelContext?.level.room.liveAvatarId,
+      characterGender,
+      scenario.id,
+    ],
   )
 
   const {

@@ -1,7 +1,7 @@
 "use client"
 
 import { Plus, Trash2, Check, ArrowLeft } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { CustomScenarioBuilder } from "@/components/custom-scenario-builder"
 import { useLanguage } from "@/components/language-provider"
@@ -99,11 +99,14 @@ function ScenarioCard({
 
 export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
   const { languageId, regionId } = useLanguage()
-  const [completed] = useState<ScenarioId[]>(() => getCompletedScenarios())
-  const [customScenarios, setCustomScenarios] = useState<Scenario[]>(() =>
-    getCustomScenarios(),
-  )
+  const [completed, setCompleted] = useState<ScenarioId[]>([])
+  const [customScenarios, setCustomScenarios] = useState<Scenario[]>([])
   const [showBuilder, setShowBuilder] = useState(false)
+
+  useEffect(() => {
+    setCompleted(getCompletedScenarios())
+    setCustomScenarios(getCustomScenarios())
+  }, [])
 
   function handleCreated(scenario: Scenario) {
     setCustomScenarios(getCustomScenarios())

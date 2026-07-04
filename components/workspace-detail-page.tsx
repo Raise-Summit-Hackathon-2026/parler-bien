@@ -88,6 +88,9 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
 
   const activePersona = personas.find((p) => p.id === selectedPersonaId) ?? personas[0] ?? null
   const activeTrack = tracks.find((t) => t.id === selectedTrackId) ?? tracks[0] ?? null
+  const activeTrackPersona = activeTrack
+    ? personas.find((persona) => persona.id === activeTrack.persona_id) ?? null
+    : null
   const trackLevels = useMemo(
     () =>
       activeTrack
@@ -171,6 +174,7 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
       avatar_prompt: values.avatar_prompt || null,
       greeting: values.greeting || null,
       theme_color: values.theme_color,
+      live_avatar_id: values.live_avatar_id || null,
     }
 
     if (editingPersonaId && editingPersonaId !== "new") {
@@ -543,6 +547,7 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
                             : trackLevels.find((l) => l.id === editingLevelId)
                         }
                         nextPosition={trackLevels.length + 1}
+                        personaLiveAvatarId={activeTrackPersona?.live_avatar_id}
                         onSubmit={saveLevel}
                         onCancel={() => setEditingLevelId(null)}
                       />

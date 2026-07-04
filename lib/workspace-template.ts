@@ -19,6 +19,7 @@ export type TemplatePersona = {
   greeting: string
   theme_color: string
   instructions: string
+  live_avatar_id?: string
 }
 
 export type TemplateLevel = {

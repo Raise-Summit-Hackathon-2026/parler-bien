@@ -62,6 +62,7 @@ export async function createWorkspaceFromTemplate(
         greeting: fields.greeting,
         theme_color: fields.theme_color,
         instructions: fields.instructions,
+        live_avatar_id: fields.live_avatar_id ?? null,
       })
       .select("id")
       .single()

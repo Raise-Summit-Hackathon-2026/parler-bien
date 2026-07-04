@@ -3,7 +3,12 @@
 import { type FormEvent, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { LiveAvatarPicker } from "@/components/live-avatar-picker"
 import { GESTURE_PRESETS } from "@/lib/glaf-template"
+import {
+  formatLiveAvatarCharacterLabel,
+  getLiveAvatarCharacter,
+} from "@/lib/liveavatar"
 import { LANGUAGES, type LanguageId, type RegionId } from "@/lib/languages"
 import type { LevelRoom, PassCriteria, WorkspaceLevelRow } from "@/lib/workspace-types"
 
@@ -37,6 +42,7 @@ export function levelToFormValues(
 type LevelEditorFormProps = {
   initial?: WorkspaceLevelRow
   nextPosition?: number
+  personaLiveAvatarId?: string | null
   onSubmit: (values: LevelFormValues) => Promise<void>
   onCancel?: () => void
 }
@@ -49,6 +55,7 @@ const textareaClass =
 export function LevelEditorForm({
   initial,
   nextPosition = 1,
+  personaLiveAvatarId,
   onSubmit,
   onCancel,
 }: LevelEditorFormProps) {
@@ -58,6 +65,16 @@ export function LevelEditorForm({
   const [busy, setBusy] = useState(false)
 
   const language = LANGUAGES.find((l) => l.id === values.language_id) ?? LANGUAGES[0]
+  const personaAvatarLabel = personaLiveAvatarId
+    ? formatLiveAvatarCharacterLabel(
+        getLiveAvatarCharacter(personaLiveAvatarId) ?? {
+          id: personaLiveAvatarId,
+          name: "Custom",
+          gender: "female",
+          outfit: "avatar",
+        },
+      )
+    : "persona default (auto by voice gender)"
 
   function updateRoom(patch: Partial<LevelRoom>) {
     setValues((current) => ({ ...current, room: { ...current.room, ...patch } }))
@@ -204,6 +221,20 @@ export function LevelEditorForm({
 
       <section className="space-y-3">
         <h3 className="font-semibold">Room / scenario</h3>
+        <div className="space-y-1">
+          <label className="text-sm font-medium">LiveAvatar character</label>
+          <LiveAvatarPicker
+            className={inputClass}
+            value={values.room.liveAvatarId ?? ""}
+            onChange={(liveAvatarId) =>
+              updateRoom({ liveAvatarId: liveAvatarId || undefined })
+            }
+            inheritLabel={`Use ${personaAvatarLabel}`}
+          />
+          <p className="text-xs text-muted-foreground">
+            Override the track persona&apos;s avatar for this lesson only.
+          </p>
+        </div>
         <input
           className={inputClass}
           value={values.room.targetPhrase ?? ""}

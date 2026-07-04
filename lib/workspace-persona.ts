@@ -15,6 +15,7 @@ export function personaToVoiceAgent(persona: WorkspacePersonaRow): VoiceAgent {
     avatarPrompt:
       persona.avatar_prompt ??
       "Professional portrait, warm cinematic illustration, no text",
+    liveAvatarId: persona.live_avatar_id ?? undefined,
     voice: {
       ageRange: persona.voice_age_range ?? "30-40",
       tone: persona.voice_tone ?? "Natural and helpful",

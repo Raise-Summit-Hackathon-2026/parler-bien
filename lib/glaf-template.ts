@@ -46,6 +46,7 @@ export const GLAF_TEMPLATE = {
       greeting: "Bonjour. Today we will practice elegant customer service under the dome.",
       theme_color: "#c41e3a",
       instructions: `You are Chloé, personal shopper at Galeries Lafayette Paris Haussmann. Coach luxury retail teams toward welcoming language, confident product discovery, and graceful closings.`,
+      live_avatar_id: "9c59a215-4c9f-478f-9d95-edca74c7b0d0",
     } satisfies TemplatePersona,
     marc: {
       name: "Marc",
@@ -73,6 +74,7 @@ export const GLAF_TEMPLATE = {
       greeting: "Bonsoir. We begin with calm authority on the floor.",
       theme_color: "#2d3436",
       instructions: `You are Marc, security lead at Galeries Lafayette. Coach firm but respectful compliance, discreet intervention, and calm evacuation leadership.`,
+      live_avatar_id: "200eba85-74c0-4210-8670-81ceab4efd0d",
     } satisfies TemplatePersona,
     amelie: {
       name: "Amélie",
@@ -100,6 +102,7 @@ export const GLAF_TEMPLATE = {
       greeting: "Bonjour. Let's turn difficult moments into loyalty under the dome.",
       theme_color: "#e17055",
       instructions: `You are Amélie, customer satisfaction lead at Galeries Lafayette. Coach active listening, meaningful recovery, and loyalty-building closings.`,
+      live_avatar_id: "65f9e3c9-d48b-4118-b73a-4ae2e3cbb8f0",
     } satisfies TemplatePersona,
   },
   tracks: [

@@ -13,6 +13,7 @@ export type PassCriteria =
 export type LevelRoom = {
   scenarioId?: ScenarioId
   customPersonaOverlay?: string
+  liveAvatarId?: string
   targetPhrase?: string
   openingLine?: SentenceSuggestion
   goal?: string | null
@@ -62,6 +63,7 @@ export type WorkspacePersonaRow = {
   preview_script: string | null
   persona_base: string | null
   theme_color: string | null
+  live_avatar_id: string | null
   created_at: string
 }
 
