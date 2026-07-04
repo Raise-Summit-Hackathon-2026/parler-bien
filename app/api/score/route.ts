@@ -198,7 +198,9 @@ export async function POST(request: Request) {
         ? "en"
         : language === "Spanish"
           ? "es"
-          : DEFAULT_LANGUAGE_ID
+          : language === "Russian"
+            ? "ru"
+            : DEFAULT_LANGUAGE_ID
 
   const regionId =
     rawRegionId && isRegionId(rawRegionId) ? rawRegionId : DEFAULT_REGION_ID

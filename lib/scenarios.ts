@@ -87,7 +87,7 @@ export const SCENARIOS: Scenario[] = [
       tone:
         "Warm, clear, and supportive — like a friendly pronunciation teacher. Professional and encouraging.",
     },
-    content: { fr: EMPTY_CONTENT, en: EMPTY_CONTENT, es: EMPTY_CONTENT },
+    content: { fr: EMPTY_CONTENT, en: EMPTY_CONTENT, es: EMPTY_CONTENT, ru: EMPTY_CONTENT },
     imagePrompt:
       "Elegant Parisian language classroom with soft morning light, books and chalkboard, warm cinematic illustration, no text, no logos",
   },
@@ -147,6 +147,17 @@ Always score the user's pronunciation of what they said. Provide 3 next_sentence
           { text: "Es demasiado caro para mí.", hint: "It's too expensive for me." },
           { text: "¿Veinte euros y cerramos el trato?", hint: "Twenty euros and we close the deal?" },
           { text: "¿Me puede hacer un descuento?", hint: "Can you give me a discount?" },
+        ],
+      },
+      ru: {
+        openingLine: {
+          text: "Эта лампа? Тридцать пять евро. Выгодная цена.",
+          hint: "This lamp? Thirty-five euros. A bargain.",
+        },
+        starters: [
+          { text: "Для меня это слишком дорого.", hint: "That's too expensive for me." },
+          { text: "Двадцать евро — и договорились?", hint: "Twenty euros — deal?" },
+          { text: "Можете сделать скидку?", hint: "Can you give me a discount?" },
         ],
       },
     },
@@ -211,6 +222,17 @@ Always score pronunciation. Provide 3 next_sentences the user could say to conti
           { text: "Perdona, ¿me puedo sentar?", hint: "Sorry, can I sit down?" },
         ],
       },
+      ru: {
+        openingLine: {
+          text: "Здравствуйте. Вы местный?",
+          hint: "Hello. Are you from here?",
+        },
+        starters: [
+          { text: "Нет, я турист. А вы?", hint: "No, I'm a tourist. And you?" },
+          { text: "Мне очень нравится этот район.", hint: "I love this neighborhood." },
+          { text: "Извините, можно присесть?", hint: "Sorry, can I sit down?" },
+        ],
+      },
     },
     imagePrompt:
       "Charming Paris café terrace with coffee cups and croissants, soft morning light, romantic cinematic illustration, no text, no logos",
@@ -271,6 +293,17 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           { text: "¡Qué bien huele aquí!", hint: "It smells so good in here!" },
           { text: "Me han dicho que es la mejor panadería del barrio.", hint: "I've heard it's the best bakery in the neighborhood." },
           { text: "¿Qué me recomienda entonces?", hint: "What do you recommend then?" },
+        ],
+      },
+      ru: {
+        openingLine: {
+          text: "Ой, простите — последний круассан уже зарезервирован.",
+          hint: "Oh, sorry — the last croissant is reserved.",
+        },
+        starters: [
+          { text: "Как здесь вкусно пахнет!", hint: "It smells so good in here!" },
+          { text: "Мне сказали, что это лучшая пекарня в районе.", hint: "I've heard it's the best bakery in the neighborhood." },
+          { text: "Тогда что вы посоветуете?", hint: "What do you recommend then?" },
         ],
       },
     },
@@ -335,6 +368,17 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           { text: "Es nuestra última noche en la ciudad.", hint: "It's our last night in the city." },
         ],
       },
+      ru: {
+        openingLine: {
+          text: "Добрый вечер. У вас есть бронь? Нет? У нас всё занято.",
+          hint: "Good evening. Do you have a reservation? No? We're full.",
+        },
+        starters: [
+          { text: "Добрый вечер! Не найдётся столик на двоих?", hint: "Good evening! Any chance of a table for two?" },
+          { text: "Мне говорили, что у вас легендарная кухня.", hint: "I've heard your kitchen is legendary." },
+          { text: "Это наш последний вечер в городе.", hint: "It's our last night in the city." },
+        ],
+      },
     },
     imagePrompt:
       "Elegant Paris bistro at night with candlelit tables, brass and red leather, warm romantic light, cinematic illustration, no text, no logos",
@@ -395,6 +439,17 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           { text: "¿Cincuenta? ¿Me toma por turista?", hint: "Fifty? Do you take me for a tourist?" },
           { text: "Vaya por la avenida, es más rápido.", hint: "Take the avenue, it's faster." },
           { text: "¿Qué tal el tráfico hoy?", hint: "How's traffic today?" },
+        ],
+      },
+      ru: {
+        openingLine: {
+          text: "Садитесь! Ну что, турист? До Эйфелевой башни — пятьдесят евро.",
+          hint: "Get in! So, tourist? Fifty euros to the Eiffel Tower.",
+        },
+        starters: [
+          { text: "Пятьдесят? Вы что, принимаете меня за туриста?", hint: "Fifty? Do you take me for a tourist?" },
+          { text: "По набережной быстрее, поверьте.", hint: "The riverside is faster, trust me." },
+          { text: "Ну как, пробки сегодня?", hint: "So, how's traffic today?" },
         ],
       },
     },
@@ -459,6 +514,17 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           { text: "Soy una persona muy tranquila.", hint: "I'm a very quiet person." },
         ],
       },
+      ru: {
+        openingLine: {
+          text: "Проходите, проходите. Так, чем вы занимаетесь?",
+          hint: "Come in, come in. So, what do you do for a living?",
+        },
+        starters: [
+          { text: "Я работаю в IT, всё очень стабильно.", hint: "I work in tech, it's very stable." },
+          { text: "Какая прекрасная квартира, столько света!", hint: "What a beautiful apartment, so much light!" },
+          { text: "Я очень спокойный человек.", hint: "I'm a very quiet person." },
+        ],
+      },
     },
     imagePrompt:
       "Small charming Paris apartment with tall windows overlooking zinc rooftops, soft afternoon light, cinematic illustration, no text, no logos",
@@ -521,6 +587,17 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           { text: "¿Cuál es su botella favorita de la tienda?", hint: "What's your favorite bottle in the shop?" },
         ],
       },
+      ru: {
+        openingLine: {
+          text: "Добро пожаловать! Ищете что-то особенное?",
+          hint: "Welcome! Are you looking for something particular?",
+        },
+        starters: [
+          { text: "Я ничего не понимаю в вине, но хочу научиться.", hint: "I know nothing about wine, but I want to learn." },
+          { text: "А что вы сейчас пьёте?", hint: "What are you drinking at the moment?" },
+          { text: "Какая у вас любимая бутылка в магазине?", hint: "What's your favorite bottle in the shop?" },
+        ],
+      },
     },
     imagePrompt:
       "Intimate Paris wine cave with wooden shelves of bottles and candlelight, deep warm tones, cinematic illustration, no text, no logos",
@@ -581,6 +658,17 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           { text: "¿La lista? Yo soy la lista.", hint: "The list? I am the list." },
           { text: "Solo venimos a bailar, sin líos.", hint: "We just came to dance, no trouble." },
           { text: "¿Y qué hay que hacer para entrar?", hint: "And what does it take to get in?" },
+        ],
+      },
+      ru: {
+        openingLine: {
+          text: "Сегодня полный зал. Вы в списке?",
+          hint: "We're full tonight. Are you on the list?",
+        },
+        starters: [
+          { text: "Список? Я и есть список.", hint: "The list? I am the list." },
+          { text: "Мы просто потанцевать, без проблем.", hint: "We just came to dance, no trouble." },
+          { text: "Ладно — что нужно, чтобы пройти?", hint: "Alright — what does it take to get in?" },
         ],
       },
     },

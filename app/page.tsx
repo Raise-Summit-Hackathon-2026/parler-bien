@@ -9,6 +9,7 @@ import {
 import { PracticeSession } from "@/components/practice-session"
 import { ScenarioPicker } from "@/components/scenario-picker"
 import type { LanguageId, RegionId } from "@/lib/languages"
+import { getDefaultRegionId } from "@/lib/languages"
 import type { Scenario } from "@/lib/scenarios"
 
 export default function Page() {
@@ -18,8 +19,7 @@ export default function Page() {
 
   function handleLanguageChange(nextLanguageId: LanguageId) {
     setLanguageId(nextLanguageId)
-    const firstRegion = nextLanguageId === "fr" ? "fr-FR" : nextLanguageId === "en" ? "en-US" : "es-ES"
-    setRegionId(firstRegion)
+    setRegionId(getDefaultRegionId(nextLanguageId))
   }
 
   if (!scenario) {

@@ -1,4 +1,4 @@
-export type LanguageId = "fr" | "en" | "es"
+export type LanguageId = "fr" | "en" | "es" | "ru"
 
 export type RegionId =
   | "fr-FR"
@@ -7,6 +7,8 @@ export type RegionId =
   | "en-GB"
   | "es-ES"
   | "es-MX"
+  | "ru-RU"
+  | "ru-SP"
 
 export type Region = {
   id: RegionId
@@ -48,6 +50,14 @@ export const LANGUAGES: Language[] = [
       { id: "es-MX", label: "Mexico", city: "Mexico City", accent: "Mexican Spanish" },
     ],
   },
+  {
+    id: "ru",
+    name: "Russian",
+    regions: [
+      { id: "ru-RU", label: "Russia", city: "Moscow", accent: "Moscow Russian" },
+      { id: "ru-SP", label: "Saint Petersburg", city: "Saint Petersburg", accent: "Petersburg Russian" },
+    ],
+  },
 ]
 
 export const DEFAULT_LANGUAGE_ID: LanguageId = "fr"
@@ -62,6 +72,10 @@ export function getLanguage(id: LanguageId): Language {
 export function getRegion(languageId: LanguageId, regionId: RegionId): Region {
   const language = getLanguage(languageId)
   return language.regions.find((r) => r.id === regionId) ?? language.regions[0]
+}
+
+export function getDefaultRegionId(languageId: LanguageId): RegionId {
+  return getLanguage(languageId).regions[0].id
 }
 
 export function isLanguageId(value: string): value is LanguageId {

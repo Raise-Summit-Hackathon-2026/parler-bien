@@ -56,10 +56,29 @@ const SPANISH_SENTENCES: SentenceSuggestion[] = [
   { text: "¡Que tenga un buen día!", hint: "Have a good day!" },
 ]
 
+const RUSSIAN_SENTENCES: SentenceSuggestion[] = [
+  { text: "Можно кофе с молоком, пожалуйста?", hint: "A coffee with milk, please." },
+  { text: "Сколько это стоит?", hint: "How much does it cost?" },
+  { text: "Где находится станция метро?", hint: "Where is the metro station?" },
+  { text: "Я не понимаю, повторите, пожалуйста.", hint: "I don't understand, please repeat." },
+  { text: "Счёт, пожалуйста.", hint: "The bill, please." },
+  { text: "У вас есть столик на двоих?", hint: "Do you have a table for two?" },
+  { text: "Я заблудился, можете помочь?", hint: "I'm lost, can you help?" },
+  { text: "Это очень вкусно!", hint: "It's delicious!" },
+  { text: "У меня аллергия на орехи.", hint: "I'm allergic to nuts." },
+  { text: "Что вы порекомендуете?", hint: "What do you recommend?" },
+  { text: "Для меня это слишком дорого.", hint: "It's too expensive for me." },
+  { text: "Хорошего дня!", hint: "Have a good day!" },
+  { text: "Извините, вы не подскажете?", hint: "Excuse me, could you help?" },
+  { text: "Я из Лондона.", hint: "I'm from London." },
+  { text: "Можно повторить помедленнее?", hint: "Can you repeat more slowly?" },
+]
+
 const SENTENCE_POOLS: Record<LanguageId, SentenceSuggestion[]> = {
   fr: FRENCH_SENTENCES,
   en: ENGLISH_SENTENCES,
   es: SPANISH_SENTENCES,
+  ru: RUSSIAN_SENTENCES,
 }
 
 export function pickRandomSentences(
