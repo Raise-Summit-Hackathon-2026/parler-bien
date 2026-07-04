@@ -1,4 +1,3 @@
-import type { AgentType, VoiceAgent } from "@/lib/agents"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import type { Scenario, ScenarioId } from "@/lib/scenarios"
 
@@ -58,11 +57,8 @@ export type ScoreRequest = {
   history?: ConversationTurn[]
   characterGender?: "male" | "female"
   currentMeter?: number
-  agentType?: AgentType
-  agent?: VoiceAgent
 }
 
-export type { AgentType, VoiceAgent, AgentCapability, AgentSkill } from "@/lib/agents"
 export type {
   CharacterRow,
   WorkspaceMemberRow,
