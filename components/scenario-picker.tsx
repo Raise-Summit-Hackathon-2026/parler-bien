@@ -20,6 +20,7 @@ import {
   type Scenario,
   type ScenarioId,
 } from "@/lib/scenarios"
+import { LINGUA_TRAINERS, isLinguaTrainerId } from "@/lib/lingua-trainers"
 import { cn } from "@/lib/utils"
 
 type ScenarioPickerProps = {
@@ -129,6 +130,14 @@ export function ScenarioPicker({
     setCustomScenarios(getCustomScenarios())
   }
 
+  function handleSelect(scenario: Scenario) {
+    if (isLinguaTrainerId(scenario.id)) {
+      onLanguageChange("en")
+      onRegionChange("en-US")
+    }
+    onSelect(scenario)
+  }
+
   return (
     <>
       <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col items-center justify-center gap-8 px-6 py-12">
@@ -153,44 +162,70 @@ export function ScenarioPicker({
           </p>
         </div>
 
-        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SCENARIOS.map((scenario) => (
-            <ScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              completed={completed.includes(scenario.id)}
-              onSelect={() => onSelect(scenario)}
-            />
-          ))}
-
-          {customScenarios.map((scenario) => (
-            <ScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              completed={completed.includes(scenario.id)}
-              onSelect={() => onSelect(scenario)}
-              onDelete={() => handleDelete(scenario.id)}
-            />
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setShowBuilder(true)}
-            className={cn(
-              "flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed bg-muted/20 p-6 text-center transition-all",
-              "hover:border-foreground/30 hover:bg-muted/40",
-            )}
-          >
-            <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Plus className="size-6" />
-            </span>
-            <div>
-              <p className="font-semibold">Create your own</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                From a prompt, PDF, or course upload
-              </p>
+        <div className="w-full space-y-8">
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                Lingua Trainers
+              </h2>
+              <span className="text-xs text-muted-foreground">Meme modes · English</span>
             </div>
-          </button>
+            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {LINGUA_TRAINERS.map((scenario) => (
+                <ScenarioCard
+                  key={scenario.id}
+                  scenario={scenario}
+                  completed={completed.includes(scenario.id)}
+                  onSelect={() => handleSelect(scenario)}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+              Paris Scenarios
+            </h2>
+            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SCENARIOS.map((scenario) => (
+                <ScenarioCard
+                  key={scenario.id}
+                  scenario={scenario}
+                  completed={completed.includes(scenario.id)}
+                  onSelect={() => handleSelect(scenario)}
+                />
+              ))}
+
+              {customScenarios.map((scenario) => (
+                <ScenarioCard
+                  key={scenario.id}
+                  scenario={scenario}
+                  completed={completed.includes(scenario.id)}
+                  onSelect={() => handleSelect(scenario)}
+                  onDelete={() => handleDelete(scenario.id)}
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setShowBuilder(true)}
+                className={cn(
+                  "flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed bg-muted/20 p-6 text-center transition-all",
+                  "hover:border-foreground/30 hover:bg-muted/40",
+                )}
+              >
+                <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Plus className="size-6" />
+                </span>
+                <div>
+                  <p className="font-semibold">Create your own</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    From a prompt, PDF, or course upload
+                  </p>
+                </div>
+              </button>
+            </div>
+          </section>
         </div>
       </div>
 

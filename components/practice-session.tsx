@@ -4,6 +4,7 @@ import confetti from "canvas-confetti"
 import { Loader2, Mic, RotateCcw, Square, Volume2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import { LaughReferenceGallery } from "@/components/laugh-reference-gallery"
 import { LanguagePicker } from "@/components/language-picker"
 import { ScenarioBackButton } from "@/components/scenario-picker"
 import { ScenarioScene } from "@/components/scenario-scene"
@@ -12,6 +13,11 @@ import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useSpeaker } from "@/hooks/use-speaker"
 import { markScenarioCompleted } from "@/lib/completions"
+import {
+  getLinguaTrainerStarters,
+  isLinguaTrainerId,
+  isTrainerScenarioId,
+} from "@/lib/lingua-trainers"
 import { pickRandomSentences } from "@/lib/sentences"
 import {
   getScenarioContent,
@@ -215,6 +221,12 @@ export function PracticeSession({
   onBack,
 }: PracticeSessionProps) {
   const isTeacher = scenario.id === "teacher"
+  const isTrainer =
+    isBuiltInScenarioId(scenario.id) && isTrainerScenarioId(scenario.id)
+  const isLaughTrainer = scenario.id === "rich_laugher"
+  const isCoachMode = isTeacher || isTrainer
+  const isRoleplay =
+    !isCoachMode && Boolean(scenario.goal || scenario.meterLabel)
   const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
   const scenarioContent = getScenarioContent(scenario, languageId)
@@ -226,11 +238,13 @@ export function PracticeSession({
 
   const openingPlayed = useRef(false)
 
-  const [examples, setExamples] = useState<SentenceSuggestion[]>(() =>
-    isTeacher
-      ? pickRandomSentences(EXAMPLE_COUNT, languageId)
-      : scenarioContent.starters,
-  )
+  const [examples, setExamples] = useState<SentenceSuggestion[]>(() => {
+    if (isTrainer && isLinguaTrainerId(scenario.id)) {
+      return getLinguaTrainerStarters(scenario.id).slice(0, EXAMPLE_COUNT)
+    }
+    if (isTeacher) return pickRandomSentences(EXAMPLE_COUNT, languageId)
+    return scenarioContent.starters
+  })
   const [targetPhrase, setTargetPhrase] = useState<string | null>(null)
   const [history, setHistory] = useState<ConversationTurn[]>([])
   const [meter, setMeter] = useState(0)
@@ -351,7 +365,7 @@ export function PracticeSession({
         setLastSpeaker(result.speaker)
         setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
 
-        if (!isTeacher) {
+        if (!isCoachMode) {
           setMeter(result.meter)
           setHasWon(result.goal_achieved || result.meter >= 100)
           setHistory((prev) => [
@@ -361,6 +375,10 @@ export function PracticeSession({
           ])
           speakCharacterLine(result.reply.text, "character", result.speaker)
         } else {
+          if (isLaughTrainer) {
+            setMeter(result.meter)
+            setHasWon(result.goal_achieved || result.overall_score >= 88)
+          }
           speakCharacterLine(result.reply.text, "coach", result.speaker)
         }
       } catch (err) {
@@ -443,6 +461,11 @@ export function PracticeSession({
   function handleShuffleExamples() {
     if (isTeacher) {
       setExamples(pickRandomSentences(EXAMPLE_COUNT, languageId))
+      return
+    }
+    if (isLinguaTrainerId(scenario.id)) {
+      const pool = getLinguaTrainerStarters(scenario.id)
+      setExamples(pool.slice(0, EXAMPLE_COUNT))
     }
   }
 
@@ -461,26 +484,41 @@ export function PracticeSession({
           {scenario.title}
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">
-          {isTeacher ? `Say something in ${language.name}` : scenario.tagline}
+          {isTeacher
+            ? `Say something in ${language.name}`
+            : isLaughTrainer
+              ? "Laugh like old money"
+              : scenario.tagline}
         </h1>
-        <LanguagePicker
-          languageId={languageId}
-          regionId={regionId}
-          onLanguageChange={onLanguageChange}
-          onRegionChange={onRegionChange}
-        />
+        {!isTrainer && (
+          <LanguagePicker
+            languageId={languageId}
+            regionId={regionId}
+            onLanguageChange={onLanguageChange}
+            onRegionChange={onRegionChange}
+          />
+        )}
+        {isTrainer && (
+          <p className="text-xs text-muted-foreground">English · satirical coach mode</p>
+        )}
         <p className="text-muted-foreground">
           {hasWon
             ? scenario.winMessage
             : score
-              ? isTeacher
-                ? "Tap a word to hear how it should sound."
-                : "Keep the conversation going — tap the mic."
+              ? isLaughTrainer
+                ? "Tap a dimension to see the roast."
+                : isCoachMode
+                  ? "Tap a word for tips — or try the next line."
+                  : "Keep the conversation going — tap the mic."
               : targetPhrase
-                ? "Practice this phrase — tap the mic when ready."
-                : isTeacher
-                  ? "Tap the mic and speak — or pick a phrase below."
-                  : `Tap the mic and respond in ${language.name}.`}
+                ? isLaughTrainer
+                  ? "Perform the prompt — then laugh."
+                  : "Practice this phrase — tap the mic when ready."
+                : isLaughTrainer
+                  ? "Tap the mic and deliver one controlled laugh."
+                  : isCoachMode
+                    ? "Tap the mic and perform — or pick a line below."
+                    : `Tap the mic and respond in ${language.name}.`}
         </p>
       </div>
 
@@ -493,8 +531,12 @@ export function PracticeSession({
         />
 
         <div className="space-y-6 p-6 pt-0">
-        {!isTeacher && scenario.meterLabel && scenario.goal && !hasWon && (
+        {!isCoachMode && scenario.meterLabel && scenario.goal && !hasWon && (
           <MeterBar meter={meter} label={scenario.meterLabel} goal={scenario.goal} />
+        )}
+
+        {isLaughTrainer && score && !hasWon && (
+          <MeterBar meter={meter} label="Old money meter" goal="Score 88+ for yacht access" />
         )}
 
         {hasWon && scenario.winMessage && (
@@ -509,11 +551,11 @@ export function PracticeSession({
           </div>
         )}
 
-        {!isTeacher && history.length > 0 && !hasWon && (
+        {isRoleplay && history.length > 0 && !hasWon && (
           <HistoryLog history={history} />
         )}
 
-        {!isTeacher && score?.reply && !hasWon && (
+        {isRoleplay && score?.reply && !hasWon && (
           <ReplyBubble
             reply={score.reply}
             onHear={() => speakCharacterLine(score.reply.text, "character", score.speaker)}
@@ -521,7 +563,24 @@ export function PracticeSession({
           />
         )}
 
-        {isTeacher && displayedPhrase && (
+        {isCoachMode && score?.reply && !hasWon && (
+          <ReplyBubble
+            reply={score.reply}
+            onHear={() => speakCharacterLine(score.reply.text, "coach", score.speaker)}
+            disabled={isRecording || isScoring}
+          />
+        )}
+
+        {isLaughTrainer && displayedPhrase && (
+          <div className="space-y-3 text-center">
+            <p className="text-xs tracking-wide text-muted-foreground uppercase">
+              {score ? "Your laugh" : "Ready"}
+            </p>
+            <p className="text-xl font-medium">{displayedPhrase}</p>
+          </div>
+        )}
+
+        {isCoachMode && displayedPhrase && !isLaughTrainer && (
           <div className="space-y-3 text-center">
             <p className="text-xs tracking-wide text-muted-foreground uppercase">
               {score ? "You said" : `${language.name} · ${region.label}`}
@@ -578,12 +637,14 @@ export function PracticeSession({
               {isScoring
                 ? "Analyzing…"
                 : isSpeaking
-                  ? isTeacher
+                  ? isCoachMode
                     ? "Your coach is speaking…"
                     : "Character is speaking…"
                   : isRecording
                     ? "Tap to stop"
-                    : "Tap to speak"}
+                    : isLaughTrainer
+                      ? "Tap to laugh"
+                      : "Tap to speak"}
             </p>
           </div>
         )}
@@ -595,7 +656,9 @@ export function PracticeSession({
         {score && !hasWon && (
           <div className="space-y-5 border-t pt-5">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Pronunciation</p>
+              <p className="text-sm text-muted-foreground">
+                {isLaughTrainer ? "Laugh score" : isTrainer ? "Authenticity" : "Pronunciation"}
+              </p>
               <p
                 className={cn(
                   "text-4xl font-semibold tabular-nums",
@@ -640,9 +703,15 @@ export function PracticeSession({
             {suggestionList.length > 0 && (
               <div className="space-y-3 border-t pt-5">
                 <p className="text-center text-sm font-medium">
-                  {score ? "Continue the conversation" : "Try a phrase"}
+                  {score
+                    ? isLaughTrainer
+                      ? "Try another laugh prompt"
+                      : isCoachMode
+                        ? "Level up — try next"
+                        : "Continue the conversation"
+                    : "Try a phrase"}
                 </p>
-                {isTeacher && !score && (
+                {isCoachMode && !score && suggestionList.length > 0 && (
                   <div className="flex justify-end">
                     <Button
                       variant="ghost"
@@ -670,7 +739,11 @@ export function PracticeSession({
           </div>
         )}
 
-        {!score && !hasWon && suggestionList.length > 0 && isTeacher && (
+        {!score && !hasWon && isLaughTrainer && (
+          <LaughReferenceGallery />
+        )}
+
+        {!score && !hasWon && suggestionList.length > 0 && isCoachMode && (
           <div className="space-y-3 border-t pt-5">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Try a phrase</p>
@@ -695,7 +768,7 @@ export function PracticeSession({
           </div>
         )}
 
-        {!score && !hasWon && !isTeacher && suggestionList.length > 0 && (
+        {!score && !hasWon && !isCoachMode && suggestionList.length > 0 && (
           <div className="space-y-3 border-t pt-5">
             <p className="text-sm font-medium">Try saying</p>
             <div className="space-y-2">

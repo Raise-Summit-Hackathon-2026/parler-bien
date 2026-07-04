@@ -19,6 +19,8 @@ import {
   resolveScenario,
   type Scenario,
 } from "@/lib/scenarios"
+import { isLinguaTrainerId } from "@/lib/lingua-trainers"
+import { buildLinguaTrainerPrompt } from "@/lib/lingua-trainer-prompts"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
 import type { ConversationTurn, PronunciationScore } from "@/lib/types"
 
@@ -111,6 +113,10 @@ function buildPrompt(
 
   if (scenario.id === "teacher") {
     return buildTeacherPrompt(phrase, language.name, region)
+  }
+
+  if (isLinguaTrainerId(scenario.id)) {
+    return buildLinguaTrainerPrompt(scenario.id, phrase)
   }
 
   return buildScenarioPrompt(
@@ -319,7 +325,9 @@ export async function POST(request: Request) {
       {
         scenarioTitle: scenario.title,
         languageName: language.name,
-        isRoleplay: scenario.id !== "teacher",
+        isRoleplay:
+          scenario.id !== "teacher" &&
+          !isLinguaTrainerId(scenario.id),
       },
     )
 
