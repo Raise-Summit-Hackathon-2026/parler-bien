@@ -24,6 +24,8 @@ export type AgentLine = {
   agentRole?: AgentRole
   /** Extra inbound numbers allowed on the dedicated line (owner is always allowed) */
   allowedCallerPhones?: string[]
+  /** When true, any caller can reach the dedicated line (demo / public lines) */
+  allowAllInbound?: boolean
   dedicatedPhoneNumber?: string
   twilioPhoneSid?: string
   agentPhoneAgentId?: string
@@ -71,7 +73,30 @@ function randomPin(): string {
 export function parseAllowedCallerPhones(raw: string | string[] | undefined): string[] {
   if (!raw) return []
   const list = Array.isArray(raw) ? raw : raw.split(/[,;\n]+/)
-  return [...new Set(list.map((p) => p.trim()).filter((p) => p.replace(/\D/g, "").length >= 8))]
+  return [
+    ...new Set(
+      list
+        .map((p) => p.trim())
+        .filter(
+          (p) =>
+            p.replace(/\D/g, "").length >= 8 &&
+            !/^(all|\*|allow\s*all|open)$/i.test(p),
+        ),
+    ),
+  ]
+}
+
+export function parseAllowAllInbound(
+  raw: string | string[] | boolean | undefined,
+  fallback = true,
+): boolean {
+  if (typeof raw === "boolean") return raw
+  if (raw === undefined || raw === null) return fallback
+  const text = (Array.isArray(raw) ? raw.join(",") : raw).trim()
+  if (!text) return fallback
+  if (/^(all|\*|allow\s*all|open)$/i.test(text)) return true
+  if (/^(allowlist|restricted|deny)$/i.test(text)) return false
+  return fallback
 }
 
 export function getLineByUserId(userId: string): AgentLine | undefined {
@@ -96,13 +121,14 @@ export function getLineByDedicatedNumber(phone: string): AgentLine | undefined {
   })
 }
 
-/** Enterprise inbound gate: owner + explicit allowlist on dedicated lines. */
+/** Enterprise inbound gate: owner + explicit allowlist on dedicated lines, or open if allowAllInbound. */
 export function isInboundCallerAllowed(
   line: AgentLine,
   callerPhone: string | undefined,
   viaDedicatedLine: boolean,
 ): boolean {
   if (!callerPhone?.trim()) return false
+  if (line.allowAllInbound !== false && viaDedicatedLine && line.dedicatedPhoneNumber) return true
   if (phonesMatch(line.userPhone, callerPhone)) return true
   if (line.allowedCallerPhones?.some((p) => phonesMatch(p, callerPhone))) return true
   if (viaDedicatedLine && line.dedicatedPhoneNumber) return false
@@ -118,6 +144,7 @@ export function createAgentLine(input: {
   ownerEmail?: string
   agentRole?: AgentRole
   allowedCallerPhones?: string[]
+  allowAllInbound?: boolean
 }): AgentLine {
   const lines = loadLines()
   const existing = lines.find((line) => line.userId === input.userId)
@@ -129,6 +156,7 @@ export function createAgentLine(input: {
     if (input.ownerEmail?.trim()) existing.ownerEmail = input.ownerEmail.trim()
     if (input.agentRole) existing.agentRole = input.agentRole
     if (input.allowedCallerPhones) existing.allowedCallerPhones = input.allowedCallerPhones
+    if (input.allowAllInbound !== undefined) existing.allowAllInbound = input.allowAllInbound
     saveLines(lines)
     return existing
   }
@@ -144,6 +172,7 @@ export function createAgentLine(input: {
     ownerEmail: input.ownerEmail?.trim(),
     agentRole: input.agentRole ?? "executive",
     allowedCallerPhones: input.allowedCallerPhones ?? [],
+    allowAllInbound: input.allowAllInbound ?? true,
     whatsappStatus: "none",
     createdAt: new Date().toISOString(),
   }

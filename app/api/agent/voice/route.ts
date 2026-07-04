@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { runAgentChat, type AgentChatMessage } from "@/lib/agent-chat"
+import { recordAgentUsage } from "@/lib/agent-usage"
 import { getAgentUserId } from "@/lib/composio"
 import { transcribeAudio } from "@/lib/transcribe-audio"
 
@@ -30,17 +31,37 @@ export async function POST(request: Request) {
   const userId = getAgentUserId(body.userId)
 
   try {
-    const transcript = await transcribeAudio(audioBase64, audioFormat)
+    const { transcript, usage: sttUsage } = await transcribeAudio(audioBase64, audioFormat)
+    recordAgentUsage({
+      userId,
+      channel: "browser_voice_stt",
+      label: "Voice transcription",
+      costUsd: sttUsage.costUsd,
+      promptTokens: sttUsage.promptTokens,
+      completionTokens: sttUsage.completionTokens,
+    })
+
     const messages: AgentChatMessage[] = [
       ...history,
       { role: "user", content: transcript },
     ]
-    const { reply, toolsUsed } = await runAgentChat(userId, messages)
+    const { reply, toolsUsed, usage: agentUsage } = await runAgentChat(userId, messages)
+    recordAgentUsage({
+      userId,
+      channel: "browser_voice_agent",
+      label: "Voice agent reply",
+      costUsd: agentUsage.costUsd,
+      promptTokens: agentUsage.promptTokens,
+      completionTokens: agentUsage.completionTokens,
+    })
+
+    const turnCostUsd = sttUsage.costUsd + agentUsage.costUsd
 
     return NextResponse.json({
       transcript,
       reply,
       toolsUsed,
+      turnCostUsd,
       messages: [...messages, { role: "assistant", content: reply }],
     })
   } catch (error) {

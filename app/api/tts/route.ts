@@ -8,6 +8,8 @@ import {
   ttsCacheKey,
   type TtsStyle,
 } from "@/lib/tts"
+import { estimateTtsCostUsd, recordAgentUsage } from "@/lib/agent-usage"
+import { getAgentUserId } from "@/lib/composio"
 import { requireCurrentUser } from "@/lib/supabase"
 
 const OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
     tone?: string
     accent?: string
     deliveryStyle?: string
+    userId?: string
   }
 
   try {
@@ -219,6 +222,15 @@ export async function POST(request: Request) {
     const pcm = Buffer.from(await response.arrayBuffer())
     const wav = pcmToWav(pcm)
     cache.set(key, wav)
+
+    if (body.userId?.trim()) {
+      recordAgentUsage({
+        userId: getAgentUserId(body.userId),
+        channel: "browser_tts",
+        label: "Spoken reply",
+        costUsd: estimateTtsCostUsd(text.trim()),
+      })
+    }
 
     return new NextResponse(new Uint8Array(wav), {
       headers: {

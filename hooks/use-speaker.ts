@@ -72,6 +72,7 @@ export function useSpeaker() {
             tone: options?.tone,
             accent: options?.accent,
             deliveryStyle: options?.deliveryStyle,
+            userId: options?.userId,
           }),
         })
 

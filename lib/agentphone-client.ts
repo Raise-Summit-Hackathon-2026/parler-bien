@@ -30,7 +30,7 @@ type AgentPhoneNumber = {
 
 async function agentPhoneRequest<T>(
   path: string,
-  options: RequestInit & { method?: string; body?: unknown } = {},
+  options: { method?: string; jsonBody?: unknown; headers?: HeadersInit } = {},
 ): Promise<T> {
   const apiKey = getAgentPhoneApiKey()
   if (!apiKey) throw new Error("AGENTPHONE_API_KEY is not configured")
@@ -43,7 +43,7 @@ async function agentPhoneRequest<T>(
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string> | undefined),
     },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.jsonBody !== undefined ? JSON.stringify(options.jsonBody) : undefined,
   })
 
   const payload = (await response.json()) as T & { error?: { message?: string } }
@@ -53,6 +53,11 @@ async function agentPhoneRequest<T>(
   return payload
 }
 
+export async function listAgentPhoneNumbers(): Promise<AgentPhoneNumber[]> {
+  const payload = await agentPhoneRequest<{ data?: AgentPhoneNumber[] }>("/numbers")
+  return payload.data ?? []
+}
+
 export async function createAgentPhoneAgent(input: {
   name: string
   description?: string
@@ -60,7 +65,7 @@ export async function createAgentPhoneAgent(input: {
 }): Promise<AgentPhoneAgent> {
   return agentPhoneRequest<AgentPhoneAgent>("/agents", {
     method: "POST",
-    body: {
+    jsonBody: {
       name: input.name,
       description: input.description,
       voiceMode: "webhook",
@@ -71,10 +76,20 @@ export async function createAgentPhoneAgent(input: {
   })
 }
 
+export async function updateAgentPhoneAgent(
+  agentId: string,
+  input: { name?: string; beginMessage?: string; voiceMode?: string; enableMessaging?: boolean },
+): Promise<AgentPhoneAgent> {
+  return agentPhoneRequest<AgentPhoneAgent>(`/agents/${agentId}`, {
+    method: "PATCH",
+    jsonBody: input,
+  })
+}
+
 export async function buyAgentPhoneNumber(): Promise<AgentPhoneNumber> {
   return agentPhoneRequest<AgentPhoneNumber>("/numbers", {
     method: "POST",
-    body: {},
+    jsonBody: {},
   })
 }
 
@@ -84,7 +99,7 @@ export async function attachAgentPhoneNumber(
 ): Promise<unknown> {
   return agentPhoneRequest(`/agents/${agentId}/numbers`, {
     method: "POST",
-    body: { numberId },
+    jsonBody: { numberId },
   })
 }
 
@@ -94,7 +109,7 @@ export async function setAgentPhoneWebhook(
 ): Promise<{ secret?: string }> {
   return agentPhoneRequest<{ secret?: string }>(`/agents/${agentId}/webhook`, {
     method: "POST",
-    body: { url, contextLimit: 10, timeout: 60 },
+    jsonBody: { url, contextLimit: 10, timeout: 60 },
   })
 }
 
@@ -106,7 +121,7 @@ export async function createAgentPhoneOutboundCall(input: {
 }): Promise<{ id?: string }> {
   return agentPhoneRequest("/calls", {
     method: "POST",
-    body: {
+    jsonBody: {
       agentId: input.agentId,
       toNumber: input.toNumber,
       fromNumberId: input.fromNumberId,
@@ -123,7 +138,7 @@ export async function sendAgentPhoneMessage(input: {
 }): Promise<unknown> {
   return agentPhoneRequest("/messages", {
     method: "POST",
-    body: {
+    jsonBody: {
       agent_id: input.agentId,
       to_number: input.toNumber,
       body: input.body,

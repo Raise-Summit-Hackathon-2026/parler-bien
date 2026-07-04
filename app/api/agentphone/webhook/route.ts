@@ -5,6 +5,7 @@ import {
   getLineByAgentPhoneId,
   isInboundCallerAllowed,
 } from "@/lib/agent-lines"
+import { recordAgentUsage, recordPhoneTelephony } from "@/lib/agent-usage"
 import { sendAgentPhoneMessage } from "@/lib/agentphone-client"
 
 type AgentPhoneWebhook = {
@@ -87,7 +88,20 @@ export async function POST(request: NextRequest) {
   try {
     const prior = historyFromPayload(payload).filter((m) => m.content !== text)
     const messages = [...prior, { role: "user" as const, content: text }]
-    const { reply } = await runAgentChat(line.userId, messages)
+    const { reply, usage } = await runAgentChat(line.userId, messages)
+
+    recordPhoneTelephony({
+      userId: line.userId,
+      channel: payload.channel === "voice" ? "phone_voice" : "phone_sms",
+    })
+    recordAgentUsage({
+      userId: line.userId,
+      channel: payload.channel === "voice" ? "phone_voice" : "phone_sms",
+      label: payload.channel === "voice" ? "Phone voice turn" : "Phone SMS reply",
+      costUsd: usage.costUsd,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+    })
 
     if (payload.channel === "voice") {
       return NextResponse.json({ text: reply })

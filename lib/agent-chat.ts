@@ -20,10 +20,16 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
 const MAX_TOOL_ROUNDS = 6
 
+export type AgentChatUsage = {
+  promptTokens: number
+  completionTokens: number
+  costUsd: number
+}
+
 export async function runAgentChat(
   userId: string,
   messages: AgentChatMessage[],
-): Promise<{ reply: string; toolsUsed: string[] }> {
+): Promise<{ reply: string; toolsUsed: string[]; usage: AgentChatUsage }> {
   const openRouterKey = process.env.OPENROUTER_API_KEY
   if (!openRouterKey) {
     throw new Error("OPENROUTER_API_KEY is not configured")
@@ -50,6 +56,11 @@ export async function runAgentChat(
   ]
 
   const toolsUsed: string[] = []
+  let promptTokens = 0
+  let completionTokens = 0
+  let costUsd = 0
+
+  const { costFromOpenRouterUsage } = await import("@/lib/agent-usage")
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const response = await fetch(OPENROUTER_URL, {
@@ -75,6 +86,7 @@ export async function runAgentChat(
     }
 
     const data = (await response.json()) as {
+      usage?: import("@/lib/agent-usage").OpenRouterUsage
       choices: Array<{
         message: {
           role: "assistant"
@@ -83,6 +95,11 @@ export async function runAgentChat(
         }
       }>
     }
+
+    const roundUsage = costFromOpenRouterUsage(data.usage, MODEL)
+    promptTokens += roundUsage.promptTokens
+    completionTokens += roundUsage.completionTokens
+    costUsd += roundUsage.costUsd
 
     const assistantMessage = data.choices[0]?.message
     if (!assistantMessage) {
@@ -93,6 +110,7 @@ export async function runAgentChat(
       return {
         reply: assistantMessage.content ?? "",
         toolsUsed,
+        usage: { promptTokens, completionTokens, costUsd },
       }
     }
 
@@ -129,5 +147,6 @@ export async function runAgentChat(
   return {
     reply: "I hit the tool limit — try a simpler question.",
     toolsUsed,
+    usage: { promptTokens, completionTokens, costUsd },
   }
 }

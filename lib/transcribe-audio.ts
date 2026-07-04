@@ -1,10 +1,13 @@
+import type { OpenRouterUsage } from "@/lib/agent-usage"
+import { costFromOpenRouterUsage } from "@/lib/agent-usage"
+
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
 
 export async function transcribeAudio(
   audioBase64: string,
   audioFormat: string,
-): Promise<string> {
+): Promise<{ transcript: string; usage: { promptTokens: number; completionTokens: number; costUsd: number } }> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured")
@@ -45,6 +48,7 @@ export async function transcribeAudio(
   }
 
   const data = (await response.json()) as {
+    usage?: OpenRouterUsage
     choices: Array<{ message: { content: string } }>
   }
 
@@ -53,5 +57,6 @@ export async function transcribeAudio(
     throw new Error("Could not understand — speak clearly and try again.")
   }
 
-  return transcript
+  const usage = costFromOpenRouterUsage(data.usage, MODEL)
+  return { transcript, usage }
 }

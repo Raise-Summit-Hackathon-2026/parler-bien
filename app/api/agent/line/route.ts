@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import {
   createAgentLine,
   getLineByUserId,
+  parseAllowAllInbound,
   parseAllowedCallerPhones,
   type AgentRole,
 } from "@/lib/agent-lines"
@@ -22,8 +23,9 @@ function linePayload(line: NonNullable<ReturnType<typeof getLineByUserId>>) {
       lineId: line.lineId,
       workspace: line.workspaceName ?? null,
       role: line.agentRole ?? "executive",
-      inboundPolicy:
-        "Dedicated line: owner + allowlist only. Shared pool: PIN or registered caller ID.",
+      inboundPolicy: line.allowAllInbound !== false
+        ? "Dedicated line: open — any caller can reach this agent."
+        : "Dedicated line: owner + allowlist only. Shared pool: PIN or registered caller ID.",
     },
     channels: {
       voice: dedicated ?? shared.europe ?? shared.us,
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
       ownerEmail?: string
       agentRole?: string
       allowedCallerPhones?: string | string[]
+      allowAllInbound?: boolean | string
     }
 
     const userId = getAgentUserId(body.userId)
@@ -78,6 +81,11 @@ export async function POST(request: Request) {
       ? (body.agentRole as AgentRole)
       : "executive"
 
+    const allowAllInbound = parseAllowAllInbound(
+      body.allowAllInbound ?? body.allowedCallerPhones,
+      true,
+    )
+
     const line = createAgentLine({
       userId,
       userPhone,
@@ -87,6 +95,7 @@ export async function POST(request: Request) {
       ownerEmail: body.ownerEmail,
       agentRole,
       allowedCallerPhones: parseAllowedCallerPhones(body.allowedCallerPhones),
+      allowAllInbound,
     })
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { runAgentChat, type AgentChatMessage } from "@/lib/agent-chat"
+import { recordAgentUsage } from "@/lib/agent-usage"
 import { getAgentUserId } from "@/lib/composio"
 
 export async function POST(request: Request) {
@@ -20,8 +21,16 @@ export async function POST(request: Request) {
   const userId = getAgentUserId(body.userId)
 
   try {
-    const { reply, toolsUsed } = await runAgentChat(userId, messages)
-    return NextResponse.json({ reply, toolsUsed })
+    const { reply, toolsUsed, usage } = await runAgentChat(userId, messages)
+    recordAgentUsage({
+      userId,
+      channel: "browser_chat",
+      label: "Chat message",
+      costUsd: usage.costUsd,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+    })
+    return NextResponse.json({ reply, toolsUsed, turnCostUsd: usage.costUsd })
   } catch (error) {
     console.error("Agent chat error:", error)
     return NextResponse.json(

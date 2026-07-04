@@ -1,8 +1,8 @@
 import { PersonalAgentPanel } from "@/components/personal-agent"
 
 export const metadata = {
-  title: "Enterprise Agent · Parler Bien",
-  description: "Deploy AI agents with business lines and Composio enterprise integrations",
+  title: "Your personal agent · Parler Bien",
+  description: "A phone number that knows your life — inbox, calendar, and more",
 }
 
 export default function AgentPage() {

@@ -13,6 +13,7 @@ export type TtsRequestOptions = {
   accent?: string
   /** Agent-specific vocal performance notes */
   deliveryStyle?: string
+  userId?: string
 }
 
 const DEFAULT_ACCENT = "Parisian French"
