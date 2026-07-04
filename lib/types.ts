@@ -1,5 +1,7 @@
+import type { AgentType, VoiceAgent } from "@/lib/agents"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import type { Scenario, ScenarioId } from "@/lib/scenarios"
+import type { LevelRoom, PassCriteria } from "@/lib/tracks"
 
 export type WordScore = {
   word: string
@@ -56,4 +58,11 @@ export type ScoreRequest = {
   history?: ConversationTurn[]
   characterGender?: "male" | "female"
   currentMeter?: number
+  agentType?: AgentType
+  agent?: VoiceAgent
+  levelRoom?: LevelRoom
 }
+
+export type { LevelContext } from "@/lib/level-scenario"
+export type { AgentType, VoiceAgent, AgentCapability, AgentSkill } from "@/lib/agents"
+export type { LearningTrack, TrackLevel, PassCriteria, LevelStatus } from "@/lib/tracks"

@@ -12,6 +12,11 @@ import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useSpeaker } from "@/hooks/use-speaker"
 import { markScenarioCompleted } from "@/lib/completions"
+import { hasCapability } from "@/lib/agents"
+import type { LevelContext } from "@/lib/level-scenario"
+import { resolveMeterUpdate } from "@/lib/meter"
+import { markLevelCompleted, markLevelInProgress } from "@/lib/track-progress"
+import { countPlayableLevels, getTrack } from "@/lib/tracks"
 import { pickRandomSentences } from "@/lib/sentences"
 import {
   getScenarioContent,
@@ -40,6 +45,7 @@ type PracticeSessionProps = {
   onLanguageChange: (languageId: LanguageId) => void
   onRegionChange: (regionId: RegionId) => void
   onBack: () => void
+  levelContext?: LevelContext
 }
 
 function scoreColor(score: number) {
@@ -89,10 +95,25 @@ function WordChip({
 function SentenceChip({
   sentence,
   onSelect,
+  compact = false,
 }: {
   sentence: SentenceSuggestion
   onSelect: () => void
+  compact?: boolean
 }) {
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        className="shrink-0 max-w-[min(72vw,220px)] rounded-xl border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/60"
+      >
+        <p className="truncate text-sm font-medium">{sentence.text}</p>
+        <p className="truncate text-[10px] text-muted-foreground">{sentence.hint}</p>
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"
@@ -102,6 +123,29 @@ function SentenceChip({
       <p className="font-medium">{sentence.text}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{sentence.hint}</p>
     </button>
+  )
+}
+
+function PhraseRail({
+  sentences,
+  onSelect,
+}: {
+  sentences: SentenceSuggestion[]
+  onSelect: (sentence: SentenceSuggestion) => void
+}) {
+  if (sentences.length === 0) return null
+
+  return (
+    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {sentences.map((sentence, index) => (
+        <SentenceChip
+          key={`${sentence.text}-${index}`}
+          sentence={sentence}
+          compact
+          onSelect={() => onSelect(sentence)}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -213,8 +257,36 @@ export function PracticeSession({
   onLanguageChange,
   onRegionChange,
   onBack,
+  levelContext,
 }: PracticeSessionProps) {
-  const isTeacher = scenario.id === "teacher"
+  const agent = levelContext?.agent
+  const isLanguageMode =
+    levelContext?.agent.type === "language" || scenario.id === "teacher"
+  const isSpiritualMode = levelContext?.agent.type === "spiritual"
+  const isRoleplayMode =
+    levelContext?.agent.type === "roleplay" ||
+    (!isLanguageMode && !isSpiritualMode && scenario.id !== "teacher")
+  const isTeacher = isLanguageMode && !levelContext
+  const showPronunciation =
+    !levelContext ||
+    (agent && hasCapability(agent, "pronunciation_score"))
+  const showMeter =
+    !isSpiritualMode &&
+    (levelContext
+      ? agent && hasCapability(agent, "goal_meter")
+      : !isTeacher && Boolean(scenario.meterLabel && scenario.goal))
+  const showWordBreakdown =
+    !isSpiritualMode &&
+    (levelContext
+      ? agent && hasCapability(agent, "word_breakdown")
+      : isTeacher || isLanguageMode)
+
+  const track = levelContext ? getTrack(levelContext.trackId) : null
+  const levelOrder = levelContext?.level.order
+  const playableTotal = track ? countPlayableLevels(track) : 0
+
+  const initialTarget =
+    levelContext?.level.room.targetPhrase ?? null
   const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
   const scenarioContent = getScenarioContent(scenario, languageId)
@@ -231,7 +303,30 @@ export function PracticeSession({
       ? pickRandomSentences(EXAMPLE_COUNT, languageId)
       : scenarioContent.starters,
   )
-  const [targetPhrase, setTargetPhrase] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!levelContext) return
+    markLevelInProgress(levelContext.trackId, levelContext.levelId)
+  }, [levelContext])
+
+  function checkLevelWin(result: PronunciationScore): boolean {
+    if (!levelContext) return false
+
+    const { passCriteria } = levelContext
+
+    switch (passCriteria.type) {
+      case "pronunciation":
+        return result.overall_score >= passCriteria.minScore
+      case "goal":
+        return result.goal_achieved || result.meter >= 95
+      case "complete":
+        return userTurnCount + 1 >= passCriteria.minTurns
+      default:
+        return false
+    }
+  }
+  const [targetPhrase, setTargetPhrase] = useState<string | null>(initialTarget)
+  const [userTurnCount, setUserTurnCount] = useState(0)
   const [history, setHistory] = useState<ConversationTurn[]>([])
   const [meter, setMeter] = useState(0)
   const [hasWon, setHasWon] = useState(false)
@@ -274,9 +369,10 @@ export function PracticeSession({
         ageRange,
         tone: scenario.voice.tone,
         accent: region.accent,
+        deliveryStyle: levelContext?.agent.deliveryStyle,
       })
     },
-    [scenario, region.accent, speak],
+    [scenario, region.accent, speak, levelContext?.agent.deliveryStyle],
   )
 
   useEffect(() => {
@@ -284,13 +380,25 @@ export function PracticeSession({
 
     openingPlayed.current = true
     setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
-    speakCharacterLine(scenarioContent.openingLine.text, "character")
-  }, [isTeacher, scenarioContent.openingLine, speakCharacterLine])
+    speakCharacterLine(
+      scenarioContent.openingLine.text,
+      isSpiritualMode ? "coach" : "character",
+    )
+  }, [isTeacher, isSpiritualMode, scenarioContent.openingLine, speakCharacterLine])
 
   useEffect(() => {
     if (!hasWon) return
 
-    markScenarioCompleted(scenario.id)
+    if (levelContext) {
+      markLevelCompleted(
+        levelContext.trackId,
+        levelContext.levelId,
+        score?.overall_score,
+      )
+      levelContext.onLevelComplete()
+    } else {
+      markScenarioCompleted(scenario.id)
+    }
 
     const fire = (particleRatio: number, options: confetti.Options) => {
       void confetti({
@@ -306,7 +414,7 @@ export function PracticeSession({
     fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 })
     fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 })
     fire(0.1, { spread: 120, startVelocity: 45 })
-  }, [hasWon, scenario.id])
+  }, [hasWon, scenario.id, levelContext, score?.overall_score])
 
   async function handleMicPress() {
     if (isBusy || hasWon) return
@@ -337,6 +445,9 @@ export function PracticeSession({
             history,
             characterGender,
             currentMeter: meter,
+            agentType: levelContext?.agent.type,
+            agent: levelContext?.agent,
+            levelRoom: levelContext?.level.room,
           }),
         })
 
@@ -351,15 +462,37 @@ export function PracticeSession({
         setLastSpeaker(result.speaker)
         setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
 
-        if (!isTeacher) {
-          setMeter(result.meter)
-          setHasWon(result.goal_achieved || result.meter >= 100)
+        if (isRoleplayMode) {
+          const nextMeter = resolveMeterUpdate(meter, result)
+          setMeter(nextMeter)
+          const won = levelContext
+            ? checkLevelWin({ ...result, meter: nextMeter })
+            : result.goal_achieved || nextMeter >= 100
+          setHasWon(won)
           setHistory((prev) => [
             ...prev,
             { role: "user", text: result.transcript },
             { role: "character", text: result.reply.text },
           ])
           speakCharacterLine(result.reply.text, "character", result.speaker)
+        } else if (isSpiritualMode) {
+          const nextTurnCount = userTurnCount + 1
+          setUserTurnCount(nextTurnCount)
+          setHistory((prev) => [
+            ...prev,
+            { role: "user", text: result.transcript },
+            { role: "character", text: result.reply.text },
+          ])
+          const won =
+            levelContext &&
+            levelContext.passCriteria.type === "complete" &&
+            nextTurnCount >= levelContext.passCriteria.minTurns
+          setHasWon(Boolean(won))
+          speakCharacterLine(result.reply.text, "coach", result.speaker)
+        } else if (isLanguageMode) {
+          const won = levelContext ? checkLevelWin(result) : false
+          setHasWon(won)
+          speakCharacterLine(result.reply.text, "coach", result.speaker)
         } else {
           speakCharacterLine(result.reply.text, "coach", result.speaker)
         }
@@ -396,6 +529,8 @@ export function PracticeSession({
     setMeter(0)
     setHasWon(false)
     setLastSpeaker(null)
+    setUserTurnCount(0)
+    setTargetPhrase(initialTarget)
 
     if (scenarioContent.openingLine) {
       setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
@@ -452,68 +587,65 @@ export function PracticeSession({
       ? examples
       : []
 
-  return (
-    <div className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-6 px-6 py-12">
-      <ScenarioBackButton onBack={onBack} />
+  const compactPhrases = suggestionList.slice(0, 3)
 
-      <div className="w-full space-y-4 text-center">
-        <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-          {scenario.title}
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {isTeacher ? `Say something in ${language.name}` : scenario.tagline}
-        </h1>
-        <LanguagePicker
-          languageId={languageId}
-          regionId={regionId}
-          onLanguageChange={onLanguageChange}
-          onRegionChange={onRegionChange}
-        />
-        <p className="text-muted-foreground">
+  return (
+    <div className="mx-auto flex h-svh w-full max-w-lg flex-col overflow-hidden px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <ScenarioBackButton onBack={onBack} label={levelContext ? "Path" : "Back"} />
+        {levelContext && levelOrder && (
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {levelOrder}/{playableTotal}
+          </span>
+        )}
+      </div>
+
+      <div className="shrink-0 space-y-0.5 py-2 text-center">
+        <h1 className="text-lg font-semibold leading-tight">{scenario.title}</h1>
+        <p className="line-clamp-1 text-xs text-muted-foreground">
           {hasWon
             ? scenario.winMessage
-            : score
-              ? isTeacher
-                ? "Tap a word to hear how it should sound."
-                : "Keep the conversation going — tap the mic."
-              : targetPhrase
-                ? "Practice this phrase — tap the mic when ready."
-                : isTeacher
-                  ? "Tap the mic and speak — or pick a phrase below."
-                  : `Tap the mic and respond in ${language.name}.`}
+            : score?.coaching ??
+              (targetPhrase
+                ? "Tap the mic when ready"
+                : isSpiritualMode
+                  ? "Share what comes to mind"
+                  : scenario.tagline)}
         </p>
       </div>
 
-      <div className="w-full space-y-6 overflow-hidden rounded-3xl border bg-card shadow-sm">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
         <ScenarioScene
           scenarioId={isBuiltInScenarioId(scenario.id) ? scenario.id : undefined}
           imagePrompt={isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt}
-          className="h-40 w-full rounded-none"
+          className="h-20 w-full shrink-0 rounded-none"
           overlay
         />
 
-        <div className="space-y-6 p-6 pt-0">
-        {!isTeacher && scenario.meterLabel && scenario.goal && !hasWon && (
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+        {showMeter && scenario.meterLabel && scenario.goal && !hasWon && (
           <MeterBar meter={meter} label={scenario.meterLabel} goal={scenario.goal} />
         )}
 
         {hasWon && scenario.winMessage && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
-            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
               {scenario.winMessage}
             </p>
-            <Button className="mt-4" variant="outline" onClick={handleReplayScenario}>
-              <RotateCcw />
-              Play again
-            </Button>
+            {levelContext ? (
+              <Button className="mt-3" size="sm" variant="outline" onClick={onBack}>
+                Back to path
+              </Button>
+            ) : (
+              <Button className="mt-3" size="sm" variant="outline" onClick={handleReplayScenario}>
+                <RotateCcw />
+                Play again
+              </Button>
+            )}
           </div>
         )}
 
-        {!isTeacher && history.length > 0 && !hasWon && (
-          <HistoryLog history={history} />
-        )}
-
-        {!isTeacher && score?.reply && !hasWon && (
+        {isRoleplayMode && score?.reply && !hasWon && (
           <ReplyBubble
             reply={score.reply}
             onHear={() => speakCharacterLine(score.reply.text, "character", score.speaker)}
@@ -521,45 +653,57 @@ export function PracticeSession({
           />
         )}
 
-        {isTeacher && displayedPhrase && (
-          <div className="space-y-3 text-center">
-            <p className="text-xs tracking-wide text-muted-foreground uppercase">
-              {score ? "You said" : `${language.name} · ${region.label}`}
-            </p>
-            <div className="flex items-center justify-center gap-2">
-              <p className="text-xl font-medium">{displayedPhrase}</p>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => handleHearPhrase(displayedPhrase)}
-                disabled={isRecording || isScoring}
-                aria-label="Hear phrase"
-              >
-                <Volume2 className="size-4" />
-              </Button>
-              {!score && targetPhrase && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleClearTarget}
-                  disabled={isRecording || isScoring}
-                  aria-label="Clear phrase"
-                >
-                  <X className="size-4" />
-                </Button>
-              )}
-            </div>
+        {isSpiritualMode && score?.reply && !hasWon && (
+          <ReplyBubble
+            reply={score.reply}
+            onHear={() => speakCharacterLine(score.reply.text, "coach", score.speaker)}
+            disabled={isRecording || isScoring}
+          />
+        )}
+
+        {(isLanguageMode || isTeacher) && displayedPhrase && (
+          <div className="flex items-center justify-center gap-2 text-center">
+            <p className="truncate text-base font-medium">{displayedPhrase}</p>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => handleHearPhrase(displayedPhrase)}
+              disabled={isRecording || isScoring}
+              aria-label="Hear phrase"
+            >
+              <Volume2 className="size-4" />
+            </Button>
           </div>
         )}
 
-        <Waveform analyser={waveformAnalyser} active={waveformActive} />
+        {score && !hasWon && showPronunciation && !isSpiritualMode && (
+          <div className="flex items-center justify-center gap-3">
+            <p className={cn("text-2xl font-semibold tabular-nums", scoreColor(score.overall_score))}>
+              {Math.round(score.overall_score)}
+            </p>
+            {showWordBreakdown && score.words.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {score.words.slice(0, 5).map((word, index) => (
+                  <WordChip
+                    key={`${word.word}-${index}`}
+                    word={word}
+                    selected={selectedIndex === index}
+                    onSelect={() => handleWordSelect(word)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <Waveform analyser={waveformAnalyser} active={waveformActive} className="h-10 shrink-0" />
 
         {!hasWon && (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex shrink-0 flex-col items-center gap-1">
             <Button
               size="icon-lg"
               className={cn(
-                "size-16 rounded-full shadow-md transition-transform",
+                "size-14 rounded-full shadow-md transition-transform",
                 isRecording && "scale-105 bg-destructive hover:bg-destructive/90",
               )}
               onClick={handleMicPress}
@@ -567,150 +711,51 @@ export function PracticeSession({
               aria-label={isRecording ? "Stop recording" : "Start recording"}
             >
               {isScoring ? (
-                <Loader2 className="size-7 animate-spin" />
+                <Loader2 className="size-6 animate-spin" />
               ) : isRecording ? (
-                <Square className="size-6 fill-current" />
+                <Square className="size-5 fill-current" />
               ) : (
-                <Mic className="size-7" />
+                <Mic className="size-6" />
               )}
             </Button>
-            <p className="text-sm text-muted-foreground">
-              {isScoring
-                ? "Analyzing…"
-                : isSpeaking
-                  ? isTeacher
-                    ? "Your coach is speaking…"
-                    : "Character is speaking…"
-                  : isRecording
-                    ? "Tap to stop"
-                    : "Tap to speak"}
+            <p className="text-[11px] text-muted-foreground">
+              {isScoring ? "Analyzing…" : isRecording ? "Tap to stop" : "Tap to speak"}
             </p>
           </div>
         )}
 
         {displayError && (
-          <p className="text-center text-sm text-destructive">{displayError}</p>
+          <p className="text-center text-xs text-destructive">{displayError}</p>
         )}
 
-        {score && !hasWon && (
-          <div className="space-y-5 border-t pt-5">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Pronunciation</p>
-              <p
-                className={cn(
-                  "text-4xl font-semibold tabular-nums",
-                  scoreColor(score.overall_score),
-                )}
-              >
-                {Math.round(score.overall_score)}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">{score.coaching}</p>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2">
-              {score.words.map((word, index) => (
-                <WordChip
-                  key={`${word.word}-${index}`}
-                  word={word}
-                  selected={selectedIndex === index}
-                  onSelect={() => handleWordSelect(word)}
-                />
-              ))}
-            </div>
-
-            {selectedWord && selectedWord.score < 80 && (
-              <div className="rounded-2xl bg-muted/60 p-4 text-sm">
-                <p className="font-medium">{selectedWord.word}</p>
-                {selectedWord.issue && (
-                  <p className="mt-1 text-muted-foreground">{selectedWord.issue}</p>
-                )}
-                {selectedWord.tip && (
-                  <p className="mt-2 text-foreground">{selectedWord.tip}</p>
-                )}
-              </div>
-            )}
-
-            <Button variant="outline" className="w-full" onClick={handleReset}>
-              <RotateCcw />
-              Try again
-            </Button>
-
-            <SpeakerProfileStrip speaker={score.speaker} />
-
-            {suggestionList.length > 0 && (
-              <div className="space-y-3 border-t pt-5">
-                <p className="text-center text-sm font-medium">
-                  {score ? "Continue the conversation" : "Try a phrase"}
-                </p>
-                {isTeacher && !score && (
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleShuffleExamples}
-                      disabled={isRecording || isScoring}
-                    >
-                      Shuffle
-                    </Button>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  {suggestionList.map((sentence, index) => (
-                    <SentenceChip
-                      key={`${sentence.text}-${index}`}
-                      sentence={sentence}
-                      onSelect={() =>
-                        score ? handleSelectNext(sentence) : handleSelectExample(sentence)
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {!hasWon && compactPhrases.length > 0 && (
+          <PhraseRail
+            sentences={compactPhrases}
+            onSelect={(sentence) =>
+              score ? handleSelectNext(sentence) : handleSelectExample(sentence)
+            }
+          />
         )}
 
-        {!score && !hasWon && suggestionList.length > 0 && isTeacher && (
-          <div className="space-y-3 border-t pt-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Try a phrase</p>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={handleShuffleExamples}
-                disabled={isRecording || isScoring}
-              >
-                Shuffle
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {suggestionList.map((sentence, index) => (
-                <SentenceChip
-                  key={`${sentence.text}-${index}`}
-                  sentence={sentence}
-                  onSelect={() => handleSelectExample(sentence)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!score && !hasWon && !isTeacher && suggestionList.length > 0 && (
-          <div className="space-y-3 border-t pt-5">
-            <p className="text-sm font-medium">Try saying</p>
-            <div className="space-y-2">
-              {suggestionList.map((sentence, index) => (
-                <SentenceChip
-                  key={`${sentence.text}-${index}`}
-                  sentence={sentence}
-                  onSelect={() => handleSelectExample(sentence)}
-                />
-              ))}
-            </div>
-          </div>
+        {score && !hasWon && !isSpiritualMode && (
+          <Button variant="ghost" size="xs" className="mx-auto" onClick={handleReset}>
+            <RotateCcw className="size-3" />
+            Try again
+          </Button>
         )}
         </div>
       </div>
+
+      {!levelContext && (
+        <div className="shrink-0 pt-2">
+          <LanguagePicker
+            languageId={languageId}
+            regionId={regionId}
+            onLanguageChange={onLanguageChange}
+            onRegionChange={onRegionChange}
+          />
+        </div>
+      )}
     </div>
   )
 }

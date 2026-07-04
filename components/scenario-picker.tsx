@@ -206,11 +206,17 @@ export function ScenarioPicker({
   )
 }
 
-export function ScenarioBackButton({ onBack }: { onBack: () => void }) {
+export function ScenarioBackButton({
+  onBack,
+  label = "Scenarios",
+}: {
+  onBack: () => void
+  label?: string
+}) {
   return (
     <Button variant="ghost" size="sm" onClick={onBack} className="self-start">
       <ArrowLeft />
-      Scenarios
+      {label}
     </Button>
   )
 }

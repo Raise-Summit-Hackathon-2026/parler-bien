@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import type { AgentType } from "@/lib/agents"
 import { moderateExchange } from "@/lib/content-safety"
 import {
   DEFAULT_LANGUAGE_ID,
@@ -9,119 +10,85 @@ import {
   isLanguageId,
   isRegionId,
   type LanguageId,
-  type Region,
   type RegionId,
 } from "@/lib/languages"
+import { buildAgentPrompt } from "@/lib/prompts"
 import {
-  formatPersona,
   isCustomScenarioId,
   isScenarioId,
   resolveScenario,
   type Scenario,
 } from "@/lib/scenarios"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
-import type { ConversationTurn, PronunciationScore } from "@/lib/types"
+import type { LevelRoom } from "@/lib/tracks"
+import type { ConversationTurn, PronunciationScore, VoiceAgent } from "@/lib/types"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
 
-function formatHistory(history: ConversationTurn[]) {
-  if (history.length === 0) return "No prior conversation."
-
-  return history
-    .map((turn) => `${turn.role === "user" ? "User" : "Character"}: ${turn.text}`)
-    .join("\n")
-}
-
-function buildTeacherPrompt(
-  phrase: string | undefined,
-  languageName: string,
-  region: Region,
-) {
-  const modeInstructions = phrase
-    ? `Target phrase: "${phrase}"
-Score their pronunciation against this target phrase. Set transcript to the target phrase.`
-    : `No target phrase was given. Transcribe what the user said in ${languageName}, then score their pronunciation against native ${region.accent} pronunciation. Set transcript to what you heard. If you cannot detect intelligible ${languageName}, return a low overall_score with coaching "I couldn't quite catch that — try speaking clearly and closer to the mic."`
-
-  const replyLanguage =
-    languageName === "English"
-      ? `${languageName} with a ${region.accent} accent`
-      : `${languageName} or simple ${languageName} with brief English gloss in reply.hint`
-
-  return `You are a pronunciation coach. The user is practicing speaking ${languageName} with a ${region.accent} accent. The setting is ${region.city}.
-
-${modeInstructions}
-
-Listen to their recording and score their pronunciation against native ${region.accent}. Be slightly generous but accurate. Ignore background noise.
-
-Also infer speaker metadata from the voice: accent (native/source language influencing their ${languageName}), age_range (rough estimate like "20-30"), gender (male | female | unsure), and notes (one short sentence on how this profile affects their ${languageName}). Use this profile to tailor coaching, per-word tips, and reply to accent-specific pitfalls. Keep estimates non-judgmental.
-
-The coach character speaking in reply is the OPPOSITE gender of the speaker (male speaker → female coach, female speaker → male coach, unsure → female coach). Write reply.text as the coach's spoken feedback (2-3 sentences max): warm, clear, professional teacher tone in ${replyLanguage}. Not flirtatious. reply.hint is a short English summary unless the conversation is already in English.
-
-Set meter to 0 and goal_achieved to false.
-
-Split the transcript into individual words. Score each word from 0-100. Use null for issue and tip when a word scores 80 or above.
-
-Provide exactly 3 next_sentences: short ${languageName} follow-up sentences to practice next (with ${region.accent} flavor), each with an English hint. Mention one natural next step in reply.text. Do not repeat coaching verbatim in reply.text.`
-}
-
-function buildScenarioPrompt(
-  scenario: Scenario,
-  characterGender: "male" | "female",
-  history: ConversationTurn[],
-  currentMeter: number,
-  phrase: string | undefined,
-  languageName: string,
-  region: Region,
-) {
-  const persona = formatPersona(scenario, characterGender, languageName, region)
-
-  const targetNote = phrase
-    ? `The user is trying to say: "${phrase}". Score against this if they attempted it; otherwise score what they actually said.`
-    : `Transcribe what the user said in ${languageName}. If unintelligible, return low scores and a reply that stays in character asking them to repeat.`
-
-  return `${persona}
-
-Conversation so far:
-${formatHistory(history)}
-
-Current meter: ${currentMeter}
-${targetNote}
-
-Listen to the latest user audio turn. Stay in character. Update meter per the rules (current meter is ${currentMeter}). Set reply.text to your in-character response in ${languageName} (short). Set reply.hint to an English gloss.
-
-IMPORTANT — goal_achieved consistency: if your reply concedes or grants the user's goal in ANY way (handing over the item, agreeing to the deal, giving the number, offering the table/lease/invitation, letting them in, accepting their proof or story), you MUST set goal_achieved to true and meter to at least 95. Never write a conceding reply while leaving goal_achieved false.
-
-Also score pronunciation of what the user said against native ${region.accent}: overall_score, words array from transcript, coaching (brief pronunciation note), speaker profile from their voice.
-
-Provide exactly 3 next_sentences the user could say to continue (in ${languageName}, with ${region.accent} flavor).`
-}
-
-function buildPrompt(
+function buildLegacyPrompt(
   phrase: string | undefined,
   languageId: LanguageId,
   regionId: RegionId,
   scenario: Scenario,
-  history: ConversationTurn[] = [],
-  characterGender: "male" | "female" = "female",
-  currentMeter = 0,
+  history: ConversationTurn[],
+  characterGender: "male" | "female",
+  currentMeter: number,
 ) {
   const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
 
   if (scenario.id === "teacher") {
-    return buildTeacherPrompt(phrase, language.name, region)
+    return buildAgentPrompt({
+      agentType: "language",
+      agent: {
+        id: "teacher",
+        type: "language",
+        name: "Coach",
+        tagline: "",
+        avatarPrompt: "",
+        voice: scenario.voice,
+        skills: [],
+        previewScript: "",
+        capabilities: ["pronunciation_score", "word_breakdown"],
+        personaBase: "",
+        deliveryStyle: "",
+        coachingStyle: "",
+      },
+      scenario,
+      characterGender,
+      history,
+      currentMeter,
+      phrase,
+      languageName: language.name,
+      region,
+    })
   }
 
-  return buildScenarioPrompt(
+  return buildAgentPrompt({
+    agentType: "roleplay",
+    agent: {
+      id: scenario.id,
+      type: "roleplay",
+      name: scenario.title,
+      tagline: scenario.tagline,
+      avatarPrompt: scenario.imagePrompt,
+      voice: scenario.voice,
+      skills: [],
+      previewScript: "",
+      capabilities: ["goal_meter", "goal_completion"],
+      personaBase: scenario.persona,
+      deliveryStyle: "",
+      coachingStyle: "",
+    },
     scenario,
     characterGender,
     history,
     currentMeter,
     phrase,
-    language.name,
+    languageName: language.name,
     region,
-  )
+  })
 }
 
 function parseScore(content: string): PronunciationScore {
@@ -171,6 +138,9 @@ export async function POST(request: Request) {
     characterGender?: "male" | "female"
     currentMeter?: number
     customScenario?: Scenario
+    agentType?: AgentType
+    agent?: VoiceAgent
+    levelRoom?: LevelRoom
   }
 
   try {
@@ -191,6 +161,9 @@ export async function POST(request: Request) {
     characterGender = "female",
     currentMeter = 0,
     customScenario,
+    agentType,
+    agent,
+    levelRoom,
   } = body
 
   const languageId =
@@ -233,6 +206,32 @@ export async function POST(request: Request) {
   }
 
   const cappedHistory = history.slice(-12)
+  const languageMeta = getLanguage(languageId)
+  const region = getRegion(languageId, regionId)
+
+  const prompt =
+    agentType && agent
+      ? buildAgentPrompt({
+          agentType,
+          agent,
+          scenario,
+          characterGender,
+          history: cappedHistory,
+          currentMeter,
+          phrase,
+          languageName: languageMeta.name,
+          region,
+          levelRoom,
+        })
+      : buildLegacyPrompt(
+          phrase,
+          languageId,
+          regionId,
+          scenario,
+          cappedHistory,
+          characterGender,
+          currentMeter,
+        )
 
   try {
     const response = await fetch(OPENROUTER_URL, {
@@ -251,15 +250,7 @@ export async function POST(request: Request) {
             content: [
               {
                 type: "text",
-                text: buildPrompt(
-                  phrase,
-                  languageId,
-                  regionId,
-                  scenario,
-                  cappedHistory,
-                  characterGender,
-                  currentMeter,
-                ),
+                text: prompt,
               },
               {
                 type: "input_audio",
@@ -305,7 +296,6 @@ export async function POST(request: Request) {
 
     const score = parseScore(content)
 
-    const language = getLanguage(languageId)
     const assistantText = [
       score.reply.text,
       score.coaching,
@@ -318,8 +308,8 @@ export async function POST(request: Request) {
       assistantText,
       {
         scenarioTitle: scenario.title,
-        languageName: language.name,
-        isRoleplay: scenario.id !== "teacher",
+        languageName: languageMeta.name,
+        isRoleplay: agentType === "roleplay" || (scenario.id !== "teacher" && !agentType),
       },
     )
 

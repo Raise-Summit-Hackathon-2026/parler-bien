@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     ageRange?: string
     tone?: string
     accent?: string
+    deliveryStyle?: string
   }
 
   try {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { text, style, gender, ageRange, tone, accent } = body
+  const { text, style, gender, ageRange, tone, accent, deliveryStyle } = body
 
   if (!text?.trim() || !style || !isTtsStyle(style)) {
     return NextResponse.json(
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
           ageRange: ageRange?.trim() || undefined,
           tone: tone?.trim() || undefined,
           accent: accent?.trim() || undefined,
+          deliveryStyle: deliveryStyle?.trim() || undefined,
         }
       : { accent: accent?.trim() || undefined }
 
