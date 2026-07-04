@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { moderateExchange } from "@/lib/content-safety"
 import {
   DEFAULT_LANGUAGE_ID,
   DEFAULT_REGION_ID,
@@ -284,7 +285,49 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json(parseScore(content))
+    const score = parseScore(content)
+
+    const scenario = getScenario(scenarioId)
+    const language = getLanguage(languageId)
+    const assistantText = [
+      score.reply.text,
+      score.coaching,
+      ...score.next_sentences.map((sentence) => sentence.text),
+    ].join("\n")
+
+    const moderation = await moderateExchange(
+      apiKey,
+      score.transcript,
+      assistantText,
+      {
+        scenarioTitle: scenario.title,
+        languageName: language.name,
+        isRoleplay: scenarioId !== "teacher",
+      },
+    )
+
+    if (moderation.status === "blocked") {
+      console.warn("Content blocked:", moderation.reason)
+      return NextResponse.json(
+        {
+          error:
+            !moderation.userSafe
+              ? "That message wasn't appropriate for practice. Try rephrasing and stay in the scenario."
+              : "We couldn't generate a safe response. Please try again.",
+          code: "content_blocked",
+        },
+        { status: 422 },
+      )
+    }
+
+    if (moderation.status === "error") {
+      console.warn(
+        "Content safety check failed, allowing through:",
+        moderation.message,
+      )
+    }
+
+    return NextResponse.json(score)
   } catch (error) {
     console.error("Score route error:", error)
     return NextResponse.json(
