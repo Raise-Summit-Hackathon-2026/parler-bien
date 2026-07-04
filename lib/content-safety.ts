@@ -43,6 +43,10 @@ export function scenarioTextForModeration(payload: GeneratedScenarioPayload) {
     .join("\n")
 }
 
+export function scenariosTextForModeration(payloads: GeneratedScenarioPayload[]) {
+  return payloads.map(scenarioTextForModeration).join("\n\n---\n\n")
+}
+
 export async function moderateGeneratedContent(
   apiKey: string,
   userSource: string,

@@ -6,6 +6,7 @@ import {
   generationBlockedMessage,
   moderateGeneratedContent,
   scenarioTextForModeration,
+  scenariosTextForModeration,
 } from "@/lib/content-safety"
 import {
   getLanguage,
@@ -15,11 +16,13 @@ import {
   type LanguageId,
 } from "@/lib/languages"
 import {
+  buildGeneratedScenariosBatchSchema,
   generatedScenarioJsonSchema,
+  validateGeneratedScenarioPayload,
   type GeneratedScenarioPayload,
 } from "@/lib/scenario-generate-schema"
 import type { Scenario } from "@/lib/scenarios"
-import { requireCurrentUser } from "@/lib/supabase"
+import { requireCurrentUser, getSupabaseClientWithToken } from "@/lib/supabase"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
@@ -32,9 +35,29 @@ type SourceType = "prompt" | "text" | "pdf"
 function buildInstructions(
   languageName: string,
   regionLabel: string,
-  city: string
+  city: string,
+  trackCount: number,
+  workspace?: { name: string; description: string | null },
 ) {
-  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).
+  const workspaceBlock = workspace
+    ? `
+
+WORKSPACE CONTEXT — this character is for a shared team workspace. Stay specific to this setting:
+- Workspace name: ${workspace.name}${workspace.description ? `\n- About: ${workspace.description}` : ""}
+- The scenario, roles, setting, and vocabulary must fit this workspace. Do not genericize.`
+    : ""
+
+  const trackBlock =
+    trackCount > 1
+      ? `
+
+Generate exactly ${trackCount} distinct practice tracks (separate scenarios). Each track must:
+- Cover a different situation, skill, or escalation step inspired by the source material
+- Have its own title, character angle, goal, and opening line
+- Progress logically when ordered (easier → harder) without repeating the same scene`
+      : ""
+
+  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).${workspaceBlock}${trackBlock}
 
 The scenario must:
 - Have a clear win condition tracked by a 0-100 meter
@@ -47,49 +70,31 @@ The scenario must:
 - Feel specific and fun, inspired by the user's source material when provided`
 }
 
-function isGeneratedVoiceMap(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false
-  const voices = value as {
-    female?: unknown
-    male?: unknown
-    default?: unknown
-  }
-  return (
-    (voices.female === undefined || typeof voices.female === "string") &&
-    (voices.male === undefined || typeof voices.male === "string") &&
-    (voices.default === undefined || typeof voices.default === "string")
-  )
-}
-
 function parseGenerated(content: string): GeneratedScenarioPayload {
   const parsed = JSON.parse(content) as GeneratedScenarioPayload
 
-  if (
-    typeof parsed.title !== "string" ||
-    typeof parsed.tagline !== "string" ||
-    typeof parsed.goal !== "string" ||
-    typeof parsed.meterLabel !== "string" ||
-    typeof parsed.winMessage !== "string" ||
-    typeof parsed.persona !== "string" ||
-    !parsed.voice ||
-    typeof parsed.voice.ageRange !== "string" ||
-    !["male", "female", "random", "opposite-speaker"].includes(
-      parsed.voice.gender
-    ) ||
-    (parsed.voice.voices !== undefined &&
-      !isGeneratedVoiceMap(parsed.voice.voices)) ||
-    typeof parsed.voice.tone !== "string" ||
-    !parsed.openingLine ||
-    typeof parsed.openingLine.text !== "string" ||
-    typeof parsed.openingLine.hint !== "string" ||
-    !Array.isArray(parsed.starters) ||
-    parsed.starters.length < 3 ||
-    typeof parsed.imagePrompt !== "string"
-  ) {
+  if (!validateGeneratedScenarioPayload(parsed)) {
     throw new Error("Invalid generated scenario shape")
   }
 
   return parsed
+}
+
+function parseGeneratedBatch(
+  content: string,
+  trackCount: number,
+): GeneratedScenarioPayload[] {
+  const parsed = JSON.parse(content) as { scenarios?: unknown[] }
+
+  if (
+    !Array.isArray(parsed.scenarios) ||
+    parsed.scenarios.length !== trackCount ||
+    !parsed.scenarios.every(validateGeneratedScenarioPayload)
+  ) {
+    throw new Error("Invalid generated scenarios batch shape")
+  }
+
+  return parsed.scenarios
 }
 
 function toScenario(
@@ -143,6 +148,8 @@ export async function POST(request: Request) {
     fileBase64?: string
     fileName?: string
     sourceLabel?: string
+    workspaceId?: string
+    trackCount?: number
   }
 
   try {
@@ -159,7 +166,43 @@ export async function POST(request: Request) {
     fileBase64,
     fileName,
     sourceLabel,
+    workspaceId,
+    trackCount: rawTrackCount,
   } = body
+
+  const trackCount = Math.min(
+    10,
+    Math.max(1, Number.isFinite(rawTrackCount) ? Math.round(rawTrackCount!) : 1),
+  )
+
+  const authorization = request.headers.get("authorization")
+  const accessToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length).trim()
+    : null
+
+  let workspaceContext: { name: string; description: string | null } | null =
+    null
+  if (workspaceId) {
+    if (!accessToken) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+
+    const supabase = getSupabaseClientWithToken(accessToken)
+    const { data, error } = await supabase
+      .from("user_workspaces")
+      .select("name, description")
+      .eq("id", workspaceId)
+      .maybeSingle()
+
+    if (error || !data) {
+      return NextResponse.json(
+        { error: "Workspace not found or access denied" },
+        { status: 403 },
+      )
+    }
+
+    workspaceContext = data
+  }
 
   if (!rawLanguageId || !isLanguageId(rawLanguageId)) {
     return NextResponse.json(
@@ -219,15 +262,21 @@ export async function POST(request: Request) {
   const instructions = buildInstructions(
     language.name,
     region.label,
-    region.city
+    region.city,
+    trackCount,
+    workspaceContext ?? undefined,
   )
+
+  const workspacePrefix = workspaceContext
+    ? `Workspace: ${workspaceContext.name}${workspaceContext.description ? `\n${workspaceContext.description}` : ""}\n\n`
+    : ""
 
   const sourceDescription =
     sourceType === "prompt"
-      ? `User prompt:\n${trimmedPrompt}`
+      ? `${workspacePrefix}User prompt:\n${trimmedPrompt}`
       : sourceType === "text"
-        ? `Course or document text:\n${trimmedPrompt.slice(0, MAX_TEXT_CHARS)}`
-        : `Use the attached PDF (${fileName ?? "document.pdf"}) as source material for vocabulary, setting, characters, and goals.`
+        ? `${workspacePrefix}Course or document text:\n${trimmedPrompt.slice(0, MAX_TEXT_CHARS)}`
+        : `${workspacePrefix}Use the attached PDF (${fileName ?? "document.pdf"}) as source material for vocabulary, setting, characters, and goals.`
 
   const userContent: Array<
     | { type: "text"; text: string }
@@ -265,9 +314,12 @@ export async function POST(request: Request) {
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "generated_scenario",
+            name: trackCount > 1 ? "generated_scenarios" : "generated_scenario",
             strict: true,
-            schema: generatedScenarioJsonSchema,
+            schema:
+              trackCount > 1
+                ? buildGeneratedScenariosBatchSchema(trackCount)
+                : generatedScenarioJsonSchema,
           },
         },
       }),
@@ -294,17 +346,22 @@ export async function POST(request: Request) {
       )
     }
 
-    const payload = parseGenerated(content)
+    const payloads =
+      trackCount > 1
+        ? parseGeneratedBatch(content, trackCount)
+        : [parseGenerated(content)]
 
     const userSource =
       sourceType === "pdf"
-        ? `PDF upload: ${fileName ?? "document.pdf"}`
-        : trimmedPrompt
+        ? `${workspacePrefix}PDF upload: ${fileName ?? "document.pdf"}`
+        : `${workspacePrefix}${trimmedPrompt}`
 
     const moderation = await moderateGeneratedContent(
       apiKey,
       userSource,
-      scenarioTextForModeration(payload),
+      trackCount > 1
+        ? scenariosTextForModeration(payloads)
+        : scenarioTextForModeration(payloads[0]),
       { languageName: language.name },
     )
 
@@ -326,15 +383,22 @@ export async function POST(request: Request) {
       )
     }
 
-    const scenario = toScenario(
-      payload,
-      languageId,
+    const resolvedSourceLabel =
       sourceLabel ??
-        fileName ??
-        (sourceType === "prompt" ? "Custom prompt" : undefined)
+      fileName ??
+      (workspaceContext
+        ? workspaceContext.name
+        : sourceType === "prompt"
+          ? "Custom prompt"
+          : undefined)
+
+    const scenarios = payloads.map((payload) =>
+      toScenario(payload, languageId, resolvedSourceLabel),
     )
 
-    return NextResponse.json({ scenario })
+    return NextResponse.json(
+      trackCount > 1 ? { scenarios } : { scenario: scenarios[0] },
+    )
   } catch (error) {
     console.error("Scenario generate route error:", error)
     return NextResponse.json(

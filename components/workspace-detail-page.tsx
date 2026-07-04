@@ -127,6 +127,10 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
           builtInScenarios={[]}
           characters={characters}
           workspaceId={workspaceId}
+          workspaceContext={{
+            name: workspace.name,
+            description: workspace.description,
+          }}
           onSelect={({ characterId }) => {
             if (characterId) {
               router.push(
@@ -134,8 +138,8 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
               )
             }
           }}
-          onCharacterCreated={(character) =>
-            setCharacters((current) => [character, ...current])
+          onCharacterCreated={(characters) =>
+            setCharacters((current) => [...characters, ...current])
           }
           onCharacterDeleted={(characterId) => void handleDelete(characterId)}
         />

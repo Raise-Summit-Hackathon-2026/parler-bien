@@ -97,3 +97,63 @@ export type GeneratedScenarioPayload = {
   starters: Array<{ text: string; hint: string }>
   imagePrompt: string
 }
+
+const scenarioObjectSchema = {
+  type: "object",
+  properties: generatedScenarioJsonSchema.properties,
+  required: generatedScenarioJsonSchema.required,
+  additionalProperties: false,
+} as const
+
+export function buildGeneratedScenariosBatchSchema(count: number) {
+  return {
+    type: "object",
+    properties: {
+      scenarios: {
+        type: "array",
+        minItems: count,
+        maxItems: count,
+        items: scenarioObjectSchema,
+      },
+    },
+    required: ["scenarios"],
+    additionalProperties: false,
+  } as const
+}
+
+function isGeneratedVoiceMap(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const voices = value as { female?: unknown; male?: unknown; default?: unknown }
+  return (
+    (voices.female === undefined || typeof voices.female === "string") &&
+    (voices.male === undefined || typeof voices.male === "string") &&
+    (voices.default === undefined || typeof voices.default === "string")
+  )
+}
+
+export function validateGeneratedScenarioPayload(
+  parsed: unknown,
+): parsed is GeneratedScenarioPayload {
+  if (!parsed || typeof parsed !== "object") return false
+  const payload = parsed as GeneratedScenarioPayload
+
+  return (
+    typeof payload.title === "string" &&
+    typeof payload.tagline === "string" &&
+    typeof payload.goal === "string" &&
+    typeof payload.meterLabel === "string" &&
+    typeof payload.winMessage === "string" &&
+    typeof payload.persona === "string" &&
+    !!payload.voice &&
+    typeof payload.voice.ageRange === "string" &&
+    ["male", "female", "random", "opposite-speaker"].includes(payload.voice.gender) &&
+    (payload.voice.voices === undefined || isGeneratedVoiceMap(payload.voice.voices)) &&
+    typeof payload.voice.tone === "string" &&
+    !!payload.openingLine &&
+    typeof payload.openingLine.text === "string" &&
+    typeof payload.openingLine.hint === "string" &&
+    Array.isArray(payload.starters) &&
+    payload.starters.length >= 3 &&
+    typeof payload.imagePrompt === "string"
+  )
+}
