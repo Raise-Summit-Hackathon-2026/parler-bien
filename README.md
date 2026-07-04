@@ -1,8 +1,5 @@
 # Parler Bien
 
-<<<<<<< HEAD
-Voice training organized by use case — language, sales, lingua, laugh, and more.
-=======
 AI pronunciation practice with Supabase Auth and OpenRouter.
 
 ## Teammate setup
@@ -67,27 +64,12 @@ Auth configuration is partly captured for local Supabase in
 disabled for hackathon demos, and `http://localhost:3000` is an allowed site
 URL. For a hosted Supabase project, mirror those settings in the Supabase
 dashboard under Authentication.
->>>>>>> origin/main
 
-## Use cases
+## Adding components
 
-| Category | What's live |
-|----------|-------------|
-| **Language practice** | Teacher + Paris roleplay (croissant, waiter, etc.) |
-| **Sales practice** | Sales Pitch Coach + vendor/landlord roleplay · [`/demo`](http://localhost:3000/demo) |
-| **Lingua practice** | VC Lingua — investor cadence |
-| **Rich laugh practice** | Laugh taxonomy + reference clips |
-| **Team workspaces** | Coming soon |
-| **Personal agents** | Coming soon · [Call Ivan](https://lifeosint.com/callivan/) reference |
-| **Voice cloning** | Coming soon |
-
-## Setup
+To add components to your app, run the following command:
 
 ```bash
-<<<<<<< HEAD
-cp .env.example .env.local
-npm install && npm run dev
-=======
 bunx shadcn@latest add button
 ```
 
@@ -99,5 +81,4 @@ To use the components in your app, import them as follows:
 
 ```tsx
 import { Button } from "@/components/ui/button"
->>>>>>> origin/main
 ```

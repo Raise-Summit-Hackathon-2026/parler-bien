@@ -20,8 +20,6 @@ import {
   resolveScenario,
   type Scenario,
 } from "@/lib/scenarios"
-import { isLinguaTrainerId } from "@/lib/lingua-trainers"
-import { buildLinguaTrainerPrompt } from "@/lib/lingua-trainer-prompts"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
 import type { LevelRoom } from "@/lib/workspace-types"
 import type { ConversationTurn, PronunciationScore, VoiceAgent } from "@/lib/types"
@@ -68,13 +66,6 @@ function buildLegacyPrompt(
     })
   }
 
-<<<<<<< HEAD
-  if (isLinguaTrainerId(scenario.id)) {
-    return buildLinguaTrainerPrompt(scenario.id, phrase)
-  }
-
-  return buildScenarioPrompt(
-=======
   return buildAgentPrompt({
     agentType: "roleplay",
     agent: {
@@ -91,7 +82,6 @@ function buildLegacyPrompt(
       deliveryStyle: "",
       coachingStyle: "",
     },
->>>>>>> origin/main
     scenario,
     characterGender,
     history,
@@ -330,15 +320,8 @@ export async function POST(request: Request) {
       assistantText,
       {
         scenarioTitle: scenario.title,
-<<<<<<< HEAD
-        languageName: language.name,
-        isRoleplay:
-          scenario.id !== "teacher" &&
-          !isLinguaTrainerId(scenario.id),
-=======
         languageName: languageMeta.name,
         isRoleplay: agentType === "roleplay" || (scenario.id !== "teacher" && !agentType),
->>>>>>> origin/main
       },
     )
 
