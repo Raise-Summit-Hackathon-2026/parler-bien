@@ -244,19 +244,25 @@ export function useLiveAvatar({
         session.on(AgentEventsEnum.SESSION_STOPPED, (event) => {
           if (cancelled) return
           const reason = event.stop_reason
-          if (reason === "NO_CREDITS") {
-            setError("LiveAvatar credits exhausted")
-          }
+
           if (reason === "MAX_DURATION_REACHED") {
             void expireSession()
             return
           }
+
+          void cleanupSession()
+
+          if (reason === "NO_CREDITS") {
+            setError("LiveAvatar credits exhausted")
+          }
+
           setStatus("error")
         })
 
         session.on(SessionEvent.SESSION_DISCONNECTED, () => {
           if (cancelled || sessionIdRef.current !== localSessionId) return
-          setStatus((current) => (current === "error" ? current : "error"))
+          void cleanupSession()
+          setStatus("error")
         })
 
         await session.start()
