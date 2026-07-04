@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { getCachedImageUrl, setCachedImageUrl } from "@/lib/image-cache-db"
 import { getScenario, isBuiltInScenarioId } from "@/lib/scenarios"
 import { requireCurrentUser } from "@/lib/supabase"
 
@@ -111,10 +112,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: cached })
   }
 
+  const persisted = await getCachedImageUrl(cacheKey)
+  if (persisted) {
+    imageCache.set(cacheKey, persisted)
+    return NextResponse.json({ url: persisted })
+  }
+
   try {
     let pending = inFlightImages.get(cacheKey)
     if (!pending) {
-      pending = generateImageUrl(apiKey, imagePrompt)
+      pending = (async () => {
+        const cachedUrl = await getCachedImageUrl(cacheKey)
+        if (cachedUrl) return cachedUrl
+
+        const url = await generateImageUrl(apiKey, imagePrompt)
+        await setCachedImageUrl(cacheKey, imagePrompt, url)
+        return url
+      })()
         .then((url) => {
           imageCache.set(cacheKey, url)
           return url
