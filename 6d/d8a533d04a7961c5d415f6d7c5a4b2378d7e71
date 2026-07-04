@@ -1,0 +1,23 @@
+app/api/tts/route.ts
+  s_2b088684ad6fb8::t_eac2eaa59bb5a7 45,57-65,81,86-89,102,104-105,119
+components/practice-session.tsx
+  s_2b088684ad6fb8::t_d86b4693f1d824 21,23,34,201,229-239,283-286,289-291,313-318,325,331,419-423,425-429,599-603
+package-lock.json
+  s_2b088684ad6fb8::t_06a180ace26849 27,2290-2299,3498-3507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6dd8a533d04a7961c5d415f6d7c5a4b2378d7e71",
+  "prompts": {},
+  "sessions": {
+    "s_2b088684ad6fb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2da2-1b49-73d1-a311-ec7542833425",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
