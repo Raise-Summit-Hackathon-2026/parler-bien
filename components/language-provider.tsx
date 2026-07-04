@@ -27,6 +27,11 @@ type LanguageState = {
   regionId: RegionId
 }
 
+const DEFAULT_STATE: LanguageState = {
+  languageId: DEFAULT_LANGUAGE_ID,
+  regionId: DEFAULT_REGION_ID,
+}
+
 type LanguageContextValue = LanguageState & {
   hydrated: boolean
   setLanguageId: (languageId: LanguageId) => void
@@ -38,9 +43,7 @@ const LanguageContext = createContext<LanguageContextValue | null>(null)
 function readStoredLanguage(): LanguageState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return { languageId: DEFAULT_LANGUAGE_ID, regionId: DEFAULT_REGION_ID }
-    }
+    if (!raw) return DEFAULT_STATE
 
     const parsed = JSON.parse(raw) as Partial<LanguageState>
     const languageId =
@@ -54,7 +57,7 @@ function readStoredLanguage(): LanguageState {
 
     return { languageId, regionId }
   } catch {
-    return { languageId: DEFAULT_LANGUAGE_ID, regionId: DEFAULT_REGION_ID }
+    return DEFAULT_STATE
   }
 }
 

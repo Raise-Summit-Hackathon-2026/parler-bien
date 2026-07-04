@@ -88,6 +88,8 @@ export type Character = {
   /** Set on AI-generated characters */
   primaryLanguageId?: LanguageId
   sourceLabel?: string
+  /** Optional LiveAvatar character override */
+  liveAvatarId?: string
   levels: Level[]
 }
 
@@ -121,6 +123,7 @@ export function characterLevelScenario(
     imagePrompt: character.avatarPrompt,
     primaryLanguageId: character.primaryLanguageId ?? languageId,
     sourceLabel: character.sourceLabel,
+    liveAvatarId: character.liveAvatarId,
   }
 }
 
@@ -204,6 +207,7 @@ export type Scenario = {
   primaryLanguageId?: LanguageId
   createdAt?: number
   sourceLabel?: string
+  liveAvatarId?: string
 }
 
 export type CharacterGender = "male" | "female"

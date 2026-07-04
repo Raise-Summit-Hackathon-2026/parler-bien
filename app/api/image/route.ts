@@ -68,19 +68,6 @@ async function generateImageUrl(apiKey: string, imagePrompt: string) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireCurrentUser(request)
-  if ("error" in auth) {
-    return NextResponse.json({ error: auth.error }, { status: 401 })
-  }
-
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 }
-    )
-  }
-
   let body: { scenarioId?: string; prompt?: string }
 
   try {
@@ -119,6 +106,19 @@ export async function POST(request: Request) {
   if (persisted) {
     imageCache.set(cacheKey, persisted)
     return NextResponse.json({ url: persisted })
+  }
+
+  const auth = await requireCurrentUser(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "OPENROUTER_API_KEY is not configured" },
+      { status: 500 }
+    )
   }
 
   try {

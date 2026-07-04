@@ -2,12 +2,12 @@
 
 import confetti from "canvas-confetti"
 import { Bot, Loader2, Mic, Play, RotateCcw, Square } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
+import { useEffect, useMemo, useRef, type RefObject } from "react"
 
+import { AvatarStage } from "@/components/avatar-stage"
 import { LevelStrip } from "@/components/level-strip"
 import { useLanguage } from "@/components/language-provider"
 import { ScenarioBackButton } from "@/components/scenario-back-button"
-import { ScenarioScene } from "@/components/scenario-scene"
 import {
   ExampleSuggestionCard,
   MeterBar,
@@ -18,14 +18,17 @@ import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useConversation } from "@/hooks/use-conversation"
+import { useLiveAvatar } from "@/hooks/use-live-avatar"
 import {
   characterLevelScenario,
   getScenarioContent,
   getScenarioFallbackLanguageId,
+  randomCharacterGender,
   type Character,
 } from "@/lib/character"
 import { isBuiltInCharacterId } from "@/lib/characters/index"
 import { markScenarioCompleted } from "@/lib/completions"
+import { resolveLiveAvatarIdForPractice } from "@/lib/liveavatar"
 import { pickRandomSentences } from "@/lib/sentences"
 import type { ConversationTurn, SentenceSuggestion } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -133,8 +136,6 @@ export function PracticeSession({
     () => characterLevelScenario(character, levelIndex, languageId),
     [character, levelIndex, languageId],
   )
-  // The language actually practiced: falls back to the scenario's own language
-  // when it has no content for the globally selected one.
   const practiceLanguageId = useMemo(
     () => getScenarioFallbackLanguageId(scenario, languageId),
     [scenario, languageId],
@@ -145,6 +146,7 @@ export function PracticeSession({
       setLanguageId(practiceLanguageId)
     }
   }, [languageId, practiceLanguageId, setLanguageId])
+
   const levelTotal = character.levels.length
   const isOpenMode = scenario.mode === "open"
   const isCoachMode = scenario.mode === "coach"
@@ -156,6 +158,31 @@ export function PracticeSession({
   const showWordBreakdown = isCoachMode
 
   const scenarioContent = getScenarioContent(scenario, practiceLanguageId)
+
+  const randomScenarioGender = useMemo(
+    () => randomCharacterGender(),
+    [character.id, levelIndex],
+  )
+
+  const liveAvatarId = useMemo(
+    () => resolveLiveAvatarIdForPractice(scenario, randomScenarioGender),
+    [scenario, randomScenarioGender],
+  )
+
+  const {
+    status: liveAvatarStatus,
+    isReady: liveAvatarReady,
+    isSpeaking: liveAvatarSpeaking,
+    error: liveAvatarError,
+    remainingSeconds: liveAvatarRemaining,
+    attachVideo,
+    speak: speakWithAvatar,
+    interrupt: interruptAvatar,
+  } = useLiveAvatar({
+    avatarId: liveAvatarId,
+    languageId: practiceLanguageId,
+    enabled: true,
+  })
 
   const {
     history,
@@ -172,10 +199,18 @@ export function PracticeSession({
     targetPhrase,
     selectedWord,
     speakLine,
+    stopSpeaking,
     selectWord,
     pickPhrase,
     clearScore,
-  } = useConversation({ scenario, languageId: practiceLanguageId, regionId })
+  } = useConversation({
+    scenario,
+    languageId: practiceLanguageId,
+    regionId,
+    speakWithAvatar,
+    isAvatarReady: liveAvatarReady,
+    interruptAvatar,
+  })
 
   const {
     isRecording,
@@ -223,11 +258,12 @@ export function PracticeSession({
     fire(0.1, { spread: 120, startVelocity: 45 })
   }, [hasWon, character.id])
 
-  const displayError = recorderError ?? error
-  const isBusy = busy
+  const displayError = recorderError ?? error ?? liveAvatarError
+  const isCharacterSpeaking = isSpeaking || liveAvatarSpeaking
+  const isBusy = busy || liveAvatarSpeaking
 
   const waveformAnalyser = isRecording ? recorderAnalyser : speakerAnalyser
-  const waveformActive = isRecording || isSpeaking
+  const waveformActive = isRecording || isCharacterSpeaking
 
   const displayedPhrase = score?.transcript ?? targetPhrase
 
@@ -245,6 +281,8 @@ export function PracticeSession({
       return
     }
 
+    stopSpeaking()
+    interruptAvatar()
     clearScore()
     await startRecording()
   }
@@ -260,6 +298,7 @@ export function PracticeSession({
       : []
 
   const exampleSuggestion = suggestionList[0] ?? null
+  const builtInCharacter = isBuiltInCharacterId(character.id)
 
   return (
     <div className="mx-auto flex h-svh w-full max-w-lg flex-col overflow-hidden px-4 py-3">
@@ -288,12 +327,13 @@ export function PracticeSession({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <ScenarioScene
-          scenarioId={isBuiltInCharacterId(scenario.id) ? scenario.id : undefined}
-          imagePrompt={
-            isBuiltInCharacterId(scenario.id) ? undefined : scenario.imagePrompt
-          }
-          className="h-44 w-full shrink-0 rounded-none"
+        <AvatarStage
+          status={liveAvatarStatus}
+          attachVideo={attachVideo}
+          remainingSeconds={liveAvatarRemaining}
+          scenarioId={builtInCharacter ? character.id : undefined}
+          imagePrompt={builtInCharacter ? undefined : character.avatarPrompt}
+          className="aspect-video max-h-44 w-full shrink-0 rounded-none"
           overlay
         />
 
@@ -306,7 +346,7 @@ export function PracticeSession({
             <ConversationLog
               history={history}
               onPlayCharacter={handlePlayCharacterTurn}
-              disabled={isRecording || isScoring || isSpeaking}
+              disabled={isRecording || isScoring || isCharacterSpeaking}
               endRef={chatEndRef}
             />
           )}

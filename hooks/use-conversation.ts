@@ -40,6 +40,9 @@ export type UseConversationOptions = {
   scenario: Scenario
   languageId: LanguageId
   regionId: RegionId
+  speakWithAvatar?: (text: string) => Promise<boolean>
+  isAvatarReady?: boolean
+  interruptAvatar?: () => void
 }
 
 export type UseConversationResult = {
@@ -73,6 +76,9 @@ export function useConversation({
   scenario,
   languageId,
   regionId,
+  speakWithAvatar,
+  isAvatarReady = false,
+  interruptAvatar,
 }: UseConversationOptions): UseConversationResult {
   const mode = scenario.mode ?? "roleplay"
   const isRoleplayMode = mode === "roleplay"
@@ -118,26 +124,40 @@ export function useConversation({
 
   const speakLine = useCallback(
     (text: string, style: SpeechStyle, speaker?: SpeakerProfile | null) => {
-      const gender = resolveCharacterGender(
-        scenario,
-        speaker?.gender,
-        randomScenarioGender,
-      )
-      const voice = resolveCharacterVoice(scenario, gender)
-      const ageRange =
-        scenario.id === "parisian" && speaker?.age_range
-          ? speaker.age_range
-          : scenario.voice.ageRange
-      void speak(text, style, {
-        gender,
-        voice,
-        ageRange,
-        tone: scenario.voice.tone,
-        accent: region.accent,
-        deliveryStyle: scenario.deliveryStyle,
-      })
+      void (async () => {
+        if (isAvatarReady && speakWithAvatar) {
+          const spoke = await speakWithAvatar(text)
+          if (spoke) return
+        }
+
+        const gender = resolveCharacterGender(
+          scenario,
+          speaker?.gender,
+          randomScenarioGender,
+        )
+        const voice = resolveCharacterVoice(scenario, gender)
+        const ageRange =
+          scenario.id === "parisian" && speaker?.age_range
+            ? speaker.age_range
+            : scenario.voice.ageRange
+        void speak(text, style, {
+          gender,
+          voice,
+          ageRange,
+          tone: scenario.voice.tone,
+          accent: region.accent,
+          deliveryStyle: scenario.deliveryStyle,
+        })
+      })()
     },
-    [scenario, randomScenarioGender, region.accent, speak],
+    [
+      scenario,
+      randomScenarioGender,
+      region.accent,
+      speak,
+      isAvatarReady,
+      speakWithAvatar,
+    ],
   )
 
   useEffect(() => {
@@ -236,10 +256,11 @@ export function useConversation({
 
   const clearScore = useCallback(() => {
     stopSpeaking()
+    interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
-  }, [stopSpeaking])
+  }, [stopSpeaking, interruptAvatar])
 
   const selectWord = useCallback(
     (word: WordScore) => {
@@ -252,17 +273,19 @@ export function useConversation({
   const pickPhrase = useCallback(
     (text: string) => {
       stopSpeaking()
+      interruptAvatar?.()
       setTargetPhrase(text)
       setScore(null)
       setSelectedWord(null)
       setRequestError(null)
       speakLine(text, "phrase")
     },
-    [stopSpeaking, speakLine],
+    [stopSpeaking, interruptAvatar, speakLine],
   )
 
   const reset = useCallback(() => {
     stopSpeaking()
+    interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
@@ -281,6 +304,7 @@ export function useConversation({
     }
   }, [
     stopSpeaking,
+    interruptAvatar,
     isRoleplayMode,
     hasGoal,
     scenarioContent.openingLine,

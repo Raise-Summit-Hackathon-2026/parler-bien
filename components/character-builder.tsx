@@ -4,6 +4,7 @@ import { FileText, Loader2, Sparkles, Upload, X } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
+import { LiveAvatarPicker } from "@/components/live-avatar-picker"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import {
@@ -70,6 +71,7 @@ export function CharacterBuilder({
   const [prompt, setPrompt] = useState("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState("")
+  const [liveAvatarId, setLiveAvatarId] = useState("")
   const [characterCount, setCharacterCount] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -148,16 +150,18 @@ export function CharacterBuilder({
             : undefined)
 
       const characters = await Promise.all(
-        payloads.map((payload) =>
-          saveCharacter(
-            generatedPayloadToCharacter(payload, {
-              id: crypto.randomUUID(),
-              languageId,
-              sourceLabel: resolvedSourceLabel,
-            }),
+        payloads.map((payload) => {
+          const character = generatedPayloadToCharacter(payload, {
+            id: crypto.randomUUID(),
+            languageId,
+            sourceLabel: resolvedSourceLabel,
+          })
+
+          return saveCharacter(
+            liveAvatarId ? { ...character, liveAvatarId } : character,
             workspaceId,
-          ),
-        ),
+          )
+        }),
       )
       onCreated(characters)
     } catch (err) {
@@ -288,6 +292,18 @@ export function CharacterBuilder({
               </div>
             </div>
           )}
+
+          <div className="space-y-2">
+            <label htmlFor="live-avatar" className="text-sm font-medium">
+              LiveAvatar character
+            </label>
+            <LiveAvatarPicker
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              value={liveAvatarId}
+              onChange={setLiveAvatarId}
+              inheritLabel="Auto (match voice gender)"
+            />
+          </div>
 
           <div className="space-y-3 rounded-2xl border bg-muted/20 px-4 py-4">
             <div className="flex items-center justify-between gap-3">
