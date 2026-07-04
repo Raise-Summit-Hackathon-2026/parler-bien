@@ -34,6 +34,10 @@ export type Scenario = {
     gender?: CharacterGenderMode
     voices?: CharacterVoiceMap
   }
+  /** Prompt mode carried from the Character's voice level. Default "roleplay". */
+  mode?: "roleplay" | "coach" | "open"
+  deliveryStyle?: string
+  coachingStyle?: string
   content: Partial<Record<LanguageId, ScenarioContent>>
   imagePrompt: string
   /** Set on AI-generated custom scenarios */
