@@ -2,7 +2,11 @@ import { randomUUID } from "crypto"
 
 import { NextResponse } from "next/server"
 
-import { requireCurrentUser } from "@/lib/supabase"
+import {
+  generationBlockedMessage,
+  moderateGeneratedContent,
+  scenarioTextForModeration,
+} from "@/lib/content-safety"
 import {
   getLanguage,
   getRegion,
@@ -15,6 +19,7 @@ import {
   type GeneratedScenarioPayload,
 } from "@/lib/scenario-generate-schema"
 import type { Scenario } from "@/lib/scenarios"
+import { requireCurrentUser } from "@/lib/supabase"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
@@ -44,7 +49,11 @@ The scenario must:
 
 function isGeneratedVoiceMap(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
-  const voices = value as { female?: unknown; male?: unknown; default?: unknown }
+  const voices = value as {
+    female?: unknown
+    male?: unknown
+    default?: unknown
+  }
   return (
     (voices.female === undefined || typeof voices.female === "string") &&
     (voices.male === undefined || typeof voices.male === "string") &&
@@ -64,8 +73,11 @@ function parseGenerated(content: string): GeneratedScenarioPayload {
     typeof parsed.persona !== "string" ||
     !parsed.voice ||
     typeof parsed.voice.ageRange !== "string" ||
-    !["male", "female", "random", "opposite-speaker"].includes(parsed.voice.gender) ||
-    (parsed.voice.voices !== undefined && !isGeneratedVoiceMap(parsed.voice.voices)) ||
+    !["male", "female", "random", "opposite-speaker"].includes(
+      parsed.voice.gender
+    ) ||
+    (parsed.voice.voices !== undefined &&
+      !isGeneratedVoiceMap(parsed.voice.voices)) ||
     typeof parsed.voice.tone !== "string" ||
     !parsed.openingLine ||
     typeof parsed.openingLine.text !== "string" ||
@@ -283,6 +295,37 @@ export async function POST(request: Request) {
     }
 
     const payload = parseGenerated(content)
+
+    const userSource =
+      sourceType === "pdf"
+        ? `PDF upload: ${fileName ?? "document.pdf"}`
+        : trimmedPrompt
+
+    const moderation = await moderateGeneratedContent(
+      apiKey,
+      userSource,
+      scenarioTextForModeration(payload),
+      { kind: "scenario", languageName: language.name },
+    )
+
+    if (moderation.status === "blocked") {
+      console.warn("Scenario content blocked:", moderation.reason)
+      return NextResponse.json(
+        {
+          error: generationBlockedMessage(moderation),
+          code: "content_blocked",
+        },
+        { status: 422 },
+      )
+    }
+
+    if (moderation.status === "error") {
+      console.warn(
+        "Scenario content safety check failed, allowing through:",
+        moderation.message,
+      )
+    }
+
     const scenario = toScenario(
       payload,
       languageId,

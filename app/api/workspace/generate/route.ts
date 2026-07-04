@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server"
 
 import {
+  generationBlockedMessage,
+  moderateGeneratedContent,
+  workspaceTextForModeration,
+} from "@/lib/content-safety"
+import {
   getLanguage,
   getRegion,
   isLanguageId,
   isRegionId,
   type LanguageId,
 } from "@/lib/languages"
+import { requireCurrentUser } from "@/lib/supabase"
 import {
   generatedWorkspaceJsonSchema,
   type GeneratedWorkspacePayload,
 } from "@/lib/workspace-generate-schema"
-import { requireCurrentUser } from "@/lib/supabase"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
@@ -21,7 +26,11 @@ const MAX_PDF_BYTES = 4 * 1024 * 1024
 
 type SourceType = "prompt" | "text" | "pdf"
 
-function buildInstructions(languageName: string, regionLabel: string, city: string) {
+function buildInstructions(
+  languageName: string,
+  regionLabel: string,
+  city: string
+) {
   return `Design a complete company training workspace for practicing ${languageName} (${regionLabel}, ${city}).
 
 Return a full program with:
@@ -57,7 +66,10 @@ function parseGenerated(content: string): GeneratedWorkspacePayload {
   }
 
   for (const persona of parsed.personas) {
-    if (typeof persona.key !== "string" || typeof persona.personaBase !== "string") {
+    if (
+      typeof persona.key !== "string" ||
+      typeof persona.personaBase !== "string"
+    ) {
       throw new Error("Invalid persona in generated workspace")
     }
   }
@@ -93,14 +105,15 @@ async function requestGeneration(
     | { type: "text"; text: string }
     | { type: "file"; file: { filename: string; file_data: string } }
   >,
-  responseFormat: Record<string, unknown>,
+  responseFormat: Record<string, unknown>
 ) {
   return fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      "HTTP-Referer":
+        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
       "X-Title": "Parler Bien",
     },
     body: JSON.stringify({
@@ -121,7 +134,7 @@ export async function POST(request: Request) {
   if (!apiKey) {
     return NextResponse.json(
       { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 
@@ -150,7 +163,10 @@ export async function POST(request: Request) {
   } = body
 
   if (!rawLanguageId || !isLanguageId(rawLanguageId)) {
-    return NextResponse.json({ error: "Valid languageId is required" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Valid languageId is required" },
+      { status: 400 }
+    )
   }
 
   const languageId = rawLanguageId as LanguageId
@@ -169,7 +185,7 @@ export async function POST(request: Request) {
   if (sourceType === "prompt" && !trimmedPrompt) {
     return NextResponse.json(
       { error: "Describe the training program you want to build" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -178,24 +194,34 @@ export async function POST(request: Request) {
   }
 
   if (sourceType === "text" && !trimmedPrompt) {
-    return NextResponse.json({ error: "Uploaded text is empty" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Uploaded text is empty" },
+      { status: 400 }
+    )
   }
 
   if (hasTextUpload && trimmedPrompt.length > MAX_TEXT_CHARS) {
     return NextResponse.json(
       { error: `Text uploads must be under ${MAX_TEXT_CHARS} characters` },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
   if (hasPdf) {
     const byteLength = Buffer.from(fileBase64!, "base64").byteLength
     if (byteLength > MAX_PDF_BYTES) {
-      return NextResponse.json({ error: "PDF must be under 4 MB" }, { status: 400 })
+      return NextResponse.json(
+        { error: "PDF must be under 4 MB" },
+        { status: 400 }
+      )
     }
   }
 
-  const instructions = buildInstructions(language.name, region.label, region.city)
+  const instructions = buildInstructions(
+    language.name,
+    region.label,
+    region.city
+  )
 
   const sourceDescription =
     sourceType === "prompt"
@@ -238,15 +264,23 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const schemaError = await response.text()
-      console.warn("Workspace generate strict schema failed, retrying with json_object:", schemaError)
+      console.warn(
+        "Workspace generate strict schema failed, retrying with json_object:",
+        schemaError
+      )
 
-      response = await requestGeneration(apiKey, userContent, { type: "json_object" })
+      response = await requestGeneration(apiKey, userContent, {
+        type: "json_object",
+      })
     }
 
     if (!response.ok) {
       const errorText = await response.text()
       console.error("Workspace generate error:", errorText)
-      return NextResponse.json({ error: "Failed to generate workspace" }, { status: 502 })
+      return NextResponse.json(
+        { error: "Failed to generate workspace" },
+        { status: 502 }
+      )
     }
 
     const data = (await response.json()) as {
@@ -255,16 +289,50 @@ export async function POST(request: Request) {
 
     const content = data.choices?.[0]?.message?.content
     if (!content) {
-      return NextResponse.json({ error: "Empty response from model" }, { status: 502 })
+      return NextResponse.json(
+        { error: "Empty response from model" },
+        { status: 502 }
+      )
     }
 
     const payload = parseGenerated(content)
+
+    const userSource =
+      sourceType === "pdf"
+        ? `PDF upload: ${fileName ?? "document.pdf"}${trimmedPrompt ? `\n\nNotes:\n${trimmedPrompt}` : ""}`
+        : trimmedPrompt
+
+    const moderation = await moderateGeneratedContent(
+      apiKey,
+      userSource,
+      workspaceTextForModeration(payload),
+      { kind: "workspace", languageName: language.name },
+    )
+
+    if (moderation.status === "blocked") {
+      console.warn("Workspace content blocked:", moderation.reason)
+      return NextResponse.json(
+        {
+          error: generationBlockedMessage(moderation),
+          code: "content_blocked",
+        },
+        { status: 422 },
+      )
+    }
+
+    if (moderation.status === "error") {
+      console.warn(
+        "Workspace content safety check failed, allowing through:",
+        moderation.message,
+      )
+    }
+
     return NextResponse.json({ workspace: payload, languageId, regionId })
   } catch (error) {
     console.error("Workspace generate route error:", error)
     return NextResponse.json(
       { error: "Failed to process workspace generation" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }

@@ -107,6 +107,8 @@ type ScenarioSceneProps = {
   imagePrompt?: string
   className?: string
   overlay?: boolean
+  /** cover fills and crops; contain shows the full image within the box */
+  fit?: "cover" | "contain"
 }
 
 export function ScenarioScene({
@@ -114,6 +116,7 @@ export function ScenarioScene({
   imagePrompt,
   className,
   overlay = true,
+  fit = "cover",
 }: ScenarioSceneProps) {
   const { url, isLoading, error } = useScenarioImage({
     scenarioId,
@@ -122,14 +125,26 @@ export function ScenarioScene({
 
   return (
     <div
-      className={cn("relative overflow-hidden rounded-2xl bg-muted", className)}
+      className={cn(
+        "relative overflow-hidden rounded-2xl bg-muted",
+        fit === "contain" && "flex items-center justify-center",
+        className,
+      )}
     >
       {isLoading && (
         <div className="absolute inset-0 animate-pulse bg-linear-to-br from-muted to-muted-foreground/10" />
       )}
       {!isLoading && !error && url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="size-full object-cover" />
+        <img
+          src={url}
+          alt=""
+          className={cn(
+            fit === "contain"
+              ? "max-h-full max-w-full object-contain"
+              : "size-full object-cover",
+          )}
+        />
       )}
       {error && (
         <div className="absolute inset-0 bg-linear-to-br from-muted to-muted-foreground/20" />

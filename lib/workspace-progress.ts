@@ -59,6 +59,44 @@ export function getLevelStatusFromProgress(
   return "locked"
 }
 
+export async function recordLevelScore(levelId: string, score: number) {
+  if (!Number.isFinite(score)) return
+
+  const supabase = getSupabaseBrowserClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: existing } = await supabase
+    .from("workspace_level_progress")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("level_id", levelId)
+    .maybeSingle()
+
+  const row = existing as WorkspaceLevelProgressRow | null
+  const nextBest = Math.max(Math.round(score), row?.best_score ?? 0)
+
+  if (row) {
+    if (nextBest <= (row.best_score ?? 0)) return
+
+    await supabase
+      .from("workspace_level_progress")
+      .update({ best_score: nextBest })
+      .eq("id", row.id)
+    return
+  }
+
+  await supabase.from("workspace_level_progress").insert({
+    user_id: user.id,
+    level_id: levelId,
+    status: "in_progress",
+    best_score: nextBest,
+    attempts: 0,
+  })
+}
+
 export async function markLevelInProgress(levelId: string) {
   const supabase = getSupabaseBrowserClient()
   const {

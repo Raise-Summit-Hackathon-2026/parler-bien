@@ -1,8 +1,15 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { Loader2, Mic, RotateCcw, Square, Volume2 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Loader2, Mic, Play, RotateCcw, Square, Volume2 } from "lucide-react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react"
 
 import { useLanguage } from "@/components/language-provider"
 import { LanguagePicker } from "@/components/language-picker"
@@ -21,6 +28,7 @@ import { resolveLiveAvatarIdForScenario } from "@/lib/liveavatar"
 import {
   markLevelCompleted,
   markLevelInProgress,
+  recordLevelScore,
 } from "@/lib/workspace-progress"
 import { countPlayableLevels } from "@/lib/workspace-types"
 import { pickRandomSentences } from "@/lib/sentences"
@@ -47,6 +55,11 @@ import type {
 import { cn } from "@/lib/utils"
 
 const EXAMPLE_COUNT = 4
+
+type RecordedAudio = {
+  base64: string
+  format: string
+}
 
 type PracticeSessionProps = {
   scenario: Scenario
@@ -98,60 +111,25 @@ function WordChip({
   )
 }
 
-function SentenceChip({
+function ExampleSuggestionCard({
   sentence,
   onSelect,
-  compact = false,
 }: {
   sentence: SentenceSuggestion
   onSelect: () => void
-  compact?: boolean
 }) {
-  if (compact) {
-    return (
-      <button
-        type="button"
-        onClick={onSelect}
-        className="shrink-0 max-w-[min(72vw,220px)] rounded-xl border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/60"
-      >
-        <p className="truncate text-sm font-medium">{sentence.text}</p>
-        <p className="truncate text-[10px] text-muted-foreground">{sentence.hint}</p>
-      </button>
-    )
-  }
-
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="group w-full rounded-2xl border bg-background p-3 text-left transition-colors hover:bg-muted/60"
+      className="w-full rounded-xl border border-dashed bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
     >
-      <p className="font-medium">{sentence.text}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{sentence.hint}</p>
+      <p className="text-[10px] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
+        Try saying
+      </p>
+      <p className="mt-1.5 text-sm font-medium leading-snug">{sentence.text}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{sentence.hint}</p>
     </button>
-  )
-}
-
-function PhraseRail({
-  sentences,
-  onSelect,
-}: {
-  sentences: SentenceSuggestion[]
-  onSelect: (sentence: SentenceSuggestion) => void
-}) {
-  if (sentences.length === 0) return null
-
-  return (
-    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-none [&::-webkit-scrollbar]:hidden">
-      {sentences.map((sentence, index) => (
-        <SentenceChip
-          key={`${sentence.text}-${index}`}
-          sentence={sentence}
-          compact
-          onSelect={() => onSelect(sentence)}
-        />
-      ))}
-    </div>
   )
 }
 
@@ -186,41 +164,85 @@ function MeterBar({
   )
 }
 
-function ReplyBubble({
-  reply,
-  onHear,
+function ConversationLog({
+  history,
+  onPlayCharacter,
   disabled,
+  endRef,
 }: {
-  reply: CharacterReply
-  onHear: () => void
+  history: ConversationTurn[]
+  onPlayCharacter: (text: string) => void
   disabled: boolean
+  endRef: RefObject<HTMLDivElement | null>
 }) {
+  if (history.length === 0) return null
+
   return (
-    <div className="rounded-2xl border bg-primary/5 p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Character
-          </p>
-          <p className="mt-1 font-medium">{reply.text}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{reply.hint}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onHear}
-          disabled={disabled}
-          aria-label="Hear reply"
-        >
-          <Volume2 className="size-4" />
-        </Button>
-      </div>
+    <div className="flex min-h-[132px] flex-1 flex-col gap-2 overflow-y-auto py-1 pr-1">
+      {history.map((turn, index) => {
+        const isUser = turn.role === "user"
+
+        return (
+          <div
+            key={`${turn.role}-${index}-${turn.text}`}
+            className={cn(
+              "flex items-end gap-2",
+              isUser ? "justify-end" : "justify-start"
+            )}
+          >
+            {!isUser && (
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => onPlayCharacter(turn.text)}
+                disabled={disabled}
+                aria-label="Play role line"
+                className="mb-1 rounded-full bg-background shadow-sm"
+              >
+                <Play className="size-3.5 fill-current" />
+              </Button>
+            )}
+            <div
+              className={cn(
+                "max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-snug shadow-sm",
+                isUser
+                  ? "rounded-br-md bg-primary text-primary-foreground"
+                  : "rounded-bl-md border bg-background"
+              )}
+            >
+              <div
+                className={cn(
+                  "mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase",
+                  isUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                )}
+              >
+                {isUser ? (
+                  <Mic className="size-3" />
+                ) : (
+                  <Play className="size-3 fill-current" />
+                )}
+                {isUser ? "You" : "Role"}
+              </div>
+              <p>{turn.text}</p>
+            </div>
+          </div>
+        )
+      })}
+      <div ref={endRef} />
     </div>
   )
 }
 
 function replySpeechText(reply: CharacterReply) {
   return reply.tts_text.trim() || reply.text
+}
+
+function formatRecordingDuration(durationMs: number) {
+  const totalSeconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
 function randomCharacterGenderForScenario(
@@ -272,9 +294,10 @@ export function PracticeSession({
     isRecording,
     analyser: recorderAnalyser,
     error,
+    recordingDurationMs,
     startRecording,
     stopRecording,
-  } = useAudioRecorder()
+  } = useAudioRecorder({ onAutoStop: handleRecordedAudio })
   const {
     isSpeaking,
     analyser: speakerAnalyser,
@@ -283,6 +306,7 @@ export function PracticeSession({
   } = useSpeaker()
 
   const openingPlayed = useRef(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   const [examples] = useState<SentenceSuggestion[]>(() =>
     isTeacher
@@ -325,6 +349,10 @@ export function PracticeSession({
     () => randomCharacterGenderForScenario(scenario.id),
     [scenario.id]
   )
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" })
+  }, [history.length])
 
   const characterGender: CharacterGender = resolveCharacterGender(
     scenario,
@@ -463,101 +491,124 @@ export function PracticeSession({
     fire(0.1, { spread: 120, startVelocity: 45 })
   }, [hasWon, scenario.id, levelContext, score?.overall_score])
 
+  async function handleRecordedAudio(audio: RecordedAudio | null) {
+    setRequestError(null)
+    setIsScoring(true)
+
+    if (!audio) {
+      setIsScoring(false)
+      setRequestError("No audio captured. Try again.")
+      return
+    }
+
+    try {
+      const response = await authenticatedFetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioBase64: audio.base64,
+          audioFormat: audio.format,
+          phrase: targetPhrase ?? undefined,
+          languageId,
+          regionId,
+          scenarioId: scenario.id,
+          customScenario: isCustomScenarioId(scenario.id)
+            ? scenario
+            : undefined,
+          history,
+          characterGender,
+          currentMeter: meter,
+          agentType: levelContext?.agent.type,
+          agent: levelContext?.agent,
+          levelRoom: levelContext?.level.room,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string }
+        throw new Error(data.error ?? "Scoring failed")
+      }
+
+      const result = (await response.json()) as PronunciationScore
+      setScore(result)
+      setTargetPhrase(result.transcript)
+      setLastSpeaker(result.speaker)
+      setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
+
+      if (levelContext) {
+        if (isRoleplayMode) {
+          const nextMeter = resolveMeterUpdate(meter, result)
+          void recordLevelScore(levelContext.levelId, nextMeter)
+        } else if (isLanguageMode || showPronunciation) {
+          void recordLevelScore(levelContext.levelId, result.overall_score)
+        }
+      }
+
+      if (isRoleplayMode) {
+        const nextMeter = resolveMeterUpdate(meter, result)
+        setMeter(nextMeter)
+        const won = levelContext
+          ? checkLevelWin({ ...result, meter: nextMeter })
+          : result.goal_achieved || nextMeter >= 100
+        setHasWon(won)
+        setHistory((prev) => [
+          ...prev,
+          { role: "user", text: result.transcript },
+          { role: "character", text: result.reply.text },
+        ])
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "character",
+          result.speaker
+        )
+      } else if (isSpiritualMode) {
+        const nextTurnCount = userTurnCount + 1
+        setUserTurnCount(nextTurnCount)
+        setHistory((prev) => [
+          ...prev,
+          { role: "user", text: result.transcript },
+          { role: "character", text: result.reply.text },
+        ])
+        const won =
+          levelContext &&
+          levelContext.passCriteria.type === "complete" &&
+          nextTurnCount >= levelContext.passCriteria.minTurns
+        setHasWon(Boolean(won))
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "coach",
+          result.speaker
+        )
+      } else if (isLanguageMode) {
+        const won = levelContext ? checkLevelWin(result) : false
+        setHasWon(won)
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "coach",
+          result.speaker
+        )
+      } else {
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "coach",
+          result.speaker
+        )
+      }
+    } catch (err) {
+      setRequestError(
+        err instanceof Error ? err.message : "Something went wrong"
+      )
+    } finally {
+      setIsScoring(false)
+    }
+  }
+
   async function handleMicPress() {
     if (isBusy || hasWon) return
 
     if (isRecording) {
-      setRequestError(null)
-      setIsScoring(true)
-
       const audio = await stopRecording()
-      if (!audio) {
-        setIsScoring(false)
-        setRequestError("No audio captured. Try again.")
-        return
-      }
-
-      try {
-        const response = await authenticatedFetch("/api/score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            audioBase64: audio.base64,
-            audioFormat: audio.format,
-            phrase: targetPhrase ?? undefined,
-            languageId,
-            regionId,
-            scenarioId: scenario.id,
-            customScenario: isCustomScenarioId(scenario.id)
-              ? scenario
-              : undefined,
-            history,
-            characterGender,
-            currentMeter: meter,
-            agentType: levelContext?.agent.type,
-            agent: levelContext?.agent,
-            levelRoom: levelContext?.level.room,
-          }),
-        })
-
-        if (!response.ok) {
-          const data = (await response.json()) as { error?: string }
-          throw new Error(data.error ?? "Scoring failed")
-        }
-
-        const result = (await response.json()) as PronunciationScore
-        setScore(result)
-        setTargetPhrase(result.transcript)
-        setLastSpeaker(result.speaker)
-        setSelectedWord(
-          result.words.find((w) => w.score < 80) ?? result.words[0]
-        )
-
-        if (isRoleplayMode) {
-          const nextMeter = resolveMeterUpdate(meter, result)
-          setMeter(nextMeter)
-          const won = levelContext
-            ? checkLevelWin({ ...result, meter: nextMeter })
-            : result.goal_achieved || nextMeter >= 100
-          setHasWon(won)
-          setHistory((prev) => [
-            ...prev,
-            { role: "user", text: result.transcript },
-            { role: "character", text: result.reply.text },
-          ])
-          speakCharacterLine(replySpeechText(result.reply), "character", result.speaker)
-        } else if (isSpiritualMode) {
-          const nextTurnCount = userTurnCount + 1
-          setUserTurnCount(nextTurnCount)
-          setHistory((prev) => [
-            ...prev,
-            { role: "user", text: result.transcript },
-            { role: "character", text: result.reply.text },
-          ])
-          const won =
-            levelContext &&
-            levelContext.passCriteria.type === "complete" &&
-            nextTurnCount >= levelContext.passCriteria.minTurns
-          setHasWon(Boolean(won))
-          speakCharacterLine(replySpeechText(result.reply), "coach", result.speaker)
-        } else if (isLanguageMode) {
-          const won = levelContext ? checkLevelWin(result) : false
-          setHasWon(won)
-          speakCharacterLine(replySpeechText(result.reply), "coach", result.speaker)
-        } else {
-          speakCharacterLine(
-            replySpeechText(result.reply),
-            "coach",
-            result.speaker
-          )
-        }
-      } catch (err) {
-        setRequestError(
-          err instanceof Error ? err.message : "Something went wrong"
-        )
-      } finally {
-        setIsScoring(false)
-      }
+      await handleRecordedAudio(audio)
       return
     }
 
@@ -609,6 +660,10 @@ export function PracticeSession({
     speakCharacterLine(phrase, "phrase")
   }
 
+  function handlePlayCharacterTurn(text: string) {
+    speakCharacterLine(text, isSpiritualMode ? "coach" : "character")
+  }
+
   function handleSelectExample(sentence: SentenceSuggestion) {
     stopSpeaking()
     interruptAvatar()
@@ -635,7 +690,7 @@ export function PracticeSession({
       ? examples
       : []
 
-  const compactPhrases = suggestionList.slice(0, 3)
+  const exampleSuggestion = suggestionList[0] ?? null
 
   return (
     <div className="mx-auto flex h-svh w-full max-w-lg flex-col overflow-hidden px-4 py-3">
@@ -678,6 +733,15 @@ export function PracticeSession({
             <MeterBar meter={meter} label={scenario.meterLabel} goal={scenario.goal} />
           )}
 
+          {(isRoleplayMode || isSpiritualMode) && history.length > 0 && (
+            <ConversationLog
+              history={history}
+              onPlayCharacter={handlePlayCharacterTurn}
+              disabled={isRecording || isScoring || isSpeaking}
+              endRef={chatEndRef}
+            />
+          )}
+
           {hasWon && scenario.winMessage && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
@@ -696,26 +760,6 @@ export function PracticeSession({
             </div>
           )}
 
-          {isRoleplayMode && score?.reply && !hasWon && (
-            <ReplyBubble
-              reply={score.reply}
-              onHear={() =>
-                speakCharacterLine(replySpeechText(score.reply), "character", score.speaker)
-              }
-              disabled={isRecording || isScoring}
-            />
-          )}
-
-          {isSpiritualMode && score?.reply && !hasWon && (
-            <ReplyBubble
-              reply={score.reply}
-              onHear={() =>
-                speakCharacterLine(replySpeechText(score.reply), "coach", score.speaker)
-              }
-              disabled={isRecording || isScoring}
-            />
-          )}
-
           {(isLanguageMode || isTeacher) && displayedPhrase && (
             <div className="flex items-center justify-center gap-2 text-center">
               <p className="truncate text-base font-medium">{displayedPhrase}</p>
@@ -726,7 +770,7 @@ export function PracticeSession({
                 disabled={isRecording || isScoring}
                 aria-label="Hear phrase"
               >
-                <Volume2 className="size-4" />
+                <Play className="size-4 fill-current" />
               </Button>
             </div>
           )}
@@ -753,6 +797,17 @@ export function PracticeSession({
 
           <Waveform analyser={waveformAnalyser} active={waveformActive} className="h-10 shrink-0" />
 
+          {!hasWon && exampleSuggestion && (
+            <ExampleSuggestionCard
+              sentence={exampleSuggestion}
+              onSelect={() =>
+                score
+                  ? handleSelectNext(exampleSuggestion)
+                  : handleSelectExample(exampleSuggestion)
+              }
+            />
+          )}
+
           {!hasWon && (
             <div className="flex shrink-0 flex-col items-center gap-1">
               <Button
@@ -776,20 +831,16 @@ export function PracticeSession({
               <p className="text-[11px] text-muted-foreground">
                 {isScoring ? "Analyzing…" : isRecording ? "Tap to stop" : "Tap to speak"}
               </p>
+              {isRecording && (
+                <p className="text-[10px] tabular-nums text-muted-foreground/70">
+                  {formatRecordingDuration(recordingDurationMs)}
+                </p>
+              )}
             </div>
           )}
 
           {displayError && (
             <p className="text-center text-xs text-destructive">{displayError}</p>
-          )}
-
-          {!hasWon && compactPhrases.length > 0 && (
-            <PhraseRail
-              sentences={compactPhrases}
-              onSelect={(sentence) =>
-                score ? handleSelectNext(sentence) : handleSelectExample(sentence)
-              }
-            />
           )}
 
           {score && !hasWon && !isSpiritualMode && (

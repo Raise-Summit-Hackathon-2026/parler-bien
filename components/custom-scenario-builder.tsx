@@ -4,6 +4,7 @@ import { FileText, Loader2, Sparkles, Upload, X } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import { authenticatedFetch } from "@/lib/supabase"
 import { saveCustomScenario } from "@/lib/custom-scenarios"
@@ -245,6 +246,8 @@ export function CustomScenarioBuilder({
               </div>
             </div>
           )}
+
+          <ContentSafetyAttribution />
 
           {error && (
             <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
