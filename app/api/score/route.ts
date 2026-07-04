@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 
-import type { AgentType } from "@/lib/agents"
 import {
   DEFAULT_LANGUAGE_ID,
   DEFAULT_REGION_ID,
@@ -23,9 +22,7 @@ import { requireCurrentUser } from "@/lib/supabase"
 import type {
   ConversationTurn,
   PronunciationScore,
-  VoiceAgent,
 } from "@/lib/types"
-import type { LevelRoom } from "@/lib/workspace-types"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
@@ -148,9 +145,6 @@ export async function POST(request: Request) {
     characterGender?: "male" | "female"
     currentMeter?: number
     customScenario?: Scenario
-    agentType?: AgentType
-    agent?: VoiceAgent
-    levelRoom?: LevelRoom
   }
 
   try {
@@ -171,9 +165,6 @@ export async function POST(request: Request) {
     characterGender = "female",
     currentMeter = 0,
     customScenario,
-    agentType,
-    agent,
-    levelRoom,
   } = body
 
   const languageId =
@@ -219,32 +210,16 @@ export async function POST(request: Request) {
   }
 
   const cappedHistory = history.slice(-12)
-  const languageMeta = getLanguage(languageId)
-  const region = getRegion(languageId, regionId)
 
-  const prompt =
-    agentType && agent
-      ? buildAgentPrompt({
-          agentType,
-          agent,
-          scenario,
-          characterGender,
-          history: cappedHistory,
-          currentMeter,
-          phrase,
-          languageName: languageMeta.name,
-          region,
-          levelRoom,
-        })
-      : buildLegacyPrompt(
-          phrase,
-          languageId,
-          regionId,
-          scenario,
-          cappedHistory,
-          characterGender,
-          currentMeter
-        )
+  const prompt = buildLegacyPrompt(
+    phrase,
+    languageId,
+    regionId,
+    scenario,
+    cappedHistory,
+    characterGender,
+    currentMeter,
+  )
 
   try {
     const response = await fetch(OPENROUTER_URL, {

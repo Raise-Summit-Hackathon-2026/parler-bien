@@ -1,13 +1,12 @@
 "use client"
 
-import { ArrowLeft, Loader2, Plus, Sparkles } from "lucide-react"
+import { ArrowLeft, Loader2, Plus } from "lucide-react"
 import Link from "next/link"
 import { type FormEvent, useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { WorkspaceGenerateWizard } from "@/components/workspace-generate-wizard"
+import { listMemberWorkspaces } from "@/lib/characters"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import { seedGaleriesLafayetteTemplate } from "@/lib/workspace-seed"
 import type { WorkspaceRow } from "@/lib/workspace-types"
 import { cn } from "@/lib/utils"
 
@@ -21,22 +20,18 @@ function slugify(value: string) {
   return slug || `workspace-${Date.now()}`
 }
 
+type WorkspaceListItem = WorkspaceRow & { role: "owner" | "member" }
+
 export function WorkspaceListPage() {
-  const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([])
-  const [showEmptyForm, setShowEmptyForm] = useState(false)
+  const [workspaces, setWorkspaces] = useState<WorkspaceListItem[]>([])
+  const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState("")
 
   async function load() {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error: loadError } = await supabase
-      .from("user_workspaces")
-      .select("*")
-      .order("created_at", { ascending: false })
-    if (loadError) throw loadError
-    setWorkspaces((data ?? []) as WorkspaceRow[])
+    setWorkspaces(await listMemberWorkspaces())
   }
 
   useEffect(() => {
@@ -47,7 +42,7 @@ export function WorkspaceListPage() {
       .finally(() => setBusy(false))
   }, [])
 
-  async function createEmptyWorkspace(event: FormEvent) {
+  async function createWorkspace(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
     setError("")
@@ -69,7 +64,7 @@ export function WorkspaceListPage() {
       if (insertError) throw insertError
       setName("")
       setDescription("")
-      setShowEmptyForm(false)
+      setShowForm(false)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create workspace")
@@ -78,90 +73,61 @@ export function WorkspaceListPage() {
     }
   }
 
-  async function createDemo() {
-    setBusy(true)
-    setError("")
-    try {
-      const supabase = getSupabaseBrowserClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error("Sign in to create the demo workspace")
-      await seedGaleriesLafayetteTemplate(supabase, user.id)
-      await load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create demo")
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <main className="min-h-svh bg-muted/20">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Link
-              href="/"
-              className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="size-4" />
-              Home
-            </Link>
-            <h1 className="text-3xl font-semibold tracking-tight">Workspaces</h1>
-            <p className="mt-1 text-muted-foreground">
-              Build company training with personas, tracks, and levels.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => void createDemo()} disabled={busy}>
-            <Sparkles />
-            Galeries Lafayette demo
-          </Button>
+        <div>
+          <Link
+            href="/"
+            className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Home
+          </Link>
+          <h1 className="text-3xl font-semibold tracking-tight">Workspaces</h1>
+          <p className="mt-1 text-muted-foreground">
+            Create a group, invite teammates, and share practice characters.
+          </p>
         </div>
 
-        <WorkspaceGenerateWizard onBusyChange={setBusy} />
-
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          {!showEmptyForm ? (
-            <button
-              type="button"
-              onClick={() => setShowEmptyForm(true)}
-              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Create empty workspace instead
-            </button>
+        <section className="rounded-2xl border bg-card p-6 shadow-sm">
+          {!showForm ? (
+            <Button onClick={() => setShowForm(true)}>
+              <Plus />
+              New workspace
+            </Button>
           ) : (
-            <section className="w-full rounded-2xl border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <Plus className="size-4" />
-                <h2 className="font-semibold">Create empty workspace</h2>
-              </div>
-              <form
-                className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
-                onSubmit={createEmptyWorkspace}
-              >
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Workspace name"
-                  required
-                  minLength={2}
-                  className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                />
-                <input
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Purpose or company notes"
-                  className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                />
-                <Button disabled={busy}>
-                  <Plus />
+            <form className="space-y-3" onSubmit={createWorkspace}>
+              <h2 className="font-semibold">Create workspace</h2>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Team or company name"
+                required
+                minLength={2}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional description"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+              <div className="flex gap-2">
+                <Button type="submit" disabled={busy}>
                   Create
                 </Button>
-              </form>
-            </section>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
           )}
-        </div>
+        </section>
 
         {error && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -188,6 +154,9 @@ export function WorkspaceListPage() {
                 <p className="text-lg font-semibold">{workspace.name}</p>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                   {workspace.description ?? "No description yet"}
+                </p>
+                <p className="mt-3 text-xs text-muted-foreground capitalize">
+                  {workspace.role}
                 </p>
               </Link>
             ))}

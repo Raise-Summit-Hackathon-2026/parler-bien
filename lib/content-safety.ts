@@ -1,11 +1,9 @@
 import type { GeneratedScenarioPayload } from "@/lib/scenario-generate-schema"
-import type { GeneratedWorkspacePayload } from "@/lib/workspace-generate-schema"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const CONTENT_SAFETY_MODEL = "nvidia/nemotron-3.5-content-safety:free"
 
 export type GenerationModerationContext = {
-  kind: "workspace" | "scenario"
   languageName: string
 }
 
@@ -29,34 +27,6 @@ function parseModerationResponse(text: string) {
     userSafe: userMatch ? userMatch[1] === "safe" : true,
     responseSafe: responseMatch ? responseMatch[1] === "safe" : true,
   }
-}
-
-export function workspaceTextForModeration(payload: GeneratedWorkspacePayload) {
-  const parts = [
-    payload.workspace.name,
-    payload.workspace.description,
-    payload.contextSummary,
-    ...payload.personas.flatMap((persona) => [
-      persona.name,
-      persona.tagline,
-      persona.personaBase,
-      persona.previewScript,
-      persona.greeting,
-    ]),
-    ...payload.tracks.flatMap((track) =>
-      track.levels.flatMap((level) => [
-        level.title,
-        level.subtitle,
-        level.winMessage,
-        level.targetPhrase,
-        level.openingLineText,
-        level.goal,
-        level.customPersonaOverlay,
-      ]),
-    ),
-  ]
-
-  return parts.filter(Boolean).join("\n")
 }
 
 export function scenarioTextForModeration(payload: GeneratedScenarioPayload) {
@@ -85,12 +55,9 @@ export async function moderateGeneratedContent(
     return { status: "safe" }
   }
 
-  const kindLabel =
-    context.kind === "workspace" ? "training workspace" : "roleplay scenario"
+  const prompt = `This is AI-generated content for a language-learning roleplay scenario in ${context.languageName}, created from user-provided source material. Review whether the source and generated content are appropriate to publish in the app.
 
-  const prompt = `This is AI-generated content for a language-learning ${kindLabel} in ${context.languageName}, created from user-provided source material. Review whether the source and generated content are appropriate to publish in the app.
-
-Only flag severe harm: hate speech, harassment, explicit sexual content, violence, self-harm, illegal instructions, or content involving minors. Normal language-practice roleplay and workplace training scenarios should be allowed.
+Only flag severe harm: hate speech, harassment, explicit sexual content, violence, self-harm, illegal instructions, or content involving minors. Normal language-practice roleplay scenarios should be allowed.
 
 User source:
 ${trimmedUser || "(empty)"}

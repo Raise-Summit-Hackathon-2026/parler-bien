@@ -305,7 +305,7 @@ export async function POST(request: Request) {
       apiKey,
       userSource,
       scenarioTextForModeration(payload),
-      { kind: "scenario", languageName: language.name },
+      { languageName: language.name },
     )
 
     if (moderation.status === "blocked") {

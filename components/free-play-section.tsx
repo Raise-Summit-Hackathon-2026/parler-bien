@@ -4,14 +4,10 @@ import { useRouter } from "next/navigation"
 
 import { RegionPicker } from "@/components/region-picker"
 import { ScenarioPicker } from "@/components/scenario-picker"
-import type { Scenario } from "@/lib/scenarios"
+import { isBuiltInScenarioId } from "@/lib/scenarios"
 
 export function FreePlaySection() {
   const router = useRouter()
-
-  function handleSelect(scenario: Scenario) {
-    router.push(`/play/${encodeURIComponent(scenario.id)}`)
-  }
 
   return (
     <section id="free-play" className="scroll-mt-16 border-t bg-muted/20">
@@ -23,7 +19,18 @@ export function FreePlaySection() {
           </p>
           <RegionPicker />
         </div>
-        <ScenarioPicker onSelect={handleSelect} />
+        <ScenarioPicker
+          onSelect={({ scenario, characterId }) => {
+            if (characterId) {
+              router.push(`/play/character/${characterId}`)
+              return
+            }
+
+            if (isBuiltInScenarioId(scenario.id)) {
+              router.push(`/play/${encodeURIComponent(scenario.id)}`)
+            }
+          }}
+        />
       </div>
     </section>
   )

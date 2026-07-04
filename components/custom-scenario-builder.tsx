@@ -3,12 +3,12 @@
 import { FileText, Loader2, Sparkles, Upload, X } from "lucide-react"
 import { useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button"
 import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
+import { Button } from "@/components/ui/button"
+import { saveCharacter } from "@/lib/characters"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import { authenticatedFetch } from "@/lib/supabase"
-import { saveCustomScenario } from "@/lib/custom-scenarios"
-import type { Scenario } from "@/lib/scenarios"
+import type { CharacterRow } from "@/lib/workspace-types"
 import { cn } from "@/lib/utils"
 
 type BuilderMode = "prompt" | "upload"
@@ -16,7 +16,8 @@ type BuilderMode = "prompt" | "upload"
 type CustomScenarioBuilderProps = {
   languageId: LanguageId
   regionId: RegionId
-  onCreated: (scenario: Scenario) => void
+  workspaceId?: string
+  onCreated: (character: CharacterRow) => void
   onCancel: () => void
 }
 
@@ -53,6 +54,7 @@ function isPdfFile(file: File) {
 export function CustomScenarioBuilder({
   languageId,
   regionId,
+  workspaceId,
   onCreated,
   onCancel,
 }: CustomScenarioBuilderProps) {
@@ -117,9 +119,9 @@ export function CustomScenarioBuilder({
         throw new Error(data.error ?? "Failed to generate scenario")
       }
 
-      const data = (await response.json()) as { scenario: Scenario }
-      saveCustomScenario(data.scenario)
-      onCreated(data.scenario)
+      const data = (await response.json()) as { scenario: import("@/lib/scenarios").Scenario }
+      const character = await saveCharacter(data.scenario, workspaceId)
+      onCreated(character)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
@@ -169,7 +171,7 @@ export function CustomScenarioBuilder({
                 "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 mode === "prompt"
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Sparkles className="size-4" />
@@ -182,7 +184,7 @@ export function CustomScenarioBuilder({
                 "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 mode === "upload"
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Upload className="size-4" />

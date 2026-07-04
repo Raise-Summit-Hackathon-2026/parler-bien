@@ -2,7 +2,6 @@ import type { AgentType, VoiceAgent } from "@/lib/agents"
 import type { Region } from "@/lib/languages"
 import type { Scenario } from "@/lib/scenarios"
 import type { ConversationTurn } from "@/lib/types"
-import type { LevelRoom } from "@/lib/workspace-types"
 
 import { buildLanguagePrompt } from "@/lib/prompts/language"
 import { buildRoleplayPrompt } from "@/lib/prompts/roleplay"
@@ -18,19 +17,16 @@ export type PromptContext = {
   phrase?: string
   languageName: string
   region: Region
-  levelRoom?: LevelRoom
 }
 
 export function buildAgentPrompt(ctx: PromptContext): string {
-  const overlay = ctx.levelRoom?.customPersonaOverlay
-
   switch (ctx.agentType) {
     case "language":
       return buildLanguagePrompt(
         ctx.phrase,
         ctx.languageName,
         ctx.region,
-        ctx.agent.personaBase + (overlay ? `\n\n${overlay}` : ""),
+        ctx.agent.personaBase,
         ctx.agent,
       )
     case "roleplay":
@@ -42,10 +38,10 @@ export function buildAgentPrompt(ctx: PromptContext): string {
         ctx.phrase,
         ctx.languageName,
         ctx.region,
-        overlay,
+        undefined,
         ctx.agent,
       )
     case "spiritual":
-      return buildSpiritualPrompt(ctx.agent, ctx.history, overlay)
+      return buildSpiritualPrompt(ctx.agent, ctx.history)
   }
 }
