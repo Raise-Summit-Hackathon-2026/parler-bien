@@ -24,6 +24,19 @@ function isCharacterGender(value: string): value is "male" | "female" {
   return value === "male" || value === "female"
 }
 
+function truncateForLog(value: string, maxLength = 240) {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value
+}
+
+async function readResponseBody(response: Response) {
+  const body = await response.text()
+  try {
+    return JSON.parse(body) as unknown
+  } catch {
+    return body
+  }
+}
+
 export async function POST(request: Request) {
   const auth = await requireCurrentUser(request)
   if ("error" in auth) {
@@ -108,26 +121,84 @@ export async function POST(request: Request) {
       : selectVoice(undefined, ttsOptions?.voice)
 
   try {
-    const response = await fetch(OPENROUTER_SPEECH_URL, {
-      method: "POST",
-      headers: {
+    const speechInput = buildSpeechInput(text.trim(), style, ttsOptions)
+    const headers = {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
         "X-Title": "Parler Bien",
-      },
-      body: JSON.stringify({
-        model: TTS_MODEL,
-        voice: selectedVoice,
-        input: buildSpeechInput(text.trim(), style, ttsOptions),
-        response_format: "pcm",
-      }),
-    })
+      }
+    const primaryPayload = {
+      model: TTS_MODEL,
+      voice: selectedVoice,
+      input: speechInput,
+      response_format: "pcm",
+    }
+    const fallbackPayload = {
+      ...primaryPayload,
+      input: text.trim(),
+    }
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("OpenRouter TTS error:", errorText)
+    const attempts = [
+      { label: "primary", payload: primaryPayload },
+      { label: "primary-retry", payload: primaryPayload },
+      { label: "plain-transcript-fallback", payload: fallbackPayload },
+    ]
+
+    let response: Response | null = null
+
+    for (const attempt of attempts) {
+      response = await fetch(OPENROUTER_SPEECH_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(attempt.payload),
+      })
+
+      if (response.ok) {
+        if (attempt.label !== "primary") {
+          console.warn("OpenRouter TTS recovered after retry:", {
+            attempt: attempt.label,
+            model: TTS_MODEL,
+            selectedVoice,
+            style,
+          })
+        }
+        break
+      }
+
+      const parsedError = await readResponseBody(response)
+
+      console.error("OpenRouter TTS error details:", {
+        attempt: attempt.label,
+        status: response.status,
+        statusText: response.statusText,
+        body: parsedError,
+        headers: {
+          "content-type": response.headers.get("content-type"),
+          "x-request-id": response.headers.get("x-request-id"),
+          "x-openrouter-provider": response.headers.get("x-openrouter-provider"),
+        },
+        request: {
+          model: TTS_MODEL,
+          style,
+          selectedVoice,
+          requestedVoice: requestedVoice?.trim() || null,
+          gender: ttsOptions.gender ?? null,
+          ageRange: ttsOptions.ageRange ?? null,
+          tone: ttsOptions.tone ?? null,
+          accent: ttsOptions.accent ?? null,
+          deliveryStyle: ttsOptions.deliveryStyle ?? null,
+          responseFormat: "pcm",
+          textLength: text.trim().length,
+          inputLength: attempt.payload.input.length,
+          textPreview: truncateForLog(text.trim()),
+          inputPreview: truncateForLog(attempt.payload.input, 500),
+        },
+      })
+    }
+
+    if (!response?.ok) {
       return NextResponse.json(
         { error: "Failed to generate speech" },
         { status: 502 }
