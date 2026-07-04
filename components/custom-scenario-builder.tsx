@@ -5,6 +5,7 @@ import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import type { LanguageId, RegionId } from "@/lib/languages"
+import { authenticatedFetch } from "@/lib/supabase"
 import { saveCustomScenario } from "@/lib/custom-scenarios"
 import type { Scenario } from "@/lib/scenarios"
 import { cn } from "@/lib/utils"
@@ -18,7 +19,8 @@ type CustomScenarioBuilderProps = {
   onCancel: () => void
 }
 
-const ACCEPTED_TYPES = ".pdf,.txt,.md,.text,text/plain,text/markdown,application/pdf"
+const ACCEPTED_TYPES =
+  ".pdf,.txt,.md,.text,text/plain,text/markdown,application/pdf"
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -42,7 +44,9 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 function isPdfFile(file: File) {
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+  return (
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+  )
 }
 
 export function CustomScenarioBuilder({
@@ -93,7 +97,7 @@ export function CustomScenarioBuilder({
         throw new Error("Describe the scenario you want to practice")
       }
 
-      const response = await fetch("/api/scenario/generate", {
+      const response = await authenticatedFetch("/api/scenario/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -145,7 +149,12 @@ export function CustomScenarioBuilder({
               From a prompt, course notes, or PDF upload.
             </p>
           </div>
-          <Button variant="ghost" size="icon-sm" onClick={onCancel} disabled={isGenerating}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onCancel}
+            disabled={isGenerating}
+          >
             <X />
           </Button>
         </div>
@@ -159,7 +168,7 @@ export function CustomScenarioBuilder({
                 "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 mode === "prompt"
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Sparkles className="size-4" />
@@ -172,7 +181,7 @@ export function CustomScenarioBuilder({
                 "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 mode === "upload"
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Upload className="size-4" />
@@ -191,7 +200,7 @@ export function CustomScenarioBuilder({
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="e.g. I'm at a pharmacy trying to explain my symptoms and get the right medicine. The pharmacist is busy but helpful."
                 rows={6}
-                className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
           ) : (
@@ -211,7 +220,9 @@ export function CustomScenarioBuilder({
                 <FileText className="size-8 text-muted-foreground" />
                 <div>
                   <p className="font-medium">
-                    {uploadedFile ? uploadedFile.name : "Upload PDF or text file"}
+                    {uploadedFile
+                      ? uploadedFile.name
+                      : "Upload PDF or text file"}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Course PDFs, lesson notes, .txt, or .md — up to 4 MB
@@ -229,7 +240,7 @@ export function CustomScenarioBuilder({
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Focus on hotel check-in vocabulary from chapter 3..."
                   rows={3}
-                  className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 />
               </div>
             </div>
@@ -243,10 +254,19 @@ export function CustomScenarioBuilder({
         </div>
 
         <div className="flex gap-3 border-t p-6">
-          <Button variant="outline" className="flex-1" onClick={onCancel} disabled={isGenerating}>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={onCancel}
+            disabled={isGenerating}
+          >
             Cancel
           </Button>
-          <Button className="flex-1" onClick={() => void handleGenerate()} disabled={isGenerating}>
+          <Button
+            className="flex-1"
+            onClick={() => void handleGenerate()}
+            disabled={isGenerating}
+          >
             {isGenerating ? (
               <>
                 <Loader2 className="animate-spin" />
