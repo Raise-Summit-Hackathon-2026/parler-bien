@@ -46,6 +46,11 @@ import { cn } from "@/lib/utils"
 
 const EXAMPLE_COUNT = 4
 
+type RecordedAudio = {
+  base64: string
+  format: string
+}
+
 type PracticeSessionProps = {
   scenario: Scenario
   onBack: () => void
@@ -221,6 +226,14 @@ function replySpeechText(reply: CharacterReply) {
   return reply.tts_text.trim() || reply.text
 }
 
+function formatRecordingDuration(durationMs: number) {
+  const totalSeconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`
+}
+
 function randomCharacterGenderForScenario(
   _scenarioId: string
 ): CharacterGender {
@@ -270,9 +283,10 @@ export function PracticeSession({
     isRecording,
     analyser: recorderAnalyser,
     error,
+    recordingDurationMs,
     startRecording,
     stopRecording,
-  } = useAudioRecorder()
+  } = useAudioRecorder({ onAutoStop: handleRecordedAudio })
   const {
     isSpeaking,
     analyser: speakerAnalyser,
@@ -413,101 +427,115 @@ export function PracticeSession({
     fire(0.1, { spread: 120, startVelocity: 45 })
   }, [hasWon, scenario.id, levelContext, score?.overall_score])
 
+  async function handleRecordedAudio(audio: RecordedAudio | null) {
+    setRequestError(null)
+    setIsScoring(true)
+
+    if (!audio) {
+      setIsScoring(false)
+      setRequestError("No audio captured. Try again.")
+      return
+    }
+
+    try {
+      const response = await authenticatedFetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioBase64: audio.base64,
+          audioFormat: audio.format,
+          phrase: targetPhrase ?? undefined,
+          languageId,
+          regionId,
+          scenarioId: scenario.id,
+          customScenario: isCustomScenarioId(scenario.id)
+            ? scenario
+            : undefined,
+          history,
+          characterGender,
+          currentMeter: meter,
+          agentType: levelContext?.agent.type,
+          agent: levelContext?.agent,
+          levelRoom: levelContext?.level.room,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string }
+        throw new Error(data.error ?? "Scoring failed")
+      }
+
+      const result = (await response.json()) as PronunciationScore
+      setScore(result)
+      setTargetPhrase(result.transcript)
+      setLastSpeaker(result.speaker)
+      setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
+
+      if (isRoleplayMode) {
+        const nextMeter = resolveMeterUpdate(meter, result)
+        setMeter(nextMeter)
+        const won = levelContext
+          ? checkLevelWin({ ...result, meter: nextMeter })
+          : result.goal_achieved || nextMeter >= 100
+        setHasWon(won)
+        setHistory((prev) => [
+          ...prev,
+          { role: "user", text: result.transcript },
+          { role: "character", text: result.reply.text },
+        ])
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "character",
+          result.speaker
+        )
+      } else if (isSpiritualMode) {
+        const nextTurnCount = userTurnCount + 1
+        setUserTurnCount(nextTurnCount)
+        setHistory((prev) => [
+          ...prev,
+          { role: "user", text: result.transcript },
+          { role: "character", text: result.reply.text },
+        ])
+        const won =
+          levelContext &&
+          levelContext.passCriteria.type === "complete" &&
+          nextTurnCount >= levelContext.passCriteria.minTurns
+        setHasWon(Boolean(won))
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "coach",
+          result.speaker
+        )
+      } else if (isLanguageMode) {
+        const won = levelContext ? checkLevelWin(result) : false
+        setHasWon(won)
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "coach",
+          result.speaker
+        )
+      } else {
+        speakCharacterLine(
+          replySpeechText(result.reply),
+          "coach",
+          result.speaker
+        )
+      }
+    } catch (err) {
+      setRequestError(
+        err instanceof Error ? err.message : "Something went wrong"
+      )
+    } finally {
+      setIsScoring(false)
+    }
+  }
+
   async function handleMicPress() {
     if (isBusy || hasWon) return
 
     if (isRecording) {
-      setRequestError(null)
-      setIsScoring(true)
-
       const audio = await stopRecording()
-      if (!audio) {
-        setIsScoring(false)
-        setRequestError("No audio captured. Try again.")
-        return
-      }
-
-      try {
-        const response = await authenticatedFetch("/api/score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            audioBase64: audio.base64,
-            audioFormat: audio.format,
-            phrase: targetPhrase ?? undefined,
-            languageId,
-            regionId,
-            scenarioId: scenario.id,
-            customScenario: isCustomScenarioId(scenario.id)
-              ? scenario
-              : undefined,
-            history,
-            characterGender,
-            currentMeter: meter,
-            agentType: levelContext?.agent.type,
-            agent: levelContext?.agent,
-            levelRoom: levelContext?.level.room,
-          }),
-        })
-
-        if (!response.ok) {
-          const data = (await response.json()) as { error?: string }
-          throw new Error(data.error ?? "Scoring failed")
-        }
-
-        const result = (await response.json()) as PronunciationScore
-        setScore(result)
-        setTargetPhrase(result.transcript)
-        setLastSpeaker(result.speaker)
-        setSelectedWord(
-          result.words.find((w) => w.score < 80) ?? result.words[0]
-        )
-
-        if (isRoleplayMode) {
-          const nextMeter = resolveMeterUpdate(meter, result)
-          setMeter(nextMeter)
-          const won = levelContext
-            ? checkLevelWin({ ...result, meter: nextMeter })
-            : result.goal_achieved || nextMeter >= 100
-          setHasWon(won)
-          setHistory((prev) => [
-            ...prev,
-            { role: "user", text: result.transcript },
-            { role: "character", text: result.reply.text },
-          ])
-          speakCharacterLine(replySpeechText(result.reply), "character", result.speaker)
-        } else if (isSpiritualMode) {
-          const nextTurnCount = userTurnCount + 1
-          setUserTurnCount(nextTurnCount)
-          setHistory((prev) => [
-            ...prev,
-            { role: "user", text: result.transcript },
-            { role: "character", text: result.reply.text },
-          ])
-          const won =
-            levelContext &&
-            levelContext.passCriteria.type === "complete" &&
-            nextTurnCount >= levelContext.passCriteria.minTurns
-          setHasWon(Boolean(won))
-          speakCharacterLine(replySpeechText(result.reply), "coach", result.speaker)
-        } else if (isLanguageMode) {
-          const won = levelContext ? checkLevelWin(result) : false
-          setHasWon(won)
-          speakCharacterLine(replySpeechText(result.reply), "coach", result.speaker)
-        } else {
-          speakCharacterLine(
-            replySpeechText(result.reply),
-            "coach",
-            result.speaker
-          )
-        }
-      } catch (err) {
-        setRequestError(
-          err instanceof Error ? err.message : "Something went wrong"
-        )
-      } finally {
-        setIsScoring(false)
-      }
+      await handleRecordedAudio(audio)
       return
     }
 
@@ -718,6 +746,11 @@ export function PracticeSession({
               <p className="text-[11px] text-muted-foreground">
                 {isScoring ? "Analyzing…" : isRecording ? "Tap to stop" : "Tap to speak"}
               </p>
+              {isRecording && (
+                <p className="text-[10px] tabular-nums text-muted-foreground/70">
+                  {formatRecordingDuration(recordingDurationMs)}
+                </p>
+              )}
             </div>
           )}
 
