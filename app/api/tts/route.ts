@@ -28,6 +28,10 @@ function truncateForLog(value: string, maxLength = 240) {
   return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function readResponseBody(response: Response) {
   const body = await response.text()
   try {
@@ -141,14 +145,19 @@ export async function POST(request: Request) {
     }
 
     const attempts = [
-      { label: "primary", payload: primaryPayload },
-      { label: "primary-retry", payload: primaryPayload },
-      { label: "plain-transcript-fallback", payload: fallbackPayload },
+      { label: "primary", payload: primaryPayload, delayMs: 0 },
+      { label: "primary-retry", payload: primaryPayload, delayMs: 350 },
+      { label: "plain-transcript-fallback", payload: fallbackPayload, delayMs: 350 },
     ]
 
     let response: Response | null = null
+    let lastError: unknown = null
 
-    for (const attempt of attempts) {
+    for (const [index, attempt] of attempts.entries()) {
+      if (attempt.delayMs > 0) {
+        await sleep(attempt.delayMs)
+      }
+
       response = await fetch(OPENROUTER_SPEECH_URL, {
         method: "POST",
         headers,
@@ -167,13 +176,15 @@ export async function POST(request: Request) {
         break
       }
 
-      const parsedError = await readResponseBody(response)
+      lastError = await readResponseBody(response)
+      const isFinalAttempt = index === attempts.length - 1
+      const log = isFinalAttempt ? console.error : console.warn
 
-      console.error("OpenRouter TTS error details:", {
+      log("OpenRouter TTS error details:", {
         attempt: attempt.label,
         status: response.status,
         statusText: response.statusText,
-        body: parsedError,
+        body: lastError,
         headers: {
           "content-type": response.headers.get("content-type"),
           "x-request-id": response.headers.get("x-request-id"),
