@@ -1,0 +1,23 @@
+components/practice-session.tsx
+  s_2129c23849a9b9::t_a88b3fa5517b51 4,192-199,201-238,240-255
+  s_2129c23849a9b9::t_fcb67c065a7d21 200
+  s_2129c23849a9b9::t_89ffce83e68f72 239
+  s_2129c23849a9b9::t_8a5e9f176f5b7a 256-258
+  s_2129c23849a9b9::t_f46747e7236256 259-260,287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0cf2294a1afd9ce47cd7c3adfdfa9d6e2e6bb7aa",
+  "prompts": {},
+  "sessions": {
+    "s_2129c23849a9b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2e25-9da4-7d81-93fb-77705014ce66",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
