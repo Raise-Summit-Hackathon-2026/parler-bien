@@ -1,5 +1,9 @@
 import type { Character } from "@/lib/character"
 import type { LanguageId } from "@/lib/languages"
+import {
+  LIVE_AVATAR_CATALOG_IDS,
+  validateGeneratedLiveAvatarId,
+} from "@/lib/liveavatar"
 
 export const generatedCharacterJsonSchema = {
   type: "object",
@@ -67,6 +71,12 @@ export const generatedCharacterJsonSchema = {
       description:
         "Cinematic scene illustration prompt for the scenario setting. End with: cinematic illustration, no text, no logos",
     },
+    liveAvatarId: {
+      type: "string",
+      enum: LIVE_AVATAR_CATALOG_IDS,
+      description:
+        "Pick the LiveAvatar id that best matches the character persona (gender, profession, vibe).",
+    },
   },
   required: [
     "title",
@@ -79,6 +89,7 @@ export const generatedCharacterJsonSchema = {
     "openingLine",
     "starters",
     "imagePrompt",
+    "liveAvatarId",
   ],
   additionalProperties: false,
 } as const
@@ -99,6 +110,7 @@ export type GeneratedCharacterPayload = {
   openingLine: { text: string; hint: string }
   starters: Array<{ text: string; hint: string }>
   imagePrompt: string
+  liveAvatarId: string
 }
 
 const characterObjectSchema = {
@@ -157,7 +169,8 @@ export function validateGeneratedCharacterPayload(
     typeof payload.openingLine.hint === "string" &&
     Array.isArray(payload.starters) &&
     payload.starters.length >= 3 &&
-    typeof payload.imagePrompt === "string"
+    typeof payload.imagePrompt === "string" &&
+    typeof payload.liveAvatarId === "string"
   )
 }
 
@@ -171,6 +184,10 @@ export function generatedPayloadToCharacter(
     tagline: payload.tagline,
     category: "everyday",
     avatarPrompt: payload.imagePrompt,
+    liveAvatarId: validateGeneratedLiveAvatarId(
+      payload.liveAvatarId,
+      payload.voice.gender,
+    ),
     voice: payload.voice,
     persona: payload.persona,
     primaryLanguageId: opts.languageId,
