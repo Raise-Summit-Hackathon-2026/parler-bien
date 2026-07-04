@@ -46,6 +46,20 @@ export function getSupabaseServerClient() {
   })
 }
 
+export function getSupabaseClientWithToken(accessToken: string) {
+  return createSupabaseClient(getSupabaseUrl(), getSupabaseKey(), {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  })
+}
+
 export async function getSupabaseAccessToken() {
   const {
     data: { session },

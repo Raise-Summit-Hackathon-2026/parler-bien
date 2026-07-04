@@ -6,6 +6,7 @@ import { useRef, useState } from "react"
 import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
 import { LiveAvatarPicker } from "@/components/live-avatar-picker"
 import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
 import { saveCharacter } from "@/lib/characters"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import { authenticatedFetch } from "@/lib/supabase"
@@ -18,7 +19,8 @@ type CustomScenarioBuilderProps = {
   languageId: LanguageId
   regionId: RegionId
   workspaceId?: string
-  onCreated: (character: CharacterRow) => void
+  workspaceContext?: { name: string; description?: string | null }
+  onCreated: (characters: CharacterRow[]) => void
   onCancel: () => void
 }
 
@@ -56,6 +58,7 @@ export function CustomScenarioBuilder({
   languageId,
   regionId,
   workspaceId,
+  workspaceContext,
   onCreated,
   onCancel,
 }: CustomScenarioBuilderProps) {
@@ -65,6 +68,7 @@ export function CustomScenarioBuilder({
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState("")
   const [liveAvatarId, setLiveAvatarId] = useState("")
+  const [trackCount, setTrackCount] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -113,6 +117,8 @@ export function CustomScenarioBuilder({
           fileBase64,
           fileName,
           sourceLabel,
+          workspaceId,
+          trackCount,
         }),
       })
 
@@ -121,13 +127,27 @@ export function CustomScenarioBuilder({
         throw new Error(data.error ?? "Failed to generate scenario")
       }
 
-      const data = (await response.json()) as { scenario: import("@/lib/scenarios").Scenario }
-      const scenario = {
-        ...data.scenario,
-        ...(liveAvatarId ? { liveAvatarId } : {}),
+      const data = (await response.json()) as {
+        scenario?: import("@/lib/scenarios").Scenario
+        scenarios?: import("@/lib/scenarios").Scenario[]
       }
-      const character = await saveCharacter(scenario, workspaceId)
-      onCreated(character)
+
+      const scenarios =
+        data.scenarios ?? (data.scenario ? [data.scenario] : [])
+
+      if (scenarios.length === 0) {
+        throw new Error("No scenarios were generated")
+      }
+
+      const characters = await Promise.all(
+        scenarios.map((scenario) =>
+          saveCharacter(
+            liveAvatarId ? { ...scenario, liveAvatarId } : scenario,
+            workspaceId,
+          ),
+        ),
+      )
+      onCreated(characters)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
@@ -155,7 +175,9 @@ export function CustomScenarioBuilder({
               Create your own practice
             </h2>
             <p className="text-sm text-muted-foreground">
-              From a prompt, course notes, or PDF upload.
+              {workspaceContext
+                ? `For workspace “${workspaceContext.name}” — from a prompt, course notes, or PDF upload.`
+                : "From a prompt, course notes, or PDF upload."}
             </p>
           </div>
           <Button
@@ -267,6 +289,33 @@ export function CustomScenarioBuilder({
             />
           </div>
 
+          <div className="space-y-3 rounded-2xl border bg-muted/20 px-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="track-count" className="text-sm font-medium">
+                Tracks to generate
+              </label>
+              <span className="text-sm font-semibold tabular-nums">
+                {trackCount} {trackCount === 1 ? "track" : "tracks"}
+              </span>
+            </div>
+            <Slider
+              id="track-count"
+              min={1}
+              max={10}
+              step={1}
+              value={[trackCount]}
+              onValueChange={(value) => {
+                const next = Array.isArray(value) ? value[0] : value
+                setTrackCount(next ?? 1)
+              }}
+              disabled={isGenerating}
+            />
+            <p className="text-xs text-muted-foreground">
+              Each track becomes its own practice scenario
+              {workspaceContext ? " in this workspace" : ""}.
+            </p>
+          </div>
+
           <ContentSafetyAttribution />
 
           {error && (
@@ -298,7 +347,7 @@ export function CustomScenarioBuilder({
             ) : (
               <>
                 <Sparkles />
-                Generate scenario
+                Generate {trackCount === 1 ? "track" : `${trackCount} tracks`}
               </>
             )}
           </Button>

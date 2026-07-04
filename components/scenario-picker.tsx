@@ -43,8 +43,8 @@ export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
       characters={characters}
       completedIds={completed}
       onSelect={onSelect}
-      onCharacterCreated={(character) =>
-        setCharacters((current) => [character, ...current])
+      onCharacterCreated={(characters) =>
+        setCharacters((current) => [...characters, ...current])
       }
       onCharacterDeleted={(characterId) => void handleDelete(characterId)}
     />

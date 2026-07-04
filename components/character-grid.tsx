@@ -27,8 +27,9 @@ type CharacterGridProps = {
   completedIds?: ScenarioId[]
   showCreateCard?: boolean
   workspaceId?: string
+  workspaceContext?: { name: string; description?: string | null }
   onSelect: (selection: CharacterSelection) => void
-  onCharacterCreated?: (character: CharacterRow) => void
+  onCharacterCreated?: (characters: CharacterRow[]) => void
   onCharacterDeleted?: (characterId: string) => void
 }
 
@@ -112,6 +113,7 @@ export function CharacterGrid({
   completedIds = [],
   showCreateCard = true,
   workspaceId,
+  workspaceContext,
   onSelect,
   onCharacterCreated,
   onCharacterDeleted,
@@ -171,13 +173,17 @@ export function CharacterGrid({
           languageId={languageId}
           regionId={regionId}
           workspaceId={workspaceId}
-          onCreated={(character) => {
+          workspaceContext={workspaceContext}
+          onCreated={(characters) => {
             setShowBuilder(false)
-            onCharacterCreated?.(character)
-            onSelect({
-              scenario: character.scenario,
-              characterId: character.id,
-            })
+            onCharacterCreated?.(characters)
+            const first = characters[0]
+            if (characters.length === 1 && first) {
+              onSelect({
+                scenario: first.scenario,
+                characterId: first.id,
+              })
+            }
           }}
           onCancel={() => setShowBuilder(false)}
         />
