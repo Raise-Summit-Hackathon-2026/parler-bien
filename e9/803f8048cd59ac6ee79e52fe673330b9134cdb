@@ -1,0 +1,32 @@
+.vscode/local-reviews/registry.json
+  s_254683c36dd516::t_a5d37f9f98278a 1-14
+"design-harness/OldSite/Impots.gouv.fr - Consultation de l'espace Professionnels.html"
+  s_254683c36dd516::t_93cbd9dfc921b4 1-380
+"design-harness/OldSite/Impots.gouv.fr - Consultation de l'espace Professionnels_files/fonctions.js"
+  s_254683c36dd516::t_67a134ff1682e5 1-274
+"design-harness/OldSite/Impots.gouv.fr - Consultation de l'espace Professionnels_files/styles.css"
+  s_254683c36dd516::t_717c83386ab21d 1-1594
+design-harness/initial-plan/desing-consistency.md
+  s_254683c36dd516::t_1c5a7caa7490dd 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e9803f8048cd59ac6ee79e52fe673330b9134cdb",
+  "prompts": {},
+  "humans": {
+    "h_813cbbe43c4b46": {
+      "author": "sno <serrnovik@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_254683c36dd516": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f280a-4eb8-7411-a79c-76d298034610",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
