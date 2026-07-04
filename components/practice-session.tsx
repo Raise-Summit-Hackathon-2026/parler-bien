@@ -611,7 +611,7 @@ export function PracticeSession({
         <ScenarioScene
           scenarioId={isBuiltInScenarioId(scenario.id) ? scenario.id : undefined}
           imagePrompt={isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt}
-          className="h-20 w-full shrink-0 rounded-none"
+          className="h-44 w-full shrink-0 rounded-none"
           overlay
         />
 
