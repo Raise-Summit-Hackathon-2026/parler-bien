@@ -1,12 +1,19 @@
 import {
   DEFAULT_LIVE_AVATAR_ID,
   LIVE_AVATAR_MAX_SESSION_SECONDS,
+  LIVE_AVATAR_POOL,
   toLiveAvatarLanguage,
   type LiveAvatarSessionRequest,
 } from "@/lib/liveavatar"
 import type { LanguageId } from "@/lib/languages"
 
 const LIVEAVATAR_API_URL = "https://api.liveavatar.com/v1/sessions/token"
+
+const ALLOWED_LIVE_AVATAR_IDS = new Set<string>([
+  ...LIVE_AVATAR_POOL.female,
+  ...LIVE_AVATAR_POOL.male,
+  DEFAULT_LIVE_AVATAR_ID,
+])
 
 export function getLiveAvatarApiKey() {
   const key = process.env.LIVEAVATAR_API_KEY
@@ -21,7 +28,10 @@ export function isLiveAvatarSandbox() {
 }
 
 export function resolveSessionAvatarId(body: LiveAvatarSessionRequest): string {
-  return body.avatarId ?? DEFAULT_LIVE_AVATAR_ID
+  if (body.avatarId && ALLOWED_LIVE_AVATAR_IDS.has(body.avatarId)) {
+    return body.avatarId
+  }
+  return DEFAULT_LIVE_AVATAR_ID
 }
 
 export async function createLiveAvatarSessionToken(options: {
