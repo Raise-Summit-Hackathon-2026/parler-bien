@@ -14,6 +14,7 @@ import {
 } from "@/components/language-picker"
 import { PracticeSession } from "@/components/practice-session"
 import { TrackCatalogue } from "@/components/track-catalogue"
+import { WorkspaceDashboard } from "@/components/workspace-dashboard"
 import { getAgent } from "@/lib/agents"
 import type { CompanyHub } from "@/lib/companies"
 import { getCompanyHub } from "@/lib/companies"
@@ -37,6 +38,7 @@ type AppView =
   | { kind: "gesture"; track: LearningTrack; level: TrackLevel }
   | { kind: "freeplay" }
   | { kind: "freeplay-session"; scenario: Scenario }
+  | { kind: "workspaces" }
 
 function scenarioLanguageForTrack(
   track: LearningTrack,
@@ -200,6 +202,7 @@ export default function Page() {
             onSelectTrack={(track) => setView({ kind: "preview", track })}
             onSelectCompany={(hub) => setView({ kind: "company", hub })}
             onFreePlay={() => setView({ kind: "freeplay" })}
+            onWorkspaces={() => setView({ kind: "workspaces" })}
           />
           <AgentPreviewSheet
             track={view.track}
@@ -231,6 +234,10 @@ export default function Page() {
       )
     }
 
+    if (view.kind === "workspaces") {
+      return <WorkspaceDashboard onBack={() => setView({ kind: "catalogue" })} />
+    }
+
     return (
       <TrackCatalogue
         key={pathKey}
@@ -241,6 +248,7 @@ export default function Page() {
         onSelectTrack={(track) => setView({ kind: "preview", track })}
         onSelectCompany={(hub) => setView({ kind: "company", hub })}
         onFreePlay={() => setView({ kind: "freeplay" })}
+        onWorkspaces={() => setView({ kind: "workspaces" })}
       />
     )
   }
