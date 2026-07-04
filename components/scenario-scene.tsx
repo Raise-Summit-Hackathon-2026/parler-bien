@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react"
 
 import type { BuiltInScenarioId } from "@/lib/scenarios"
+import { authenticatedFetch } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+
+const imageUrlCache = new Map<string, string>()
+const imageRequestCache = new Map<string, Promise<string>>()
 
 type UseScenarioImageOptions = {
   scenarioId?: BuiltInScenarioId
@@ -20,34 +24,65 @@ export function useScenarioImage({
   scenarioId,
   imagePrompt,
 }: UseScenarioImageOptions): UseScenarioImageResult {
-  const hasSource = Boolean(scenarioId || imagePrompt)
-  const [url, setUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(hasSource)
+  const prompt = imagePrompt?.trim()
+  const cacheKey = scenarioId
+    ? `scenario:${scenarioId}`
+    : prompt
+      ? `prompt:${prompt}`
+      : null
+  const cachedUrl = cacheKey ? imageUrlCache.get(cacheKey) : undefined
+
+  const [url, setUrl] = useState<string | null>(cachedUrl ?? null)
+  const [isLoading, setIsLoading] = useState(Boolean(cacheKey && !cachedUrl))
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!hasSource) return
+    if (!cacheKey) return
+    const key = cacheKey
 
     let cancelled = false
 
     async function load() {
+      const cached = imageUrlCache.get(key)
+      if (cached) {
+        if (!cancelled) {
+          setUrl(cached)
+          setIsLoading(false)
+          setError(false)
+        }
+        return
+      }
+
       setIsLoading(true)
       setError(false)
 
       try {
-        const response = await fetch("/api/image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            imagePrompt ? { prompt: imagePrompt } : { scenarioId },
-          ),
-        })
+        let request = imageRequestCache.get(key)
+        if (!request) {
+          request = authenticatedFetch("/api/image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(prompt ? { prompt } : { scenarioId }),
+          })
+            .then(async (response) => {
+              if (!response.ok) throw new Error("Image fetch failed")
 
-        if (!response.ok) throw new Error("Image fetch failed")
+              const data = (await response.json()) as { url?: string }
+              if (!data.url) throw new Error("Image response missing URL")
 
-        const data = (await response.json()) as { url?: string }
-        if (!cancelled && data.url) {
-          setUrl(data.url)
+              imageUrlCache.set(key, data.url)
+              return data.url
+            })
+            .finally(() => {
+              imageRequestCache.delete(key)
+            })
+
+          imageRequestCache.set(key, request)
+        }
+
+        const nextUrl = await request
+        if (!cancelled) {
+          setUrl(nextUrl)
         }
       } catch {
         if (!cancelled) setError(true)
@@ -61,8 +96,9 @@ export function useScenarioImage({
     return () => {
       cancelled = true
     }
-  }, [scenarioId, imagePrompt, hasSource])
+  }, [scenarioId, prompt, cacheKey])
 
+  if (!cacheKey) return { url: null, isLoading: false, error: false }
   return { url, isLoading, error }
 }
 
@@ -71,6 +107,8 @@ type ScenarioSceneProps = {
   imagePrompt?: string
   className?: string
   overlay?: boolean
+  /** cover fills and crops; contain shows the full image within the box */
+  fit?: "cover" | "contain"
 }
 
 export function ScenarioScene({
@@ -78,13 +116,18 @@ export function ScenarioScene({
   imagePrompt,
   className,
   overlay = true,
+  fit = "cover",
 }: ScenarioSceneProps) {
-  const { url, isLoading, error } = useScenarioImage({ scenarioId, imagePrompt })
+  const { url, isLoading, error } = useScenarioImage({
+    scenarioId,
+    imagePrompt,
+  })
 
   return (
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl bg-muted",
+        fit === "contain" && "flex items-center justify-center",
         className,
       )}
     >
@@ -96,7 +139,11 @@ export function ScenarioScene({
         <img
           src={url}
           alt=""
-          className="size-full object-cover"
+          className={cn(
+            fit === "contain"
+              ? "max-h-full max-w-full object-contain"
+              : "size-full object-cover",
+          )}
         />
       )}
       {error && (

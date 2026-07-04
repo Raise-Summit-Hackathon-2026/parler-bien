@@ -1,10 +1,15 @@
 "use client"
 
+<<<<<<< HEAD
 import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
+=======
+import { Plus, Trash2, Check, ArrowLeft } from "lucide-react"
+>>>>>>> origin/main
 import { useState } from "react"
 
 import { CustomScenarioBuilder } from "@/components/custom-scenario-builder"
+import { useLanguage } from "@/components/language-provider"
 import { ScenarioScene } from "@/components/scenario-scene"
 import {
   ComingSoonCard,
@@ -13,14 +18,16 @@ import {
   UseCaseSection,
 } from "@/components/use-case-section"
 import { Button } from "@/components/ui/button"
-import { LanguagePicker } from "@/components/language-picker"
 import {
   deleteCustomScenario,
   getCustomScenarios,
 } from "@/lib/custom-scenarios"
 import { getCompletedScenarios } from "@/lib/completions"
+<<<<<<< HEAD
 import { getRegion, type LanguageId, type RegionId } from "@/lib/languages"
 import { isLinguaTrainerId } from "@/lib/lingua-trainers"
+=======
+>>>>>>> origin/main
 import {
   isBuiltInScenarioId,
   isCustomScenarioId,
@@ -37,10 +44,6 @@ import {
 import { cn } from "@/lib/utils"
 
 type ScenarioPickerProps = {
-  languageId: LanguageId
-  regionId: RegionId
-  onLanguageChange: (languageId: LanguageId) => void
-  onRegionChange: (regionId: RegionId) => void
   onSelect: (scenario: Scenario) => void
 }
 
@@ -116,6 +119,7 @@ function ScenarioCard({
   )
 }
 
+<<<<<<< HEAD
 function renderScenarioCards(
   scenarios: Scenario[],
   completed: ScenarioId[],
@@ -144,12 +148,17 @@ export function ScenarioPicker({
   onRegionChange,
   onSelect,
 }: ScenarioPickerProps) {
+=======
+export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
+  const { languageId, regionId } = useLanguage()
+>>>>>>> origin/main
   const [completed] = useState<ScenarioId[]>(() => getCompletedScenarios())
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>(() =>
     getCustomScenarios(),
   )
   const [showBuilder, setShowBuilder] = useState(false)
 
+<<<<<<< HEAD
   const region = getRegion(languageId, regionId)
 
   const languageUseCase = USE_CASES.find((u) => u.id === "language")!
@@ -160,6 +169,8 @@ export function ScenarioPicker({
   const agentsUseCase = USE_CASES.find((u) => u.id === "agents")!
   const cloneUseCase = USE_CASES.find((u) => u.id === "voice_clone")!
 
+=======
+>>>>>>> origin/main
   function handleCreated(scenario: Scenario) {
     setCustomScenarios(getCustomScenarios())
     setShowBuilder(false)
@@ -181,6 +192,7 @@ export function ScenarioPicker({
 
   return (
     <>
+<<<<<<< HEAD
       <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-8 px-6 py-12">
         <div className="space-y-4 text-center">
           <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
@@ -195,12 +207,19 @@ export function ScenarioPicker({
             regionId={regionId}
             onLanguageChange={onLanguageChange}
             onRegionChange={onRegionChange}
+=======
+      <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {SCENARIOS.map((scenario) => (
+          <ScenarioCard
+            key={scenario.id}
+            scenario={scenario}
+            completed={completed.includes(scenario.id)}
+            onSelect={() => onSelect(scenario)}
+>>>>>>> origin/main
           />
-          <p className="text-xs text-muted-foreground">
-            {region.accent} · {region.city}
-          </p>
-        </div>
+        ))}
 
+<<<<<<< HEAD
         <nav className="flex flex-wrap justify-center gap-2">
           {USE_CASES.map((useCase) => (
             <a
@@ -297,6 +316,36 @@ export function ScenarioPicker({
             <ComingSoonCard useCase={cloneUseCase} />
           </UseCaseSection>
         </div>
+=======
+        {customScenarios.map((scenario) => (
+          <ScenarioCard
+            key={scenario.id}
+            scenario={scenario}
+            completed={completed.includes(scenario.id)}
+            onSelect={() => onSelect(scenario)}
+            onDelete={() => handleDelete(scenario.id)}
+          />
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setShowBuilder(true)}
+          className={cn(
+            "flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed bg-muted/20 p-6 text-center transition-all",
+            "hover:border-foreground/30 hover:bg-muted/40",
+          )}
+        >
+          <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Plus className="size-6" />
+          </span>
+          <div>
+            <p className="font-semibold">Create your own</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              From a prompt, PDF, or course upload
+            </p>
+          </div>
+        </button>
+>>>>>>> origin/main
       </div>
 
       {showBuilder && (
@@ -311,11 +360,21 @@ export function ScenarioPicker({
   )
 }
 
-export function ScenarioBackButton({ onBack }: { onBack: () => void }) {
+export function ScenarioBackButton({
+  onBack,
+  label = "Scenarios",
+}: {
+  onBack: () => void
+  label?: string
+}) {
   return (
     <Button variant="ghost" size="sm" onClick={onBack} className="self-start">
       <ArrowLeft />
+<<<<<<< HEAD
       Use cases
+=======
+      {label}
+>>>>>>> origin/main
     </Button>
   )
 }

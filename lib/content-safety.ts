@@ -65,55 +65,60 @@ Assistant replied:
 ${trimmedAssistant || "(empty)"}`
 
   try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-        "X-Title": "Parler Bien",
-      },
-      body: JSON.stringify({
-        model: CONTENT_SAFETY_MODEL,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a content safety moderator for a language-learning app. Classify the user message and assistant response.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.01,
-        max_tokens: 256,
-      }),
-    })
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch(OPENROUTER_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+          "X-Title": "Parler Bien",
+        },
+        body: JSON.stringify({
+          model: CONTENT_SAFETY_MODEL,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a content safety moderator for a language-learning app. Classify the user message and assistant response.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.01,
+          max_tokens: 256,
+        }),
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Content safety error:", errorText)
-      return { status: "error", message: errorText }
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Content safety error:", errorText)
+        return { status: "error", message: errorText }
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>
+      }
+
+      const content = data.choices?.[0]?.message?.content?.trim()
+      if (!content) {
+        if (attempt === 0) continue
+        return { status: "error", message: "Empty moderation response" }
+      }
+
+      const { userSafe, responseSafe } = parseModerationResponse(content)
+      if (userSafe && responseSafe) {
+        return { status: "safe" }
+      }
+
+      return {
+        status: "blocked",
+        userSafe,
+        responseSafe,
+        reason: content,
+      }
     }
 
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>
-    }
-
-    const content = data.choices?.[0]?.message?.content
-    if (!content) {
-      return { status: "error", message: "Empty moderation response" }
-    }
-
-    const { userSafe, responseSafe } = parseModerationResponse(content)
-    if (userSafe && responseSafe) {
-      return { status: "safe" }
-    }
-
-    return {
-      status: "blocked",
-      userSafe,
-      responseSafe,
-      reason: content,
-    }
+    return { status: "error", message: "Empty moderation response" }
   } catch (error) {
     console.error("Content safety request failed:", error)
     return {

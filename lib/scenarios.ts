@@ -30,7 +30,12 @@ export type Scenario = {
   meterLabel: string | null
   winMessage: string | null
   persona: string
-  voice: { ageRange: string; tone: string }
+  voice: {
+    ageRange: string
+    tone: string
+    gender?: CharacterGenderMode
+    voices?: CharacterVoiceMap
+  }
   content: Partial<Record<LanguageId, ScenarioContent>>
   imagePrompt: string
   /** Set on AI-generated custom scenarios */
@@ -40,13 +45,35 @@ export type Scenario = {
 }
 
 export type CharacterGender = "male" | "female"
+export type CharacterGenderMode = CharacterGender | "random" | "opposite-speaker"
+export type CharacterVoiceMap = Partial<Record<CharacterGender, string>> & {
+  default?: string
+}
 
 export function resolveCharacterGender(
+  scenario: Pick<Scenario, "id" | "voice">,
   speakerGender?: SpeakerProfile["gender"],
+  randomGender: CharacterGender = "female",
 ): CharacterGender {
+  const mode =
+    scenario.voice.gender ?? (scenario.id === "teacher" ? "opposite-speaker" : "random")
+
+  if (mode === "male" || mode === "female") return mode
+  if (mode === "random") return randomGender
   if (speakerGender === "male") return "female"
   if (speakerGender === "female") return "male"
-  return "female"
+  return randomGender
+}
+
+export function randomCharacterGender(): CharacterGender {
+  return Math.random() < 0.5 ? "female" : "male"
+}
+
+export function resolveCharacterVoice(
+  scenario: Pick<Scenario, "voice">,
+  gender: CharacterGender,
+): string | undefined {
+  return scenario.voice.voices?.[gender] ?? scenario.voice.voices?.default
 }
 
 export function getScenario(id: BuiltInScenarioId): Scenario {
@@ -112,7 +139,7 @@ export function formatPersona(
 
   return `${persona}
 
-LANGUAGE AND SETTING: Conduct the entire conversation in ${languageName} with a natural ${region.accent} accent and vocabulary. The scene is set in ${region.city} — adapt place names, currency, and cultural references naturally to that city. Your reply.text must be in ${languageName}; reply.hint is a short English gloss (or a brief usage cue if the conversation is already in English).`
+LANGUAGE AND SETTING: Conduct the entire conversation in ${languageName} with a natural ${region.accent} accent and vocabulary. The scene is set in ${region.city} — adapt place names, currency, and cultural references naturally to that city. Your reply.text must be in ${languageName}; reply.tts_text must contain the same spoken words as reply.text, with optional audio-only bracketed delivery cues; reply.hint is a short English gloss (or a brief usage cue if the conversation is already in English).`
 }
 
 const EMPTY_CONTENT: ScenarioContent = { openingLine: null, starters: [] }
@@ -128,6 +155,8 @@ export const SCENARIOS: Scenario[] = [
     persona: "",
     voice: {
       ageRange: "30-40",
+      gender: "opposite-speaker",
+      voices: { female: "Sulafat", male: "Iapetus" },
       tone:
         "Warm, clear, and supportive — like a friendly pronunciation teacher. Professional and encouraging.",
     },
@@ -157,6 +186,8 @@ Meter rules (0-100, absolute progress toward agreeing to sell under 20):
 Always score the user's pronunciation of what they said. Provide 3 next_sentences the user could say to continue haggling.`,
     voice: {
       ageRange: "50-60",
+      gender: "random",
+      voices: { female: "Kore", male: "Charon" },
       tone: "Gruff but warm flea-market vendor. Direct, slightly theatrical, never mean.",
     },
     content: {
@@ -230,6 +261,8 @@ Meter rules (0-100):
 Always score pronunciation. Provide 3 next_sentences the user could say to continue the conversation.`,
     voice: {
       ageRange: "25-35",
+      gender: "random",
+      voices: { female: "Sulafat", male: "Puck" },
       tone: "Reserved but playful local at a café. Natural, slightly teasing, never cruel.",
     },
     content: {
@@ -303,6 +336,8 @@ Meter rules (0-100, progress toward giving up the last croissant):
 Always score the user's pronunciation. Provide 3 next_sentences the user could say to keep charming.`,
     voice: {
       ageRange: "40-50",
+      gender: "random",
+      voices: { female: "Aoede", male: "Algieba" },
       tone: "Proud, busy baker. Brisk but secretly soft-hearted about people who love bread.",
     },
     content: {
@@ -376,6 +411,8 @@ Meter rules (0-100, progress toward offering the hidden table):
 Always score the user's pronunciation. Provide 3 next_sentences the user could say next.`,
     voice: {
       ageRange: "45-55",
+      gender: "random",
+      voices: { female: "Kore", male: "Rasalgethi" },
       tone: "Impeccably dry bistro waiter. Formal, theatrical, a hint of amusement beneath the frost.",
     },
     content: {
@@ -449,6 +486,8 @@ Meter rules (0-100, progress toward being treated as a local):
 Always score the user's pronunciation. Provide 3 next_sentences the user could say next.`,
     voice: {
       ageRange: "40-55",
+      gender: "random",
+      voices: { female: "Laomedeia", male: "Fenrir" },
       tone: "Fast-talking, jovial taxi driver. Streetwise, teasing, full of opinions about traffic.",
     },
     content: {
@@ -522,6 +561,8 @@ Meter rules (0-100, progress toward offering the lease):
 Always score the user's pronunciation. Provide 3 next_sentences the user could say next.`,
     voice: {
       ageRange: "55-65",
+      gender: "random",
+      voices: { female: "Vindemiatrix", male: "Charon" },
       tone: "Courteous, discerning landlord. Measured, slightly formal, quietly warm once convinced.",
     },
     content: {
@@ -595,6 +636,8 @@ Meter rules (0-100, progress toward the private tasting invitation):
 Always score the user's pronunciation. Provide 3 next_sentences the user could say next.`,
     voice: {
       ageRange: "35-45",
+      gender: "random",
+      voices: { female: "Callirrhoe", male: "Algieba" },
       tone: "Warm, evocative sommelier. Speaks about wine like poetry, gently testing your curiosity.",
     },
     content: {

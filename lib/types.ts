@@ -1,5 +1,7 @@
+import type { AgentType, VoiceAgent } from "@/lib/agents"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import type { Scenario, ScenarioId } from "@/lib/scenarios"
+import type { LevelRoom } from "@/lib/workspace-types"
 
 export type WordScore = {
   word: string
@@ -15,6 +17,7 @@ export type SentenceSuggestion = {
 
 export type CharacterReply = {
   text: string
+  tts_text: string
   hint: string
 }
 
@@ -56,4 +59,18 @@ export type ScoreRequest = {
   history?: ConversationTurn[]
   characterGender?: "male" | "female"
   currentMeter?: number
+  agentType?: AgentType
+  agent?: VoiceAgent
+  levelRoom?: LevelRoom
 }
+
+export type { LevelContext } from "@/lib/level-scenario"
+export type { AgentType, VoiceAgent, AgentCapability, AgentSkill } from "@/lib/agents"
+export type {
+  PassCriteria,
+  LevelRoom,
+  LevelStatus,
+  WorkspaceLevelRow,
+  WorkspaceTrackRow,
+  WorkspacePersonaRow,
+} from "@/lib/workspace-types"
