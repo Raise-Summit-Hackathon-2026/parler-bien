@@ -57,7 +57,7 @@ export function CharacterSession({ character, onBack, backLabel }: CharacterSess
       levelIndex={levelIndex}
       onBack={onBack}
       backLabel={backLabel}
-      onContinue={level.goal || !isLast ? advance : undefined}
+      onContinue={character.levels.length > 1 ? advance : undefined}
       continueLabel={continueLabel}
     />
   )
