@@ -1,7 +1,7 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { Loader2, Mic, Play, RotateCcw, Square, Volume2 } from "lucide-react"
+import { Bot, Loader2, Mic, Play, RotateCcw, Square, Volume2 } from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -209,7 +209,7 @@ function ConversationLog({
                 {isUser ? (
                   <Mic className="size-3" />
                 ) : (
-                  <Play className="size-3 fill-current" />
+                  <Bot className="size-3" />
                 )}
                 {isUser ? "You" : "Role"}
               </div>
