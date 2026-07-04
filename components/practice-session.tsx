@@ -2,7 +2,14 @@
 
 import confetti from "canvas-confetti"
 import { Loader2, Mic, Play, RotateCcw, Square, Volume2 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react"
 
 import { useLanguage } from "@/components/language-provider"
 import { LanguagePicker } from "@/components/language-picker"
@@ -198,7 +205,7 @@ function ConversationLog({
   history: ConversationTurn[]
   onPlayCharacter: (text: string) => void
   disabled: boolean
-  endRef: React.RefObject<HTMLDivElement | null>
+  endRef: RefObject<HTMLDivElement | null>
 }) {
   if (history.length === 0) return null
 
@@ -237,7 +244,7 @@ function ConversationLog({
             >
               <div
                 className={cn(
-                  "mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide",
+                  "mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase",
                   isUser ? "text-primary-foreground/70" : "text-muted-foreground"
                 )}
               >
@@ -254,39 +261,6 @@ function ConversationLog({
         )
       })}
       <div ref={endRef} />
-    </div>
-  )
-}
-
-function ReplyBubble({
-  reply,
-  onHear,
-  disabled,
-}: {
-  reply: CharacterReply
-  onHear: () => void
-  disabled: boolean
-}) {
-  return (
-    <div className="rounded-2xl border bg-primary/5 p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Character
-          </p>
-          <p className="mt-1 font-medium">{reply.text}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{reply.hint}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onHear}
-          disabled={disabled}
-          aria-label="Hear reply"
-        >
-          <Play className="size-4 fill-current" />
-        </Button>
-      </div>
     </div>
   )
 }
@@ -364,6 +338,7 @@ export function PracticeSession({
   } = useSpeaker()
 
   const openingPlayed = useRef(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   const [examples] = useState<SentenceSuggestion[]>(() =>
     isTeacher
@@ -406,6 +381,10 @@ export function PracticeSession({
     () => randomCharacterGenderForScenario(scenario.id),
     [scenario.id]
   )
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" })
+  }, [history.length])
 
   const characterGender: CharacterGender = resolveCharacterGender(
     scenario,
@@ -653,6 +632,10 @@ export function PracticeSession({
     speakCharacterLine(phrase, "phrase")
   }
 
+  function handlePlayCharacterTurn(text: string) {
+    speakCharacterLine(text, isSpiritualMode ? "coach" : "character")
+  }
+
   function handleSelectExample(sentence: SentenceSuggestion) {
     stopSpeaking()
     setTargetPhrase(sentence.text)
@@ -717,6 +700,15 @@ export function PracticeSession({
             <MeterBar meter={meter} label={scenario.meterLabel} goal={scenario.goal} />
           )}
 
+          {(isRoleplayMode || isSpiritualMode) && history.length > 0 && (
+            <ConversationLog
+              history={history}
+              onPlayCharacter={handlePlayCharacterTurn}
+              disabled={isRecording || isScoring || isSpeaking}
+              endRef={chatEndRef}
+            />
+          )}
+
           {hasWon && scenario.winMessage && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
@@ -735,26 +727,6 @@ export function PracticeSession({
             </div>
           )}
 
-          {isRoleplayMode && score?.reply && !hasWon && (
-            <ReplyBubble
-              reply={score.reply}
-              onHear={() =>
-                speakCharacterLine(replySpeechText(score.reply), "character", score.speaker)
-              }
-              disabled={isRecording || isScoring}
-            />
-          )}
-
-          {isSpiritualMode && score?.reply && !hasWon && (
-            <ReplyBubble
-              reply={score.reply}
-              onHear={() =>
-                speakCharacterLine(replySpeechText(score.reply), "coach", score.speaker)
-              }
-              disabled={isRecording || isScoring}
-            />
-          )}
-
           {(isLanguageMode || isTeacher) && displayedPhrase && (
             <div className="flex items-center justify-center gap-2 text-center">
               <p className="truncate text-base font-medium">{displayedPhrase}</p>
@@ -765,7 +737,7 @@ export function PracticeSession({
                 disabled={isRecording || isScoring}
                 aria-label="Hear phrase"
               >
-                <Volume2 className="size-4" />
+                <Play className="size-4 fill-current" />
               </Button>
             </div>
           )}
