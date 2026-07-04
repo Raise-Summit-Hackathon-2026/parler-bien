@@ -1,5 +1,5 @@
 import type { LanguageId } from "@/lib/languages"
-import type { CharacterGender } from "@/lib/scenarios"
+import type { CharacterGender } from "@/lib/character"
 
 /** Documented sandbox-friendly default from LiveAvatar embed docs */
 export const DEFAULT_LIVE_AVATAR_ID = "65f9e3c9-d48b-4118-b73a-4ae2e3cbb8f0"

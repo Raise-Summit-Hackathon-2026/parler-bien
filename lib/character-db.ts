@@ -1,7 +1,8 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import type { Scenario } from "@/lib/scenarios"
+import type { Character } from "@/lib/character"
 import type {
   CharacterRow,
+  WorkspaceMemberWithEmail,
   WorkspaceMemberRow,
   WorkspaceRow,
 } from "@/lib/workspace-types"
@@ -25,7 +26,7 @@ export async function listPersonalCharacters(): Promise<CharacterRow[]> {
 }
 
 export async function listWorkspaceCharacters(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<CharacterRow[]> {
   const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase
@@ -51,7 +52,7 @@ export async function getCharacter(id: string): Promise<CharacterRow | null> {
 }
 
 export async function saveCharacter(
-  scenario: Scenario,
+  character: Character,
   workspaceId?: string,
 ): Promise<CharacterRow> {
   const supabase = getSupabaseBrowserClient()
@@ -65,7 +66,7 @@ export async function saveCharacter(
     .insert({
       created_by: user.id,
       workspace_id: workspaceId ?? null,
-      scenario,
+      scenario: character,
     })
     .select("*")
     .single()
@@ -117,13 +118,50 @@ export async function listMemberWorkspaces(): Promise<
   if (wsError) throw wsError
 
   const roleByWorkspace = new Map(
-    memberships.map((m) => [m.workspace_id, m.role as WorkspaceMemberRow["role"]]),
+    memberships.map((m) => [
+      m.workspace_id,
+      m.role as WorkspaceMemberRow["role"],
+    ])
   )
 
   return ((workspaces ?? []) as WorkspaceRow[]).map((workspace) => ({
     ...workspace,
     role: roleByWorkspace.get(workspace.id) ?? "member",
   }))
+}
+
+export async function listWorkspaceMembers(
+  workspaceId: string
+): Promise<WorkspaceMemberWithEmail[]> {
+  const supabase = getSupabaseBrowserClient()
+  const { data, error } = await supabase.rpc("list_workspace_members", {
+    p_workspace_id: workspaceId,
+  })
+
+  if (error) throw error
+  return ((data ?? []) as WorkspaceMemberWithEmail[]).map((member) => ({
+    ...member,
+    workspace_id: workspaceId,
+  }))
+}
+
+export async function inviteWorkspaceMember(
+  workspaceId: string,
+  email: string
+): Promise<WorkspaceMemberWithEmail> {
+  const supabase = getSupabaseBrowserClient()
+  const { data, error } = await supabase.rpc("invite_workspace_member", {
+    p_workspace_id: workspaceId,
+    p_email: email,
+  })
+
+  if (error) throw error
+  const member = (data?.[0] ?? null) as WorkspaceMemberWithEmail | null
+  if (!member) throw new Error("Failed to invite member")
+  return {
+    ...member,
+    workspace_id: workspaceId,
+  }
 }
 
 export async function createShareLink(workspaceId: string): Promise<string> {
@@ -148,7 +186,7 @@ export async function createShareLink(workspaceId: string): Promise<string> {
 }
 
 export async function getActiveShareLink(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<string | null> {
   const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase
@@ -165,7 +203,7 @@ export async function getActiveShareLink(
 }
 
 export async function getWorkspace(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<WorkspaceRow | null> {
   const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase

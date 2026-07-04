@@ -4,14 +4,13 @@ import { Loader2 } from "lucide-react"
 
 import { ScenarioScene } from "@/components/scenario-scene"
 import type { LiveAvatarStatus } from "@/hooks/use-live-avatar"
-import type { BuiltInScenarioId } from "@/lib/scenarios"
 import { cn } from "@/lib/utils"
 
 type AvatarStageProps = {
   status: LiveAvatarStatus
   attachVideo: (element: HTMLVideoElement | null) => void
   remainingSeconds?: number | null
-  scenarioId?: BuiltInScenarioId
+  scenarioId?: string
   imagePrompt?: string
   className?: string
   overlay?: boolean

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 
-import type { BuiltInScenarioId } from "@/lib/scenarios"
 import { authenticatedFetch } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
@@ -10,7 +9,7 @@ const imageUrlCache = new Map<string, string>()
 const imageRequestCache = new Map<string, Promise<string>>()
 
 type UseScenarioImageOptions = {
-  scenarioId?: BuiltInScenarioId
+  scenarioId?: string
   imagePrompt?: string
 }
 
@@ -103,7 +102,7 @@ export function useScenarioImage({
 }
 
 type ScenarioSceneProps = {
-  scenarioId?: BuiltInScenarioId
+  scenarioId?: string
   imagePrompt?: string
   className?: string
   overlay?: boolean

@@ -1,5 +1,3 @@
-import type { VoiceAgent } from "@/lib/agents"
-
 export const COACHING_RULES = `
 COACHING AND REPLY STYLE (strict):
 - coaching: one short in-character recommendation — physical, vivid, human. No quotation marks. Never write "try to say", "try saying", or "say this".
@@ -8,10 +6,16 @@ COACHING AND REPLY STYLE (strict):
 - next_sentences: exactly 3 lines the user could speak next. hints are situational nudges (e.g. "offer the seatbelt reminder") — never "Try saying" or quoted text.
 `
 
-export function agentCoachingBlock(agent?: VoiceAgent): string {
-  if (!agent) return COACHING_RULES
+export function agentCoachingBlock(agent?: {
+  deliveryStyle?: string
+  coachingStyle?: string
+}): string {
+  const lines = [
+    agent?.deliveryStyle ? `Agent delivery: ${agent.deliveryStyle}` : null,
+    agent?.coachingStyle ? `Feedback voice: ${agent.coachingStyle}` : null,
+  ].filter(Boolean)
+  if (!lines.length) return COACHING_RULES
   return `${COACHING_RULES}
-Agent delivery: ${agent.deliveryStyle}
-Feedback voice: ${agent.coachingStyle}
+${lines.join("\n")}
 `
 }

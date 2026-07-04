@@ -3,103 +3,100 @@
 import * as React from "react"
 
 const STORAGE_KEY = "theme"
+const THEME_QUERY = "(prefers-color-scheme: dark)"
 
 type Theme = "light" | "dark" | "system"
+type ResolvedTheme = "light" | "dark"
 
-type ThemeContextValue = {
-  theme: Theme
-  resolvedTheme: "light" | "dark"
-  setTheme: React.Dispatch<React.SetStateAction<Theme>>
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window === "undefined") {
+    return "light"
+  }
+
+  return window.matchMedia(THEME_QUERY).matches ? "dark" : "light"
 }
 
-const ThemeContext = React.createContext<ThemeContextValue | null>(null)
-
-function getSystemTheme(): "light" | "dark" {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-}
-
-function resolveTheme(theme: Theme): "light" | "dark" {
+function resolveTheme(theme: Theme): ResolvedTheme {
   return theme === "system" ? getSystemTheme() : theme
 }
 
-function applyTheme(resolved: "light" | "dark") {
-  document.documentElement.classList.remove("light", "dark")
-  document.documentElement.classList.add(resolved)
-}
-
 function readStoredTheme(): Theme {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === "light" || stored === "dark" || stored === "system") {
-      return stored
-    }
-  } catch {
-    // storage unavailable
+  if (typeof window === "undefined") {
+    return "system"
   }
+
+  try {
+    const theme = window.localStorage.getItem(STORAGE_KEY)
+
+    if (theme === "light" || theme === "dark" || theme === "system") {
+      return theme
+    }
+  } catch {}
+
   return "system"
 }
 
+function applyTheme(theme: Theme) {
+  const resolvedTheme = resolveTheme(theme)
+  const root = document.documentElement
+
+  root.classList.toggle("dark", resolvedTheme === "dark")
+  root.style.colorScheme = resolvedTheme
+}
+
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = React.useState<Theme>("system")
-  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("light")
-  const hydratedRef = React.useRef(false)
+  const [theme, setThemeState] = React.useState<Theme>(readStoredTheme)
 
-  React.useEffect(() => {
-    const initial = readStoredTheme()
-    const resolved = resolveTheme(initial)
-    setTheme(initial)
-    setResolvedTheme(resolved)
-    applyTheme(resolved)
-    hydratedRef.current = true
+  const setTheme = React.useCallback((nextTheme: Theme) => {
+    setThemeState(nextTheme)
 
-    const media = window.matchMedia("(prefers-color-scheme: dark)")
-    function onSystemChange() {
-      setTheme((current) => {
-        if (current !== "system") return current
-        const next = getSystemTheme()
-        setResolvedTheme(next)
-        applyTheme(next)
-        return current
-      })
-    }
-
-    media.addEventListener("change", onSystemChange)
-    return () => media.removeEventListener("change", onSystemChange)
+    try {
+      window.localStorage.setItem(STORAGE_KEY, nextTheme)
+    } catch {}
   }, [])
 
   React.useEffect(() => {
-    if (!hydratedRef.current) return
+    applyTheme(theme)
+  }, [theme])
 
-    const resolved = resolveTheme(theme)
-    setResolvedTheme(resolved)
-    applyTheme(resolved)
+  React.useEffect(() => {
+    const media = window.matchMedia(THEME_QUERY)
 
-    try {
-      localStorage.setItem(STORAGE_KEY, theme)
-    } catch {
-      // storage unavailable
+    function onChange() {
+      if (theme === "system") {
+        applyTheme("system")
+      }
+    }
+
+    media.addEventListener("change", onChange)
+
+    return () => {
+      media.removeEventListener("change", onChange)
     }
   }, [theme])
 
-  const value = React.useMemo(
-    () => ({ theme, resolvedTheme, setTheme }),
-    [theme, resolvedTheme],
-  )
+  React.useEffect(() => {
+    function onStorage(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY) {
+        return
+      }
+
+      setThemeState(readStoredTheme())
+    }
+
+    window.addEventListener("storage", onStorage)
+
+    return () => {
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
 
   return (
-    <ThemeContext.Provider value={value}>
-      <ThemeHotkey />
+    <>
+      <ThemeHotkey theme={theme} setTheme={setTheme} />
       {children}
-    </ThemeContext.Provider>
+    </>
   )
-}
-
-function useTheme() {
-  const context = React.useContext(ThemeContext)
-  if (!context) {
-    throw new Error("useTheme must be used within ThemeProvider")
-  }
-  return context
 }
 
 function isTypingTarget(target: EventTarget | null) {
@@ -115,9 +112,13 @@ function isTypingTarget(target: EventTarget | null) {
   )
 }
 
-function ThemeHotkey() {
-  const { resolvedTheme, setTheme } = useTheme()
-
+function ThemeHotkey({
+  theme,
+  setTheme,
+}: {
+  theme: Theme
+  setTheme: (theme: Theme) => void
+}) {
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat) {
@@ -136,7 +137,7 @@ function ThemeHotkey() {
         return
       }
 
-      setTheme(resolvedTheme === "dark" ? "light" : "dark")
+      setTheme(resolveTheme(theme) === "dark" ? "light" : "dark")
     }
 
     window.addEventListener("keydown", onKeyDown)
@@ -144,7 +145,7 @@ function ThemeHotkey() {
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [resolvedTheme, setTheme])
+  }, [theme, setTheme])
 
   return null
 }

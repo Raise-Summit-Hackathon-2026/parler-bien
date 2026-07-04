@@ -5,7 +5,7 @@ import Link from "next/link"
 import { type FormEvent, useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { listMemberWorkspaces } from "@/lib/characters"
+import { listMemberWorkspaces } from "@/lib/character-db"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import type { WorkspaceRow } from "@/lib/workspace-types"
 import { cn } from "@/lib/utils"

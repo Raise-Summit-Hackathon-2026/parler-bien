@@ -1,6 +1,5 @@
-import type { AgentType, VoiceAgent } from "@/lib/agents"
 import type { LanguageId, RegionId } from "@/lib/languages"
-import type { Scenario, ScenarioId } from "@/lib/scenarios"
+import type { Scenario, ScenarioId } from "@/lib/character"
 
 export type WordScore = {
   word: string
@@ -33,7 +32,7 @@ export type SpeakerProfile = {
 }
 
 export type { TtsStyle, TtsRequestOptions } from "@/lib/tts"
-export type { Scenario, ScenarioId } from "@/lib/scenarios"
+export type { Scenario, ScenarioId } from "@/lib/character"
 
 export type PronunciationScore = {
   overall_score: number
@@ -58,11 +57,8 @@ export type ScoreRequest = {
   history?: ConversationTurn[]
   characterGender?: "male" | "female"
   currentMeter?: number
-  agentType?: AgentType
-  agent?: VoiceAgent
 }
 
-export type { AgentType, VoiceAgent, AgentCapability, AgentSkill } from "@/lib/agents"
 export type {
   CharacterRow,
   WorkspaceMemberRow,
