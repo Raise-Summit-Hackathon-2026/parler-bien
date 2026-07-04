@@ -7,6 +7,12 @@ import {
   scenarioToCharacter,
   type Character,
 } from "@/lib/character"
+import {
+  BUILT_IN_CHARACTERS,
+  builtInCharactersByCategory,
+  getBuiltInCharacter,
+  isBuiltInCharacterId,
+} from "@/lib/characters/index"
 import type { Scenario } from "@/lib/scenarios"
 
 const sampleCharacter: Character = {
@@ -122,5 +128,39 @@ describe("categories & badges", () => {
       "x",
     )
     expect(levelBadge(single)).toBeNull()
+  })
+})
+
+describe("built-in characters", () => {
+  test("every category has at least one character", () => {
+    for (const cat of CATEGORIES) {
+      expect(builtInCharactersByCategory(cat.id).length).toBeGreaterThan(0)
+    }
+  })
+
+  test("ids are unique and resolvable", () => {
+    const ids = BUILT_IN_CHARACTERS.map((c) => c.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const id of ids) {
+      expect(isBuiltInCharacterId(id)).toBe(true)
+      expect(getBuiltInCharacter(id).id).toBe(id)
+    }
+    expect(isBuiltInCharacterId("nope")).toBe(false)
+  })
+
+  test("captain-eva is featured, 3 levels, voice-gesture-voice", () => {
+    const eva = getBuiltInCharacter("captain-eva")
+    expect(eva.featured).toBe(true)
+    expect(eva.category).toBe("professional")
+    expect(eva.levels.map((l) => l.kind)).toEqual(["voice", "gesture", "voice"])
+  })
+
+  test("siddhartha is open mode, teacher is coach mode", () => {
+    const sidd = getBuiltInCharacter("siddhartha")
+    expect(sidd.category).toBe("coaching")
+    expect(sidd.levels[0]?.kind).toBe("voice")
+    if (sidd.levels[0]?.kind === "voice") expect(sidd.levels[0].mode).toBe("open")
+    const teacher = getBuiltInCharacter("teacher")
+    if (teacher.levels[0]?.kind === "voice") expect(teacher.levels[0].mode).toBe("coach")
   })
 })
