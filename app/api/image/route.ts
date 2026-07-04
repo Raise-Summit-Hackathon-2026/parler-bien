@@ -5,7 +5,10 @@ import { getScenario, isBuiltInScenarioId } from "@/lib/scenarios"
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const IMAGE_MODEL = "google/gemini-3.1-flash-lite-image"
 
-const cache = new Map<string, string>()
+const imageCache = new Map<string, string>()
+const inFlightImages = new Map<string, Promise<string>>()
+
+class ImageGenerationError extends Error {}
 
 function extractImageUrl(data: unknown): string | null {
   const response = data as {
@@ -21,6 +24,43 @@ function extractImageUrl(data: unknown): string | null {
 
   const first = images[0]
   return first.image_url?.url ?? first.imageUrl?.url ?? null
+}
+
+async function generateImageUrl(apiKey: string, imagePrompt: string): Promise<string> {
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      "X-Title": "Parler Bien",
+    },
+    body: JSON.stringify({
+      model: IMAGE_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: imagePrompt,
+        },
+      ],
+      modalities: ["image", "text"],
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("OpenRouter image error:", errorText)
+    throw new ImageGenerationError("Failed to generate image")
+  }
+
+  const data = await response.json()
+  const url = extractImageUrl(data)
+
+  if (!url) {
+    throw new ImageGenerationError("No image in response")
+  }
+
+  return url
 }
 
 export async function POST(request: Request) {
@@ -61,49 +101,32 @@ export async function POST(request: Request) {
     )
   }
 
-  const cached = cache.get(cacheKey)
+  const cached = imageCache.get(cacheKey)
   if (cached) {
     return NextResponse.json({ url: cached })
   }
 
   try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-        "X-Title": "Parler Bien",
-      },
-      body: JSON.stringify({
-        model: IMAGE_MODEL,
-        messages: [
-          {
-            role: "user",
-            content: imagePrompt,
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("OpenRouter image error:", errorText)
-      return NextResponse.json({ error: "Failed to generate image" }, { status: 502 })
+    let pending = inFlightImages.get(cacheKey)
+    if (!pending) {
+      pending = generateImageUrl(apiKey, imagePrompt)
+        .then((url) => {
+          imageCache.set(cacheKey, url)
+          return url
+        })
+        .finally(() => {
+          inFlightImages.delete(cacheKey)
+        })
+      inFlightImages.set(cacheKey, pending)
     }
 
-    const data = await response.json()
-    const url = extractImageUrl(data)
-
-    if (!url) {
-      return NextResponse.json({ error: "No image in response" }, { status: 502 })
-    }
-
-    cache.set(cacheKey, url)
+    const url = await pending
     return NextResponse.json({ url })
   } catch (error) {
     console.error("Image route error:", error)
+    if (error instanceof ImageGenerationError) {
+      return NextResponse.json({ error: error.message }, { status: 502 })
+    }
     return NextResponse.json({ error: "Failed to process image" }, { status: 500 })
   }
 }
