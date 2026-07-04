@@ -11,6 +11,11 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+export const metadata = {
+  title: "Parler Bien — Pronunciation Practice",
+  description: "Practice your pronunciation with AI feedback",
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
