@@ -1,0 +1,23 @@
+components/theme-provider.tsx
+  s_5026ce805d8b26::t_4cdd6d47994ffe 12-15,24-27,48,96,116,119,140,148
+  s_5026ce805d8b26::t_e8b75476e9b733 5-11,16-23,28-47,49-93,95,98,115,117-118,120-121
+app/layout.tsx
+  s_5026ce805d8b26::t_8dfb5657297d5b 21-22
+  s_5026ce805d8b26::t_4ada5f3c3bc18f 2,18-20,23-31,49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d9c05b549ed852dd7ebfd6acd0d66c4f668cf567",
+  "prompts": {},
+  "sessions": {
+    "s_5026ce805d8b26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2ec4-1053-78e3-bbda-441ba3b474d4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
