@@ -1,7 +1,7 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { Loader2, Mic, Play, RotateCcw, Square } from "lucide-react"
+import { Bot, Loader2, Mic, Play, RotateCcw, Square } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 
 import { LevelStrip } from "@/components/level-strip"
@@ -21,6 +21,7 @@ import { useConversation } from "@/hooks/use-conversation"
 import {
   characterLevelScenario,
   getScenarioContent,
+  getScenarioFallbackLanguageId,
   type Character,
 } from "@/lib/character"
 import { isBuiltInCharacterId } from "@/lib/characters/index"
@@ -96,7 +97,7 @@ function ConversationLog({
                 {isUser ? (
                   <Mic className="size-3" />
                 ) : (
-                  <Play className="size-3 fill-current" />
+                  <Bot className="size-3" />
                 )}
                 {isUser ? "You" : "Role"}
               </div>
@@ -126,12 +127,24 @@ export function PracticeSession({
   onContinue,
   continueLabel,
 }: PracticeSessionProps) {
-  const { languageId, regionId } = useLanguage()
+  const { languageId, regionId, setLanguageId } = useLanguage()
 
   const scenario = useMemo(
     () => characterLevelScenario(character, levelIndex, languageId),
     [character, levelIndex, languageId],
   )
+  // The language actually practiced: falls back to the scenario's own language
+  // when it has no content for the globally selected one.
+  const practiceLanguageId = useMemo(
+    () => getScenarioFallbackLanguageId(scenario, languageId),
+    [scenario, languageId],
+  )
+
+  useEffect(() => {
+    if (practiceLanguageId !== languageId) {
+      setLanguageId(practiceLanguageId)
+    }
+  }, [languageId, practiceLanguageId, setLanguageId])
   const levelTotal = character.levels.length
   const isOpenMode = scenario.mode === "open"
   const isCoachMode = scenario.mode === "coach"
@@ -142,7 +155,7 @@ export function PracticeSession({
     isRoleplayMode && Boolean(scenario.meterLabel && scenario.goal)
   const showWordBreakdown = isCoachMode
 
-  const scenarioContent = getScenarioContent(scenario, languageId)
+  const scenarioContent = getScenarioContent(scenario, practiceLanguageId)
 
   const {
     history,
@@ -162,7 +175,7 @@ export function PracticeSession({
     selectWord,
     pickPhrase,
     clearScore,
-  } = useConversation({ scenario, languageId, regionId })
+  } = useConversation({ scenario, languageId: practiceLanguageId, regionId })
 
   const {
     isRecording,
@@ -175,10 +188,12 @@ export function PracticeSession({
 
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  const [examples] = useState<SentenceSuggestion[]>(() =>
-    isCoachMode
-      ? pickRandomSentences(EXAMPLE_COUNT, languageId)
-      : scenarioContent.starters,
+  const examples = useMemo<SentenceSuggestion[]>(
+    () =>
+      isCoachMode
+        ? pickRandomSentences(EXAMPLE_COUNT, practiceLanguageId)
+        : scenarioContent.starters,
+    [isCoachMode, practiceLanguageId, scenarioContent.starters],
   )
 
   useEffect(() => {

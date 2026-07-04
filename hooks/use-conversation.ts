@@ -171,7 +171,7 @@ export function useConversation({
             audioFormat: audio.format,
             phrase: targetPhrase ?? undefined,
             languageId,
-            regionId,
+            regionId: region.id,
             scenarioId: scenario.id,
             customScenario: scenario,
             history,

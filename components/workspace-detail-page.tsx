@@ -1,9 +1,16 @@
 "use client"
 
-import { ArrowLeft, Link2, Loader2 } from "lucide-react"
+import {
+  ArrowLeft,
+  ChevronDown,
+  Link2,
+  Loader2,
+  MailPlus,
+  Users,
+} from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { type FormEvent, useCallback, useEffect, useState } from "react"
 
 import { CharacterGrid } from "@/components/character-grid"
 import { Button } from "@/components/ui/button"
@@ -13,9 +20,15 @@ import {
   deleteCharacter,
   getActiveShareLink,
   getWorkspace,
+  inviteWorkspaceMember,
+  listWorkspaceMembers,
   listWorkspaceCharacters,
 } from "@/lib/character-db"
-import type { CharacterRow, WorkspaceRow } from "@/lib/workspace-types"
+import type {
+  CharacterRow,
+  WorkspaceMemberWithEmail,
+  WorkspaceRow,
+} from "@/lib/workspace-types"
 
 type WorkspaceDetailPageProps = {
   workspaceId: string
@@ -25,26 +38,35 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
   const router = useRouter()
   const [workspace, setWorkspace] = useState<WorkspaceRow | null>(null)
   const [characters, setCharacters] = useState<CharacterRow[]>([])
+  const [members, setMembers] = useState<WorkspaceMemberWithEmail[]>([])
   const [shareToken, setShareToken] = useState<string | null>(null)
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [membersOpen, setMembersOpen] = useState(false)
   const [busy, setBusy] = useState(true)
+  const [inviteBusy, setInviteBusy] = useState(false)
   const [error, setError] = useState("")
   const [status, setStatus] = useState("")
 
   const load = useCallback(async () => {
-    const [ws, chars, token] = await Promise.all([
+    const [ws, chars, token, roster] = await Promise.all([
       getWorkspace(workspaceId),
       listWorkspaceCharacters(workspaceId),
       getActiveShareLink(workspaceId),
+      listWorkspaceMembers(workspaceId),
     ])
     setWorkspace(ws)
     setCharacters(chars)
     setShareToken(token)
+    setMembers(roster)
   }, [workspaceId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load workspace"),
+        setError(
+          err instanceof Error ? err.message : "Failed to load workspace"
+        )
       )
       .finally(() => setBusy(false))
   }, [load])
@@ -57,7 +79,37 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
       await navigator.clipboard.writeText(url)
       setStatus("Invite link copied")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create share link")
+      setError(
+        err instanceof Error ? err.message : "Failed to create share link"
+      )
+    }
+  }
+
+  async function handleInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setInviteBusy(true)
+    setError("")
+    setStatus("")
+
+    try {
+      const member = await inviteWorkspaceMember(workspaceId, inviteEmail)
+      setMembers((current) => {
+        const withoutExisting = current.filter((item) => item.id !== member.id)
+        return [...withoutExisting, member].sort((a, b) => {
+          if (a.role !== b.role) return a.role === "owner" ? -1 : 1
+          return a.email.localeCompare(b.email)
+        })
+      })
+      setInviteEmail("")
+      setStatus(
+        member.already_member
+          ? `${member.email} is already in this workspace`
+          : `${member.email} added to this workspace`
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to invite member")
+    } finally {
+      setInviteBusy(false)
     }
   }
 
@@ -101,9 +153,12 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
               <ArrowLeft className="size-4" />
               Workspaces
             </Link>
-            <h1 className="text-3xl font-semibold tracking-tight">{workspace.name}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {workspace.name}
+            </h1>
             <p className="mt-1 max-w-2xl text-muted-foreground">
-              {workspace.description ?? "Add characters for your team to practice together."}
+              {workspace.description ??
+                "Add characters for your team to practice together."}
             </p>
           </div>
           <Button variant="outline" onClick={() => void handleShare()}>
@@ -123,6 +178,75 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
             {error || status}
           </p>
         )}
+
+        <section className="rounded-2xl border bg-card shadow-sm">
+          <button
+            type="button"
+            onClick={() => setMembersOpen((open) => !open)}
+            className="flex w-full flex-wrap items-center justify-between gap-4 p-5 text-left"
+            aria-expanded={membersOpen}
+          >
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Users className="size-5" />
+                Members
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {members.length} {members.length === 1 ? "member" : "members"}
+              </p>
+            </div>
+            <ChevronDown
+              className={`size-5 text-muted-foreground transition-transform ${
+                membersOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {membersOpen && (
+            <div className="border-t p-5 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Add existing users by email so everyone can use the same
+                workspace.
+              </p>
+
+              <form
+                className="mt-4 flex flex-col gap-2 sm:flex-row"
+                onSubmit={handleInvite}
+              >
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="teammate@example.com"
+                  required
+                  className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+                <Button type="submit" disabled={inviteBusy}>
+                  {inviteBusy ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <MailPlus />
+                  )}
+                  Invite
+                </Button>
+              </form>
+
+              <div className="mt-5 divide-y rounded-lg border">
+                {members.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate">{member.email}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground capitalize">
+                      {member.role}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
 
         <CharacterGrid
           characters={characters.map(rowToCharacter)}

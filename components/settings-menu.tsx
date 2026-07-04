@@ -45,7 +45,7 @@ export function SettingsMenu() {
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Language
+                Practice language
               </p>
               <div className="flex flex-wrap gap-2">
                 {LANGUAGES.map((item) => (
