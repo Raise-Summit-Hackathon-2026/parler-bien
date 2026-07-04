@@ -1,7 +1,7 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { Loader2, Mic, RotateCcw, Square, Volume2 } from "lucide-react"
+import { Loader2, Mic, Play, RotateCcw, Square, Volume2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useLanguage } from "@/components/language-provider"
@@ -189,6 +189,75 @@ function MeterBar({
   )
 }
 
+function ConversationLog({
+  history,
+  onPlayCharacter,
+  disabled,
+  endRef,
+}: {
+  history: ConversationTurn[]
+  onPlayCharacter: (text: string) => void
+  disabled: boolean
+  endRef: React.RefObject<HTMLDivElement | null>
+}) {
+  if (history.length === 0) return null
+
+  return (
+    <div className="flex min-h-[132px] flex-1 flex-col gap-2 overflow-y-auto py-1 pr-1">
+      {history.map((turn, index) => {
+        const isUser = turn.role === "user"
+
+        return (
+          <div
+            key={`${turn.role}-${index}-${turn.text}`}
+            className={cn(
+              "flex items-end gap-2",
+              isUser ? "justify-end" : "justify-start"
+            )}
+          >
+            {!isUser && (
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => onPlayCharacter(turn.text)}
+                disabled={disabled}
+                aria-label="Play role line"
+                className="mb-1 rounded-full bg-background shadow-sm"
+              >
+                <Play className="size-3.5 fill-current" />
+              </Button>
+            )}
+            <div
+              className={cn(
+                "max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-snug shadow-sm",
+                isUser
+                  ? "rounded-br-md bg-primary text-primary-foreground"
+                  : "rounded-bl-md border bg-background"
+              )}
+            >
+              <div
+                className={cn(
+                  "mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide",
+                  isUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                )}
+              >
+                {isUser ? (
+                  <Mic className="size-3" />
+                ) : (
+                  <Play className="size-3 fill-current" />
+                )}
+                {isUser ? "You" : "Role"}
+              </div>
+              <p>{turn.text}</p>
+            </div>
+          </div>
+        )
+      })}
+      <div ref={endRef} />
+    </div>
+  )
+}
+
 function ReplyBubble({
   reply,
   onHear,
@@ -215,7 +284,7 @@ function ReplyBubble({
           disabled={disabled}
           aria-label="Hear reply"
         >
-          <Volume2 className="size-4" />
+          <Play className="size-4 fill-current" />
         </Button>
       </div>
     </div>
