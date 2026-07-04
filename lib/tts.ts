@@ -1,19 +1,58 @@
+import type { SpeakerProfile } from "@/lib/types"
+
 export type TtsStyle = "coach" | "phrase" | "word"
 
-export const TTS_MODEL = "google/gemini-3.1-flash-tts-preview"
-export const TTS_VOICE = "Sulafat"
-export const TTS_SAMPLE_RATE = 24000
+export type TtsGender = SpeakerProfile["gender"]
 
-const STYLE_DIRECTION: Record<TtsStyle, string> = {
-  coach:
-    "Speak with a soft Parisian French accent. Warm, intimate, slightly playful and flirtatious. Never cartoonish.",
-  phrase:
-    "Speak with a natural native Parisian French accent. Confident, normal conversational pace.",
-  word: "Speak very slowly with exaggerated syllable-by-syllable articulation. Clear pronunciation for language learners.",
+export type TtsRequestOptions = {
+  gender?: TtsGender
+  ageRange?: string
 }
 
-export function buildSpeechInput(text: string, style: TtsStyle): string {
-  const direction = STYLE_DIRECTION[style]
+export const TTS_MODEL = "google/gemini-3.1-flash-tts-preview"
+export const TTS_SAMPLE_RATE = 24000
+
+const FEMALE_VOICE = "Sulafat"
+const MALE_VOICE = "Charon"
+const DEFAULT_VOICE = "Aoede"
+
+export function selectVoice(gender?: TtsGender): string {
+  if (gender === "male") return MALE_VOICE
+  if (gender === "female") return FEMALE_VOICE
+  return DEFAULT_VOICE
+}
+
+function coachDirection(gender?: TtsGender, ageRange?: string): string {
+  const age = ageRange?.trim() || "30-40"
+  const role =
+    gender === "male"
+      ? "a native French man"
+      : gender === "female"
+        ? "a native French woman"
+        : "a native French speaker"
+
+  return `Speak as ${role}, approximately ${age} years old. Native Parisian French accent. Warm, clear, and supportive — like a friendly pronunciation teacher. Professional and encouraging, never flirtatious or overly intimate.`
+}
+
+const STYLE_DIRECTION: Record<
+  Exclude<TtsStyle, "coach">,
+  (options?: TtsRequestOptions) => string
+> = {
+  phrase: () =>
+    "Speak with a natural native Parisian French accent. Confident, normal conversational pace.",
+  word: () =>
+    "Speak very slowly with exaggerated syllable-by-syllable articulation. Clear pronunciation for language learners.",
+}
+
+export function buildSpeechInput(
+  text: string,
+  style: TtsStyle,
+  options?: TtsRequestOptions,
+): string {
+  const direction =
+    style === "coach"
+      ? coachDirection(options?.gender, options?.ageRange)
+      : STYLE_DIRECTION[style]()
 
   return [
     "You are a text-to-speech engine. Speak ONLY the text in the TRANSCRIPT section.",
@@ -55,6 +94,12 @@ export function pcmToWav(
   return buffer
 }
 
-export function ttsCacheKey(text: string, style: TtsStyle) {
-  return `${style}:${text}`
+export function ttsCacheKey(
+  text: string,
+  style: TtsStyle,
+  options?: TtsRequestOptions,
+) {
+  const gender = options?.gender ?? "default"
+  const age = options?.ageRange ?? "default"
+  return `${style}:${gender}:${age}:${text}`
 }

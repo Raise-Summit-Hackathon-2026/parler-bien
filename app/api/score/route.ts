@@ -6,16 +6,25 @@ import type { PronunciationScore } from "@/lib/types"
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
 
-function buildPrompt(phrase: string, language: string) {
-  return `You are a pronunciation coach. The user is practicing saying a phrase in ${language}.
+function buildPrompt(phrase: string | undefined, language: string) {
+  const modeInstructions = phrase
+    ? `Target phrase: "${phrase}"
+Score their pronunciation against this target phrase. Set transcript to the target phrase.`
+    : `No target phrase was given. Transcribe what the user said in ${language}, then score their pronunciation of that sentence against native pronunciation. Set transcript to what you heard. If you cannot detect intelligible ${language}, return a low overall_score with coaching "I couldn't quite catch that — try speaking clearly and closer to the mic."`
 
-Target phrase: "${phrase}"
+  return `You are a pronunciation coach. The user is practicing speaking ${language}.
 
-Listen to their recording and score their pronunciation. Be slightly generous but accurate. Ignore background noise and focus on whether they attempted the target phrase.
+${modeInstructions}
 
-Respond with JSON only. Split the phrase into individual words (including punctuation attached to words as in the original). Score each word from 0-100. Use null for issue and tip when a word scores 80 or above.
+Listen to their recording and score their pronunciation. Be slightly generous but accurate. Ignore background noise.
 
-Also write voice_line: a short in-character spoken reaction for text-to-speech (2-3 sentences max). Use French-accented English with occasional French pet names (mon chéri, etc.) and optional bracket performance tags like [laughs softly] or [whispers]. Match the emotional arc to the score: encouraging and gentle around 60, warm and teasing around 75, celebratory and flirtatious at 90+. Do not repeat the coaching text verbatim.`
+Also infer speaker metadata from the voice: accent (native/source language influencing their French), age_range (rough estimate like "20-30"), gender (male | female | unsure), and notes (one short sentence on how this profile affects their French). Use this profile to tailor coaching, per-word tips, and voice_line to accent-specific pitfalls. Keep estimates non-judgmental.
+
+Respond with JSON only. Split the transcript into individual words (including punctuation attached to words as in the original). Score each word from 0-100. Use null for issue and tip when a word scores 80 or above.
+
+Provide exactly 3 next_sentences: short French follow-up sentences that naturally continue the conversation from what the user just said, each with a short English hint. Slightly extend or deepen the scenario.
+
+Write voice_line: a short spoken reaction for text-to-speech (2-3 sentences max). Write as a native French pronunciation teacher who matches the speaker's detected gender and approximate age — a French man for male speakers, a French woman for female speakers. Be warm, clear, and encouraging with a professional teacher tone. Not flirtatious, no pet names. Use French or simple French-accented English. Match the emotional arc to the score: encouraging around 60, positive around 75, celebratory at 90+. Tailor feedback to their detected accent. Mention one natural next step from next_sentences. Do not repeat the coaching text verbatim.`
 }
 
 function parseScore(content: string): PronunciationScore {
@@ -25,7 +34,14 @@ function parseScore(content: string): PronunciationScore {
     typeof parsed.overall_score !== "number" ||
     typeof parsed.coaching !== "string" ||
     typeof parsed.voice_line !== "string" ||
-    !Array.isArray(parsed.words)
+    typeof parsed.transcript !== "string" ||
+    !Array.isArray(parsed.words) ||
+    !Array.isArray(parsed.next_sentences) ||
+    !parsed.speaker ||
+    typeof parsed.speaker.accent !== "string" ||
+    typeof parsed.speaker.age_range !== "string" ||
+    typeof parsed.speaker.gender !== "string" ||
+    typeof parsed.speaker.notes !== "string"
   ) {
     throw new Error("Invalid score response shape")
   }
@@ -57,9 +73,9 @@ export async function POST(request: Request) {
 
   const { audioBase64, audioFormat, phrase, language } = body
 
-  if (!audioBase64 || !audioFormat || !phrase || !language) {
+  if (!audioBase64 || !audioFormat || !language) {
     return NextResponse.json(
-      { error: "audioBase64, audioFormat, phrase, and language are required" },
+      { error: "audioBase64, audioFormat, and language are required" },
       { status: 400 },
     )
   }

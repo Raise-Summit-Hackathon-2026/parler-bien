@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import type { TtsStyle } from "@/lib/types"
+import type { TtsRequestOptions, TtsStyle } from "@/lib/tts"
 
 export function useSpeaker() {
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -27,7 +27,7 @@ export function useSpeaker() {
   useEffect(() => stop, [stop])
 
   const speak = useCallback(
-    async (text: string, style: TtsStyle) => {
+    async (text: string, style: TtsStyle, options?: TtsRequestOptions) => {
       if (!text.trim()) return
 
       stop()
@@ -36,7 +36,12 @@ export function useSpeaker() {
         const response = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: text.trim(), style }),
+          body: JSON.stringify({
+            text: text.trim(),
+            style,
+            gender: options?.gender,
+            ageRange: options?.ageRange,
+          }),
         })
 
         if (!response.ok) return

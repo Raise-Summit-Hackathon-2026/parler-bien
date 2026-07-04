@@ -3,9 +3,10 @@ import { NextResponse } from "next/server"
 import {
   buildSpeechInput,
   pcmToWav,
+  selectVoice,
   TTS_MODEL,
-  TTS_VOICE,
   ttsCacheKey,
+  type TtsGender,
   type TtsStyle,
 } from "@/lib/tts"
 
@@ -14,9 +15,14 @@ const OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
 const cache = new Map<string, Buffer>()
 
 const VALID_STYLES: TtsStyle[] = ["coach", "phrase", "word"]
+const VALID_GENDERS: TtsGender[] = ["male", "female", "unsure"]
 
 function isTtsStyle(value: string): value is TtsStyle {
   return VALID_STYLES.includes(value as TtsStyle)
+}
+
+function isTtsGender(value: string): value is TtsGender {
+  return VALID_GENDERS.includes(value as TtsGender)
 }
 
 export async function POST(request: Request) {
@@ -28,7 +34,12 @@ export async function POST(request: Request) {
     )
   }
 
-  let body: { text?: string; style?: string }
+  let body: {
+    text?: string
+    style?: string
+    gender?: string
+    ageRange?: string
+  }
 
   try {
     body = await request.json()
@@ -36,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { text, style } = body
+  const { text, style, gender, ageRange } = body
 
   if (!text?.trim() || !style || !isTtsStyle(style)) {
     return NextResponse.json(
@@ -45,7 +56,15 @@ export async function POST(request: Request) {
     )
   }
 
-  const key = ttsCacheKey(text.trim(), style)
+  const ttsOptions =
+    style === "coach"
+      ? {
+          gender: gender && isTtsGender(gender) ? gender : undefined,
+          ageRange: ageRange?.trim() || undefined,
+        }
+      : undefined
+
+  const key = ttsCacheKey(text.trim(), style, ttsOptions)
   const cached = cache.get(key)
   if (cached) {
     return new NextResponse(new Uint8Array(cached), {
@@ -55,6 +74,8 @@ export async function POST(request: Request) {
       },
     })
   }
+
+  const voice = style === "coach" ? selectVoice(ttsOptions?.gender) : selectVoice()
 
   try {
     const response = await fetch(OPENROUTER_SPEECH_URL, {
@@ -67,8 +88,8 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: TTS_MODEL,
-        voice: TTS_VOICE,
-        input: buildSpeechInput(text.trim(), style),
+        voice,
+        input: buildSpeechInput(text.trim(), style, ttsOptions),
         response_format: "pcm",
       }),
     })

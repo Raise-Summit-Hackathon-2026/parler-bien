@@ -1,17 +1,23 @@
 "use client"
 
-import { Loader2, Mic, RotateCcw, Square, Volume2 } from "lucide-react"
+import { Loader2, Mic, RotateCcw, Square, Volume2, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useSpeaker } from "@/hooks/use-speaker"
-import type { PronunciationScore, WordScore } from "@/lib/types"
+import { pickRandomSentences } from "@/lib/sentences"
+import type {
+  PronunciationScore,
+  SentenceSuggestion,
+  SpeakerProfile,
+  WordScore,
+} from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const DEFAULT_PHRASE = "Je voudrais un croissant"
 const DEFAULT_LANGUAGE = "French"
+const EXAMPLE_COUNT = 4
 
 function scoreColor(score: number) {
   if (score >= 80) return "text-emerald-600 dark:text-emerald-400"
@@ -51,12 +57,53 @@ function WordChip({
   )
 }
 
+function SentenceChip({
+  sentence,
+  onSelect,
+}: {
+  sentence: SentenceSuggestion
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="group w-full rounded-2xl border bg-background p-3 text-left transition-colors hover:bg-muted/60"
+    >
+      <p className="font-medium">{sentence.text}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{sentence.hint}</p>
+    </button>
+  )
+}
+
+function SpeakerProfileStrip({ speaker }: { speaker: SpeakerProfile }) {
+  const genderLabel =
+    speaker.gender === "unsure"
+      ? "unsure"
+      : speaker.gender.charAt(0).toUpperCase() + speaker.gender.slice(1)
+
+  return (
+    <div className="space-y-2 border-t pt-4">
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+        <span className="rounded-full bg-muted px-2.5 py-1">{speaker.accent}</span>
+        <span className="rounded-full bg-muted px-2.5 py-1">{speaker.age_range}</span>
+        <span className="rounded-full bg-muted px-2.5 py-1">{genderLabel}</span>
+      </div>
+      <p className="text-center text-xs text-muted-foreground">{speaker.notes}</p>
+    </div>
+  )
+}
+
 export function PracticeSession() {
   const { isRecording, analyser: recorderAnalyser, error, startRecording, stopRecording } =
     useAudioRecorder()
   const { isSpeaking, analyser: speakerAnalyser, speak, stop: stopSpeaking } =
     useSpeaker()
 
+  const [examples, setExamples] = useState<SentenceSuggestion[]>(() =>
+    pickRandomSentences(EXAMPLE_COUNT),
+  )
+  const [targetPhrase, setTargetPhrase] = useState<string | null>(null)
   const [isScoring, setIsScoring] = useState(false)
   const [score, setScore] = useState<PronunciationScore | null>(null)
   const [selectedWord, setSelectedWord] = useState<WordScore | null>(null)
@@ -67,6 +114,8 @@ export function PracticeSession() {
 
   const waveformAnalyser = isRecording ? recorderAnalyser : speakerAnalyser
   const waveformActive = isRecording || isSpeaking
+
+  const displayedPhrase = score?.transcript ?? targetPhrase
 
   const selectedIndex = useMemo(() => {
     if (!score || !selectedWord) return -1
@@ -94,7 +143,7 @@ export function PracticeSession() {
           body: JSON.stringify({
             audioBase64: audio.base64,
             audioFormat: audio.format,
-            phrase: DEFAULT_PHRASE,
+            phrase: targetPhrase ?? undefined,
             language: DEFAULT_LANGUAGE,
           }),
         })
@@ -106,10 +155,14 @@ export function PracticeSession() {
 
         const result = (await response.json()) as PronunciationScore
         setScore(result)
+        setTargetPhrase(result.transcript)
         setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
 
         if (result.voice_line) {
-          void speak(result.voice_line, "coach")
+          void speak(result.voice_line, "coach", {
+            gender: result.speaker.gender,
+            ageRange: result.speaker.age_range,
+          })
         }
       } catch (err) {
         setRequestError(
@@ -135,13 +188,43 @@ export function PracticeSession() {
     setRequestError(null)
   }
 
+  function handleClearTarget() {
+    stopSpeaking()
+    setTargetPhrase(null)
+    setScore(null)
+    setSelectedWord(null)
+    setRequestError(null)
+  }
+
   function handleWordSelect(word: WordScore) {
     setSelectedWord(word)
     void speak(word.word, "word")
   }
 
-  function handleHearPhrase() {
-    void speak(DEFAULT_PHRASE, "phrase")
+  function handleHearPhrase(phrase: string) {
+    void speak(phrase, "phrase")
+  }
+
+  function handleSelectExample(sentence: SentenceSuggestion) {
+    stopSpeaking()
+    setTargetPhrase(sentence.text)
+    setScore(null)
+    setSelectedWord(null)
+    setRequestError(null)
+    void speak(sentence.text, "phrase")
+  }
+
+  function handleSelectNext(sentence: SentenceSuggestion) {
+    stopSpeaking()
+    setTargetPhrase(sentence.text)
+    setScore(null)
+    setSelectedWord(null)
+    setRequestError(null)
+    void speak(sentence.text, "phrase")
+  }
+
+  function handleShuffleExamples() {
+    setExamples(pickRandomSentences(EXAMPLE_COUNT))
   }
 
   return (
@@ -151,31 +234,48 @@ export function PracticeSession() {
           Parler Bien
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">
-          Practice your pronunciation
+          Say something in French
         </h1>
         <p className="text-muted-foreground">
-          Say it out loud. Tap any word to hear how it should sound.
+          {score
+            ? "Tap a word to hear how it should sound."
+            : targetPhrase
+              ? "Practice this phrase — tap the mic when ready."
+              : "Tap the mic and speak — or pick a phrase below."}
         </p>
       </div>
 
       <div className="w-full space-y-6 rounded-3xl border bg-card p-6 shadow-sm">
-        <div className="space-y-3 text-center">
-          <p className="text-xs tracking-wide text-muted-foreground uppercase">
-            {DEFAULT_LANGUAGE}
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-2xl font-medium">{DEFAULT_PHRASE}</p>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleHearPhrase}
-              disabled={isRecording || isScoring}
-              aria-label="Hear phrase"
-            >
-              <Volume2 className="size-4" />
-            </Button>
+        {displayedPhrase && (
+          <div className="space-y-3 text-center">
+            <p className="text-xs tracking-wide text-muted-foreground uppercase">
+              {score ? "You said" : DEFAULT_LANGUAGE}
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-xl font-medium">{displayedPhrase}</p>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => handleHearPhrase(displayedPhrase)}
+                disabled={isRecording || isScoring}
+                aria-label="Hear phrase"
+              >
+                <Volume2 className="size-4" />
+              </Button>
+              {!score && targetPhrase && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleClearTarget}
+                  disabled={isRecording || isScoring}
+                  aria-label="Clear phrase"
+                >
+                  <X className="size-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <Waveform analyser={waveformAnalyser} active={waveformActive} />
 
@@ -201,8 +301,8 @@ export function PracticeSession() {
           <p className="text-sm text-muted-foreground">
             {isScoring
               ? "Analyzing your pronunciation…"
-              : isSpeaking
-                ? "Coach is speaking…"
+                : isSpeaking
+                  ? "Your coach is speaking…"
                 : isRecording
                   ? "Tap to stop"
                   : "Tap to speak"}
@@ -255,6 +355,50 @@ export function PracticeSession() {
               <RotateCcw />
               Try again
             </Button>
+
+            <SpeakerProfileStrip speaker={score.speaker} />
+
+            {score.next_sentences.length > 0 && (
+              <div className="space-y-3 border-t pt-5">
+                <p className="text-center text-sm font-medium">
+                  Continue the conversation
+                </p>
+                <div className="space-y-2">
+                  {score.next_sentences.map((sentence, index) => (
+                    <SentenceChip
+                      key={`${sentence.text}-${index}`}
+                      sentence={sentence}
+                      onSelect={() => handleSelectNext(sentence)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!score && examples.length > 0 && (
+          <div className="space-y-3 border-t pt-5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Try a phrase</p>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={handleShuffleExamples}
+                disabled={isRecording || isScoring}
+              >
+                Shuffle
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {examples.map((sentence, index) => (
+                <SentenceChip
+                  key={`${sentence.text}-${index}`}
+                  sentence={sentence}
+                  onSelect={() => handleSelectExample(sentence)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
