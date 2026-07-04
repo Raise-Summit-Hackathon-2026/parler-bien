@@ -1,4 +1,5 @@
 import type { LanguageId, Region } from "@/lib/languages"
+import { LINGUA_TRAINERS, type LinguaTrainerId } from "@/lib/lingua-trainers"
 import type { SentenceSuggestion, SpeakerProfile } from "@/lib/types"
 
 export type BuiltInScenarioId =
@@ -10,6 +11,7 @@ export type BuiltInScenarioId =
   | "taxi"
   | "landlord"
   | "sommelier"
+  | LinguaTrainerId
 
 export type CustomScenarioId = `custom:${string}`
 
@@ -75,13 +77,13 @@ export function resolveCharacterVoice(
 }
 
 export function getScenario(id: BuiltInScenarioId): Scenario {
-  const scenario = SCENARIOS.find((s) => s.id === id)
+  const scenario = ALL_BUILT_IN_SCENARIOS.find((s) => s.id === id)
   if (!scenario) throw new Error(`Unknown scenario: ${id}`)
   return scenario
 }
 
 export function isBuiltInScenarioId(value: string): value is BuiltInScenarioId {
-  return SCENARIOS.some((s) => s.id === value)
+  return ALL_BUILT_IN_SCENARIOS.some((s) => s.id === value)
 }
 
 export function isCustomScenarioId(value: string): value is CustomScenarioId {
@@ -688,3 +690,5 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
       "Intimate Paris wine cave with wooden shelves of bottles and candlelight, deep warm tones, cinematic illustration, no text, no logos",
   },
 ]
+
+export const ALL_BUILT_IN_SCENARIOS: Scenario[] = [...SCENARIOS, ...LINGUA_TRAINERS]
