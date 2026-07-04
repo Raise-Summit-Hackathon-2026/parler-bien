@@ -79,3 +79,11 @@ export function getAppBaseUrl(): string {
 export function getGoogleOAuthRedirectUri(): string {
   return `${getAppBaseUrl()}/api/composio/oauth/callback`
 }
+
+/** Numeric GCP project id from OAuth client id (e.g. 780417362460-xxx.apps.googleusercontent.com). */
+export function getGoogleCloudProjectNumber(): string | null {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim()
+  if (!clientId) return null
+  const match = clientId.match(/^(\d+)-/)
+  return match?.[1] ?? null
+}

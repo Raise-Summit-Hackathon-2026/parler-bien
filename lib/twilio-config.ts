@@ -29,6 +29,10 @@ export function getTwilioGatherWebhookUrl(agentUserId?: string, mode?: "pin" | "
   return url.toString()
 }
 
+export function getTwilioMessagingWebhookUrl(): string {
+  return `${getTwilioPublicBaseUrl()}/api/twilio/messaging`
+}
+
 export function isPublicAppUrl(): boolean {
   const base = getAppBaseUrl()
   return !base.includes("localhost") && !base.includes("127.0.0.1")

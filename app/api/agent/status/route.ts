@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { AGENT_TOOLKITS } from "@/lib/agent-config"
+import { AGENT_TOOLKITS, getGoogleCloudProjectNumber } from "@/lib/agent-config"
+import { probeToolkitHealth } from "@/lib/agent-connections"
 import { resolveAuthConfigId } from "@/lib/composio-auth"
 import { getAgentUserId, getComposio } from "@/lib/composio"
 
@@ -19,11 +20,23 @@ export async function GET(request: Request) {
           (a) => (a.toolkit?.slug ?? a.toolkit) === toolkit.slug,
         )
         const authConfigId = await resolveAuthConfigId(composio, toolkit.slug)
+        const connected = Boolean(connection)
+        let working: boolean | null = null
+        let workError: string | null = null
+
+        if (connected) {
+          const probe = await probeToolkitHealth(userId, toolkit.slug)
+          working = probe.ok
+          workError = probe.error ?? null
+        }
+
         return {
           slug: toolkit.slug,
           label: toolkit.label,
           description: toolkit.description,
-          connected: Boolean(connection),
+          connected,
+          working,
+          workError,
           connectionId: connection?.id ?? null,
           configured: Boolean(authConfigId),
           connectHint: toolkit.connectHint ?? null,
@@ -31,7 +44,7 @@ export async function GET(request: Request) {
       }),
     )
 
-    return NextResponse.json({ userId, toolkits })
+    return NextResponse.json({ userId, toolkits, googleCloudProjectNumber: getGoogleCloudProjectNumber() })
   } catch (error) {
     console.error("Agent status error:", error)
     return NextResponse.json(

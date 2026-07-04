@@ -61,12 +61,12 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "agents",
-    title: "Personal agents",
+    title: "Enterprise agents",
     description:
-      "Situationally aware agent — talk in your browser (voice in/out), connect Gmail via Composio.",
+      "Deploy an AI employee with a business line — voice, SMS, WhatsApp Business, and Composio data sources.",
     status: "live",
     href: "/agent",
-    hrefLabel: "Open agent →",
+    hrefLabel: "Deploy agent →",
   },
   {
     id: "voice_clone",

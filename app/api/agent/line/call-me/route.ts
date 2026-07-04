@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { getLineByUserId } from "@/lib/agent-lines"
+import { createAgentPhoneOutboundCall } from "@/lib/agentphone-client"
 import { getAgentUserId } from "@/lib/composio"
 import { getTwilioClient } from "@/lib/twilio-client"
 import { getTwilioCredentials, getTwilioPublicBaseUrl } from "@/lib/twilio-config"
@@ -13,14 +14,31 @@ export async function POST(request: Request) {
 
     if (!line) {
       return NextResponse.json(
-        { error: "Create your agent line first (add your phone number)." },
+        { error: "Deploy your enterprise agent first." },
         { status: 400 },
       )
     }
 
+    if (line.telephonyProvider === "agentphone" && line.agentPhoneAgentId) {
+      await createAgentPhoneOutboundCall({
+        agentId: line.agentPhoneAgentId,
+        toNumber: line.userPhone,
+        fromNumberId: line.agentPhoneNumberId,
+        initialGreeting: `Hi, this is ${line.agentName ?? "your enterprise agent"}.`,
+      })
+
+      return NextResponse.json({
+        ok: true,
+        provider: "agentphone",
+        to: line.userPhone,
+        message: "Calling the owner via AgentPhone — answer to talk to your deployed agent.",
+      })
+    }
+
     const creds = getTwilioCredentials()
-    if (!creds?.phoneNumber) {
-      return NextResponse.json({ error: "Twilio is not configured" }, { status: 503 })
+    const fromNumber = line.dedicatedPhoneNumber ?? creds?.phoneNumber
+    if (!fromNumber) {
+      return NextResponse.json({ error: "Telephony is not configured" }, { status: 503 })
     }
 
     const client = getTwilioClient()
@@ -28,16 +46,17 @@ export async function POST(request: Request) {
 
     const call = await client.calls.create({
       to: line.userPhone,
-      from: creds.phoneNumber,
+      from: fromNumber,
       url: voiceUrl,
       method: "POST",
     })
 
     return NextResponse.json({
       ok: true,
+      provider: "twilio",
       callSid: call.sid,
       to: line.userPhone,
-      message: "Calling your phone now — answer to talk to your agent.",
+      message: "Calling the owner now — answer to talk to your agent.",
     })
   } catch (error) {
     console.error("Call-me error:", error)

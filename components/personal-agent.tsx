@@ -16,6 +16,8 @@ type ToolkitStatus = {
   label: string
   description: string
   connected: boolean
+  working?: boolean | null
+  workError?: string | null
   connectionId: string | null
   configured: boolean
   connectHint: string | null
@@ -37,11 +39,54 @@ type TwilioStatus = {
   canConfigureWebhooks: boolean
 }
 
+type AgentLine = {
+  lineId: string
+  userId: string
+  userPhone: string
+  pin: string
+  agentName?: string
+  displayName?: string
+  workspaceName?: string
+  ownerEmail?: string
+  agentRole?: string
+  allowedCallerPhones?: string[]
+  dedicatedPhoneNumber?: string
+  twilioPhoneSid?: string
+  telephonyProvider?: "agentphone" | "twilio"
+  whatsappStatus?: string
+  createdAt: string
+}
+
+type AgentChannels = {
+  voice: string | null
+  sms: string | null
+  whatsappBusiness: string | null
+}
+
+type AgentDeployment = {
+  agentId: string
+  lineId: string
+  workspace: string | null
+  role: string
+  inboundPolicy: string
+}
+
+type AgentLineResponse = {
+  line: AgentLine | null
+  channels?: AgentChannels
+  deployment?: AgentDeployment
+  sharedNumbers?: { us: string | null; europe: string | null }
+  telephonyProvider?: "agentphone" | "twilio"
+  agentPhoneConfigured?: boolean
+  canProvision?: boolean
+  error?: string
+}
+
 const VOICE_STARTERS = [
-  "Brief me on Parler Bien for a judge.",
-  "What's in my inbox today?",
-  "Am I free tomorrow afternoon?",
-  "Find my latest pitch deck on Drive.",
+  "Summarize priority emails from the last 24 hours.",
+  "What meetings do I have tomorrow and who are the attendees?",
+  "Draft a follow-up to the latest procurement thread.",
+  "Any calendar conflicts if I take a 3pm call with Acme?",
 ]
 
 function getOrCreateUserId(storageKey: string): string {
@@ -65,12 +110,35 @@ export function PersonalAgentPanel() {
   const [phase, setPhase] = useState<"idle" | "listening" | "thinking" | "speaking">("idle")
   const [error, setError] = useState<string | null>(null)
   const [twilio, setTwilio] = useState<TwilioStatus | null>(null)
-  const [configuringTwilio, setConfiguringTwilio] = useState(false)
+  const [agentLine, setAgentLine] = useState<AgentLine | null>(null)
+  const [agentChannels, setAgentChannels] = useState<AgentChannels | null>(null)
+  const [sharedNumbers, setSharedNumbers] = useState<{ us: string | null; europe: string | null } | null>(
+    null,
+  )
+  const [agentNameInput, setAgentNameInput] = useState("")
+  const [workspaceNameInput, setWorkspaceNameInput] = useState("")
+  const [ownerEmailInput, setOwnerEmailInput] = useState("")
+  const [agentRoleInput, setAgentRoleInput] = useState("executive")
+  const [allowedCallersInput, setAllowedCallersInput] = useState("")
+  const [userPhoneInput, setUserPhoneInput] = useState("")
+  const [deployment, setDeployment] = useState<AgentDeployment | null>(null)
+  const [creatingLine, setCreatingLine] = useState(false)
+  const [provisioningNumber, setProvisioningNumber] = useState(false)
+  const [callingMe, setCallingMe] = useState(false)
+  const [telephonyProvider, setTelephonyProvider] = useState<"agentphone" | "twilio">("twilio")
+  const [agentPhoneConfigured, setAgentPhoneConfigured] = useState(false)
+  const [canProvisionLine, setCanProvisionLine] = useState(false)
+  const [googleCloudProject, setGoogleCloudProject] = useState<string | null>(null)
   const listId = useId()
 
   const { isRecording, analyser: recorderAnalyser, error: micError, startRecording, stopRecording } =
     useAudioRecorder()
   const { isSpeaking, analyser: speakerAnalyser, speak, stop: stopSpeaking } = useSpeaker()
+
+  const resolveUserId = useCallback(
+    () => userId || getOrCreateUserId(storageKey),
+    [storageKey, userId],
+  )
 
   const loadStatus = useCallback(async (uid: string) => {
     setLoadingStatus(true)
@@ -81,8 +149,14 @@ export function PersonalAgentPanel() {
         const data = (await response.json()) as { error?: string }
         throw new Error(data.error ?? "Failed to load connections")
       }
-      const data = (await response.json()) as { toolkits: ToolkitStatus[] }
+      const data = (await response.json()) as {
+        toolkits: ToolkitStatus[]
+        googleCloudProjectNumber?: string | null
+      }
       setToolkits(data.toolkits)
+      if (data.googleCloudProjectNumber) {
+        setGoogleCloudProject(data.googleCloudProjectNumber)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load status")
     } finally {
@@ -103,12 +177,44 @@ export function PersonalAgentPanel() {
     }
   }, [loadStatus, userId])
 
+  const loadAgentLine = useCallback(async (uid: string) => {
+    try {
+      const [lineRes, provisionRes] = await Promise.all([
+        fetch(`/api/agent/line?userId=${encodeURIComponent(uid)}`),
+        fetch(`/api/agent/line/provision?userId=${encodeURIComponent(uid)}`),
+      ])
+      const data = (await lineRes.json()) as AgentLineResponse
+      const provision = (await provisionRes.json()) as AgentLineResponse
+      setAgentLine(data.line)
+      if (data.channels) setAgentChannels(data.channels)
+      if (data.deployment) setDeployment(data.deployment)
+      if (data.sharedNumbers) setSharedNumbers(data.sharedNumbers)
+      setTelephonyProvider(provision.telephonyProvider ?? "twilio")
+      setAgentPhoneConfigured(Boolean(provision.agentPhoneConfigured))
+      setCanProvisionLine(Boolean(provision.canProvision))
+      if (data.line?.agentName) setAgentNameInput(data.line.agentName)
+      if (data.line?.workspaceName) setWorkspaceNameInput(data.line.workspaceName)
+      if (data.line?.ownerEmail) setOwnerEmailInput(data.line.ownerEmail)
+      if (data.line?.agentRole) setAgentRoleInput(data.line.agentRole)
+      if (data.line?.allowedCallerPhones?.length) {
+        setAllowedCallersInput(data.line.allowedCallerPhones.join(", "))
+      }
+      if (data.line?.userPhone) setUserPhoneInput(data.line.userPhone)
+    } catch {
+      setAgentLine(null)
+    }
+  }, [])
+
   useEffect(() => {
     void fetch("/api/twilio/status")
       .then((r) => r.json())
       .then((data: TwilioStatus) => setTwilio(data))
       .catch(() => setTwilio(null))
   }, [])
+
+  useEffect(() => {
+    if (userId) void loadAgentLine(userId)
+  }, [loadAgentLine, userId])
 
   useEffect(() => {
     if (isRecording) setPhase("listening")
@@ -124,7 +230,7 @@ export function PersonalAgentPanel() {
       const response = await fetch("/api/agent/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toolkit: slug, userId }),
+        body: JSON.stringify({ toolkit: slug, userId: resolveUserId() }),
       })
       const data = (await response.json()) as {
         redirectUrl?: string
@@ -159,7 +265,7 @@ export function PersonalAgentPanel() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
+            userId: resolveUserId(),
             audioBase64: audio.base64,
             audioFormat: audio.format,
             history: messages,
@@ -199,6 +305,87 @@ export function PersonalAgentPanel() {
     await startRecording()
   }
 
+  async function handleCreateLine() {
+    const phone = userPhoneInput.trim()
+    const agentName = agentNameInput.trim()
+    if (!phone || !agentName) return
+
+    setCreatingLine(true)
+    setError(null)
+    try {
+      const response = await fetch("/api/agent/line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: resolveUserId(),
+          userPhone: phone,
+          agentName,
+          workspaceName: workspaceNameInput.trim() || undefined,
+          ownerEmail: ownerEmailInput.trim() || undefined,
+          agentRole: agentRoleInput,
+          allowedCallerPhones: allowedCallersInput,
+        }),
+      })
+      const data = (await response.json()) as AgentLineResponse
+      if (!response.ok) throw new Error(data.error ?? "Failed to create personal agent")
+      setAgentLine(data.line)
+      if (data.channels) setAgentChannels(data.channels)
+      if (data.deployment) setDeployment(data.deployment)
+      if (data.sharedNumbers) setSharedNumbers(data.sharedNumbers)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create personal agent")
+    } finally {
+      setCreatingLine(false)
+    }
+  }
+
+  async function handleProvisionNumber() {
+    if (!agentLine) return
+
+    setProvisioningNumber(true)
+    setError(null)
+    try {
+      const response = await fetch("/api/agent/line/provision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: resolveUserId() }),
+      })
+      const data = (await response.json()) as AgentLineResponse & {
+        ok?: boolean
+        whatsappNote?: string
+        phoneNumber?: string
+      }
+      if (!response.ok || !data.ok) throw new Error(data.error ?? "Failed to get phone number")
+      setAgentLine(data.line ?? agentLine)
+      if (data.channels) setAgentChannels(data.channels)
+      await loadAgentLine(resolveUserId())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to provision number")
+    } finally {
+      setProvisioningNumber(false)
+    }
+  }
+
+  async function handleCallMe() {
+    if (!userId || !agentLine) return
+
+    setCallingMe(true)
+    setError(null)
+    try {
+      const response = await fetch("/api/agent/line/call-me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: resolveUserId() }),
+      })
+      const data = (await response.json()) as { ok?: boolean; error?: string; message?: string }
+      if (!response.ok || !data.ok) throw new Error(data.error ?? "Call failed")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Call failed")
+    } finally {
+      setCallingMe(false)
+    }
+  }
+
   async function handleSend(text: string) {
     const trimmed = text.trim()
     if (!trimmed || phase === "thinking") return
@@ -213,7 +400,7 @@ export function PersonalAgentPanel() {
       const response = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, messages: nextMessages }),
+        body: JSON.stringify({ userId: resolveUserId(), messages: nextMessages }),
       })
       const data = (await response.json()) as { reply?: string; error?: string }
       if (!response.ok || !data.reply) {
@@ -240,6 +427,24 @@ export function PersonalAgentPanel() {
   const waveformAnalyser = isRecording ? recorderAnalyser : speakerAnalyser
   const waveformActive = isRecording || isSpeaking
   const busy = phase === "thinking" || isSpeaking
+  const gcpProject = googleCloudProject ?? "780417362460"
+  const gmailToolkit = toolkits.find((t) => t.slug === "gmail")
+
+  function toolkitBadge(toolkit: ToolkitStatus) {
+    if (!toolkit.connected) {
+      return { label: "Not linked", className: "bg-muted text-muted-foreground" }
+    }
+    if (toolkit.working === false) {
+      return {
+        label: "Setup needed",
+        className: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+      }
+    }
+    return {
+      label: "Connected",
+      className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-6 px-6 py-10">
@@ -253,41 +458,214 @@ export function PersonalAgentPanel() {
 
       <div className="space-y-2">
         <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-          Personal agents
+          Enterprise agents
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight">Call the agent</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Deploy an enterprise agent</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Talk in your browser or call the Twilio line — voice in, voice out. Connect Gmail for live
-          inbox context via Composio.
+          AgentPhone-style B2B pattern: one deployed agent identity, Composio data sources, a dedicated
+          business line (voice + SMS + WhatsApp Business), and an inbound allowlist — not a consumer
+          WhatsApp contact.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="max-h-[70vh] space-y-4 overflow-y-auto rounded-3xl border bg-card p-5 shadow-sm lg:max-h-none">
+          {twilio?.configured && (
+            <div className="rounded-2xl border bg-background p-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Bot className="size-4 text-primary" />
+                <p className="font-medium">1 · Deploy agent</p>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Each deployment gets an agent ID, owner mobile, optional inbound allowlist, and later
+                a dedicated Twilio business line.
+              </p>
+
+              <label className="mt-3 block text-xs font-medium text-muted-foreground">Workspace</label>
+              <input
+                type="text"
+                value={workspaceNameInput}
+                onChange={(e) => setWorkspaceNameInput(e.target.value)}
+                placeholder="Acme Corp"
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              />
+
+              <label className="mt-3 block text-xs font-medium text-muted-foreground">Agent name</label>
+              <input
+                type="text"
+                value={agentNameInput}
+                onChange={(e) => setAgentNameInput(e.target.value)}
+                placeholder="Executive assistant"
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              />
+
+              <label className="mt-3 block text-xs font-medium text-muted-foreground">Role</label>
+              <select
+                value={agentRoleInput}
+                onChange={(e) => setAgentRoleInput(e.target.value)}
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              >
+                <option value="executive">Executive assistant</option>
+                <option value="sales">Sales / SDR</option>
+                <option value="support">Support</option>
+                <option value="ops">Ops / on-call</option>
+                <option value="custom">Custom</option>
+              </select>
+
+              <label className="mt-3 block text-xs font-medium text-muted-foreground">
+                Owner mobile (E.164)
+              </label>
+              <input
+                type="tel"
+                value={userPhoneInput}
+                onChange={(e) => setUserPhoneInput(e.target.value)}
+                placeholder="+41761234567"
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 font-mono text-sm"
+              />
+
+              <label className="mt-3 block text-xs font-medium text-muted-foreground">
+                Owner email (optional)
+              </label>
+              <input
+                type="email"
+                value={ownerEmailInput}
+                onChange={(e) => setOwnerEmailInput(e.target.value)}
+                placeholder="you@company.com"
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              />
+
+              <label className="mt-3 block text-xs font-medium text-muted-foreground">
+                Inbound allowlist (comma-separated)
+              </label>
+              <textarea
+                value={allowedCallersInput}
+                onChange={(e) => setAllowedCallersInput(e.target.value)}
+                placeholder="+41441234567, +14155551234"
+                rows={2}
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 font-mono text-xs"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Dedicated line: only owner + allowlist can call/text in.
+              </p>
+
+              <Button
+                size="sm"
+                variant={agentLine ? "outline" : "default"}
+                className="mt-3 w-full"
+                disabled={creatingLine || !userPhoneInput.trim() || !agentNameInput.trim()}
+                onClick={() => void handleCreateLine()}
+              >
+                {creatingLine ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : agentLine ? (
+                  "Update deployment"
+                ) : (
+                  "Deploy agent"
+                )}
+              </Button>
+
+              {agentLine && deployment && (
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <p className="text-xs font-medium text-muted-foreground">2 · Business line</p>
+                  <div className="rounded-lg bg-muted/50 p-2 font-mono text-xs">
+                    <p>agentId {deployment.agentId}</p>
+                    <p>lineId {deployment.lineId}</p>
+                  </div>
+
+                  {agentLine.dedicatedPhoneNumber ? (
+                    <>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Dedicated business line</p>
+                        <p className="font-mono text-base">{agentLine.dedicatedPhoneNumber}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Provider: {agentLine.telephonyProvider ?? telephonyProvider}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Voice · SMS
+                        {agentLine.telephonyProvider === "agentphone" ? " · WhatsApp/iMessage via AgentPhone" : " · WhatsApp Business"}{" "}
+                        ({agentLine.whatsappStatus ?? "voice_sms_ready"})
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        {agentPhoneConfigured
+                          ? "Provisions a dedicated US line via AgentPhone (voice + SMS + messaging)."
+                          : "Provisions a US Twilio number (~$1/mo) with allowlist enforcement."}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={provisioningNumber || !canProvisionLine}
+                        onClick={() => void handleProvisionNumber()}
+                      >
+                        {provisioningNumber ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          "Provision business line"
+                        )}
+                      </Button>
+                    </>
+                  )}
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">Shared pool fallback · PIN {agentLine.pin}</p>
+                    {(sharedNumbers?.europe ?? twilio.europePhoneNumber) && (
+                      <p className="font-mono text-xs">
+                        EU {sharedNumbers?.europe ?? twilio.europePhoneNumber}
+                      </p>
+                    )}
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    disabled={callingMe || !canProvisionLine}
+                    onClick={() => void handleCallMe()}
+                  >
+                    {callingMe ? <Loader2 className="size-4 animate-spin" /> : "Outbound: call owner"}
+                  </Button>
+
+                  {!canProvisionLine && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      Run <code className="rounded bg-muted px-1">npm run tunnel</code> and set{" "}
+                      <code className="rounded bg-muted px-1">PUBLIC_TUNNEL_URL</code> so{" "}
+                      {agentPhoneConfigured ? "AgentPhone" : "Twilio"} webhooks can reach this app.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <Link2 className="size-4 text-muted-foreground" />
-            <p className="text-sm font-semibold">Connected apps</p>
+            <p className="text-sm font-semibold">3 · Enterprise data sources</p>
           </div>
           {loadingStatus ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <ul className="space-y-3">
-              {toolkits.map((toolkit) => (
+              {toolkits.map((toolkit) => {
+                const badge = toolkitBadge(toolkit)
+                return (
                 <li key={toolkit.slug} className="rounded-2xl border bg-background p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium">{toolkit.label}</p>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs",
-                        toolkit.connected
-                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {toolkit.connected ? "Connected" : "Not linked"}
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs", badge.className)}>
+                      {badge.label}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{toolkit.description}</p>
+                  {toolkit.connected && toolkit.working === false && toolkit.workError && (
+                    <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+                      {toolkit.workError.includes("Gmail API")
+                        ? "OAuth worked, but the Gmail API is disabled in Google Cloud — enable it below."
+                        : toolkit.workError}
+                    </p>
+                  )}
                   {toolkit.connectHint && !toolkit.configured && (
                     <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
                       {toolkit.connectHint}
@@ -309,59 +687,37 @@ export function PersonalAgentPanel() {
                     </Button>
                   )}
                 </li>
-              ))}
+              )})}
             </ul>
           )}
 
-          {twilio?.configured && twilio.phoneNumber && (
-            <div className="rounded-2xl border bg-background p-3 text-sm">
-              <div className="flex items-center gap-2">
-                <Phone className="size-4 text-primary" />
-                <p className="font-medium">Phone line</p>
-              </div>
-              <p className="mt-2 font-mono text-base">{twilio.phoneNumber}</p>
-              {twilio.europePhoneNumber && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Europe (CH): <span className="font-mono">{twilio.europePhoneNumber}</span>
-                </p>
-              )}
-              <p className="mt-1 text-xs text-muted-foreground">
-                {twilio.reachable
-                  ? twilio.tunnelUrl
-                    ? `Live via tunnel: ${twilio.tunnelUrl} — call now.`
-                    : "Phone line live on production URL."
-                  : "Run npm run tunnel in a second terminal, set PUBLIC_TUNNEL_URL in .env.local, restart dev."}
+          {gmailToolkit?.connected && gmailToolkit.working === false && (
+            <details open className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+              <summary className="cursor-pointer font-medium text-amber-800 dark:text-amber-300">
+                Gmail connected — enable Gmail API
+              </summary>
+              <p className="mt-2 text-muted-foreground">
+                Google sign-in succeeded, but API calls fail until the Gmail API is turned on for your
+                OAuth project.
               </p>
-              {twilio.canConfigureWebhooks && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-3 w-full"
-                  disabled={configuringTwilio}
-                  onClick={() => {
-                    setConfiguringTwilio(true)
-                    void fetch("/api/twilio/status", { method: "POST" })
-                      .then((r) => r.json())
-                      .then((data: { ok?: boolean; error?: string }) => {
-                        if (!data.ok) throw new Error(data.error ?? "Failed")
-                      })
-                      .catch((err) =>
-                        setError(err instanceof Error ? err.message : "Twilio configure failed"),
-                      )
-                      .finally(() => setConfiguringTwilio(false))
-                  }}
-                >
-                  {configuringTwilio ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    "Point Twilio to this app"
-                  )}
-                </Button>
-              )}
-            </div>
+              <ol className="mt-2 list-decimal space-y-2 pl-4 text-muted-foreground">
+                <li>
+                  <a
+                    href={`https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=${gcpProject}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Enable Gmail API
+                  </a>{" "}
+                  in project <code>{gcpProject}</code> → Enable → wait ~1 minute.
+                </li>
+                <li>Refresh this page, then ask about your inbox again.</li>
+              </ol>
+            </details>
           )}
 
-          {!toolkits.some((t) => t.slug === "gmail" && t.connected) && (
+          {!gmailToolkit?.connected && (
           <details open className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
             <summary className="cursor-pointer font-medium text-amber-800 dark:text-amber-300">
               Fix Google 403 access_denied
@@ -371,12 +727,12 @@ export function PersonalAgentPanel() {
               is blocking the account — not Composio.
             </p>
             <p className="mt-2 font-medium text-amber-900 dark:text-amber-200">
-              In project <code>gen-lang-client-0597351768</code>:
+              In project <code>{gcpProject}</code>:
             </p>
             <ol className="mt-1 list-decimal space-y-2 pl-4 text-muted-foreground">
               <li>
                 <a
-                  href="https://console.cloud.google.com/auth/audience?project=gen-lang-client-0597351768"
+                  href={`https://console.cloud.google.com/auth/audience?project=${gcpProject}`}
                   target="_blank"
                   rel="noreferrer"
                   className="underline"
@@ -384,8 +740,7 @@ export function PersonalAgentPanel() {
                   Audience
                 </a>{" "}
                 → User type <strong>External</strong> → Publishing status{" "}
-                <strong>Testing</strong> → Test users → add exactly{" "}
-                <code>ivan.glushenkov.data@gmail.com</code> → Save.
+                <strong>Testing</strong> → Test users → add your Gmail → Save.
               </li>
               <li>
                 Data access → add scopes: <code>gmail.readonly</code>,{" "}
@@ -393,7 +748,7 @@ export function PersonalAgentPanel() {
               </li>
               <li>
                 <a
-                  href="https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=gen-lang-client-0597351768"
+                  href={`https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=${gcpProject}`}
                   target="_blank"
                   rel="noreferrer"
                   className="underline"
@@ -408,7 +763,7 @@ export function PersonalAgentPanel() {
               </li>
               <li>
                 Sign out of Google, open an <strong>incognito</strong> window, Connect Gmail, pick{" "}
-                <strong>only</strong> the test-user account above.
+                your test-user account.
               </li>
             </ol>
           </details>
@@ -419,7 +774,7 @@ export function PersonalAgentPanel() {
           <div className="flex items-center justify-between gap-2 border-b px-5 py-4">
             <div className="flex items-center gap-2">
               <Phone className="size-5 text-primary" />
-              <p className="font-semibold">Live voice call</p>
+              <p className="font-semibold">Agent console (browser)</p>
             </div>
             <div className="flex rounded-full border p-0.5 text-xs">
               <button

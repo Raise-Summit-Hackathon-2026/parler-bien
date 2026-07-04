@@ -29,17 +29,23 @@ export async function runAgentChat(
     throw new Error("OPENROUTER_API_KEY is not configured")
   }
 
-  const { AGENT_SYSTEM_PROMPT, AGENT_TOOLKIT_SLUGS } = await import("@/lib/agent-config")
+  const { AGENT_TOOLKIT_SLUGS } = await import("@/lib/agent-config")
+  const { buildAgentSystemPrompt, getConnectedToolkits } = await import("@/lib/agent-connections")
   const { getComposio } = await import("@/lib/composio")
 
   const composio = getComposio()
+  const connected = await getConnectedToolkits(userId)
+  const connectedSlugs = connected.map((c) => c.slug)
   const tools = await composio.tools.get(userId, {
-    toolkits: AGENT_TOOLKIT_SLUGS,
+    toolkits: connectedSlugs.length ? connectedSlugs : AGENT_TOOLKIT_SLUGS,
     limit: 40,
   })
 
   const conversation: OpenRouterMessage[] = [
-    { role: "system", content: AGENT_SYSTEM_PROMPT },
+    {
+      role: "system",
+      content: buildAgentSystemPrompt(connected.map((c) => c.label)),
+    },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ]
 

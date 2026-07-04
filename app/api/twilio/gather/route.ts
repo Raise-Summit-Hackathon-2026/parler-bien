@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
   const mode = request.nextUrl.searchParams.get("mode") ?? "speech"
   const userIdParam = request.nextUrl.searchParams.get("userId")
   const caller = formValue(formData, "From")
+  const called = formValue(formData, "To")
   const digits = formValue(formData, "Digits")
 
   if (mode === "pin") {
@@ -38,7 +39,8 @@ export async function POST(request: NextRequest) {
   const speechResult = formValue(formData, "SpeechResult")
   const callSid = formValue(formData, "CallSid")
   const agentUserId =
-    resolveAgentUserId({ userIdParam, callerPhone: caller }) ?? "phone_unknown"
+    resolveAgentUserId({ userIdParam, callerPhone: caller, calledNumber: called }) ??
+    "phone_unknown"
   const gatherUrl = getTwilioGatherWebhookUrl(agentUserId, "speech")
 
   if (!speechResult) {
