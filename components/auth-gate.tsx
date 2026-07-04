@@ -1,11 +1,10 @@
 "use client"
 
-import { LogOut } from "lucide-react"
-import type { User } from "@supabase/supabase-js"
 import { type FormEvent, type ReactNode, useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
+import type { User } from "@supabase/supabase-js"
 
 type AuthMode = "login" | "register"
 
@@ -72,12 +71,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }
 
     setUser(result.data.session?.user ?? null)
-    setPassword("")
-  }
-
-  async function handleLogout() {
-    await getSupabaseBrowserClient().auth.signOut()
-    setUser(null)
     setPassword("")
   }
 
@@ -176,19 +169,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className="fixed top-3 right-3 z-50 flex items-center gap-2 rounded-lg border bg-background/95 px-3 py-2 text-sm shadow-sm backdrop-blur">
-        <span className="max-w-[38vw] truncate text-muted-foreground">
-          {user.email ?? "Signed in"}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleLogout}
-          aria-label="Sign out"
-        >
-          <LogOut />
-        </Button>
-      </div>
       {children}
     </>
   )

@@ -1,44 +1,20 @@
 "use client"
 
-import { ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { ScenarioPicker } from "@/components/scenario-picker"
-import { Button } from "@/components/ui/button"
-import type { LanguageId, RegionId } from "@/lib/languages"
 import type { Scenario } from "@/lib/scenarios"
 
-type FreePlaySectionProps = {
-  languageId: LanguageId
-  regionId: RegionId
-  onLanguageChange: (languageId: LanguageId) => void
-  onRegionChange: (regionId: RegionId) => void
-  onSelect: (scenario: Scenario) => void
-  onBack: () => void
-}
+export function FreePlaySection() {
+  const router = useRouter()
 
-export function FreePlaySection({
-  languageId,
-  regionId,
-  onLanguageChange,
-  onRegionChange,
-  onSelect,
-  onBack,
-}: FreePlaySectionProps) {
+  function handleSelect(scenario: Scenario) {
+    router.push(`/play/${encodeURIComponent(scenario.id)}`)
+  }
+
   return (
-    <div className="relative">
-      <div className="absolute top-6 left-6 z-10">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft />
-          Tracks
-        </Button>
-      </div>
-      <ScenarioPicker
-        languageId={languageId}
-        regionId={regionId}
-        onLanguageChange={onLanguageChange}
-        onRegionChange={onRegionChange}
-        onSelect={onSelect}
-      />
-    </div>
+    <section id="free-play" className="scroll-mt-16 border-t bg-muted/20">
+      <ScenarioPicker onSelect={handleSelect} />
+    </section>
   )
 }

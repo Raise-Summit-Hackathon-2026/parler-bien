@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 import { CustomScenarioBuilder } from "@/components/custom-scenario-builder"
+import { useLanguage } from "@/components/language-provider"
 import { ScenarioScene } from "@/components/scenario-scene"
 import { Button } from "@/components/ui/button"
 import { LanguagePicker } from "@/components/language-picker"
@@ -12,7 +13,7 @@ import {
   getCustomScenarios,
 } from "@/lib/custom-scenarios"
 import { getCompletedScenarios } from "@/lib/completions"
-import { getLanguage, getRegion, type LanguageId, type RegionId } from "@/lib/languages"
+import { getLanguage, getRegion } from "@/lib/languages"
 import {
   isBuiltInScenarioId,
   isCustomScenarioId,
@@ -23,10 +24,6 @@ import {
 import { cn } from "@/lib/utils"
 
 type ScenarioPickerProps = {
-  languageId: LanguageId
-  regionId: RegionId
-  onLanguageChange: (languageId: LanguageId) => void
-  onRegionChange: (regionId: RegionId) => void
   onSelect: (scenario: Scenario) => void
 }
 
@@ -102,13 +99,8 @@ function ScenarioCard({
   )
 }
 
-export function ScenarioPicker({
-  languageId,
-  regionId,
-  onLanguageChange,
-  onRegionChange,
-  onSelect,
-}: ScenarioPickerProps) {
+export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
+  const { languageId, regionId, setLanguageId, setRegionId } = useLanguage()
   const [completed] = useState<ScenarioId[]>(() => getCompletedScenarios())
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>(() =>
     getCustomScenarios(),
@@ -145,8 +137,8 @@ export function ScenarioPicker({
           <LanguagePicker
             languageId={languageId}
             regionId={regionId}
-            onLanguageChange={onLanguageChange}
-            onRegionChange={onRegionChange}
+            onLanguageChange={setLanguageId}
+            onRegionChange={setRegionId}
           />
           <p className="text-xs text-muted-foreground">
             {region.accent} · {region.city}

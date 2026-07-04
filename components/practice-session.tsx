@@ -4,6 +4,7 @@ import confetti from "canvas-confetti"
 import { Loader2, Mic, RotateCcw, Square, Volume2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import { useLanguage } from "@/components/language-provider"
 import { LanguagePicker } from "@/components/language-picker"
 import { ScenarioBackButton } from "@/components/scenario-picker"
 import { ScenarioScene } from "@/components/scenario-scene"
@@ -29,7 +30,7 @@ import {
   type CharacterGender,
   type Scenario,
 } from "@/lib/scenarios"
-import { getRegion, type LanguageId, type RegionId } from "@/lib/languages"
+import { getRegion } from "@/lib/languages"
 import type {
   CharacterReply,
   ConversationTurn,
@@ -44,10 +45,6 @@ const EXAMPLE_COUNT = 4
 
 type PracticeSessionProps = {
   scenario: Scenario
-  languageId: LanguageId
-  regionId: RegionId
-  onLanguageChange: (languageId: LanguageId) => void
-  onRegionChange: (regionId: RegionId) => void
   onBack: () => void
   levelContext?: LevelContext
 }
@@ -230,13 +227,10 @@ function randomCharacterGenderForScenario(
 
 export function PracticeSession({
   scenario,
-  languageId,
-  regionId,
-  onLanguageChange,
-  onRegionChange,
   onBack,
   levelContext,
 }: PracticeSessionProps) {
+  const { languageId, regionId, setLanguageId, setRegionId } = useLanguage()
   const agent = levelContext?.agent
   const isLanguageMode =
     levelContext?.agent.type === "language" || scenario.id === "teacher"
@@ -750,8 +744,8 @@ export function PracticeSession({
           <LanguagePicker
             languageId={languageId}
             regionId={regionId}
-            onLanguageChange={onLanguageChange}
-            onRegionChange={onRegionChange}
+            onLanguageChange={setLanguageId}
+            onRegionChange={setRegionId}
           />
         </div>
       )}
