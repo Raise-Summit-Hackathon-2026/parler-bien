@@ -14,6 +14,7 @@ type LanguagePickerProps = {
   regionId: RegionId
   onLanguageChange: (languageId: LanguageId) => void
   onRegionChange: (regionId: RegionId) => void
+  availableLanguageIds?: LanguageId[]
   className?: string
 }
 
@@ -22,14 +23,18 @@ export function LanguagePicker({
   regionId,
   onLanguageChange,
   onRegionChange,
+  availableLanguageIds,
   className,
 }: LanguagePickerProps) {
+  const languages = availableLanguageIds?.length
+    ? LANGUAGES.filter((lang) => availableLanguageIds.includes(lang.id))
+    : LANGUAGES
   const language = LANGUAGES.find((l) => l.id === languageId) ?? LANGUAGES[0]
 
   return (
     <div className={cn("space-y-3", className)}>
       <div className="flex flex-wrap justify-center gap-2">
-        {LANGUAGES.map((lang) => (
+        {languages.map((lang) => (
           <button
             key={lang.id}
             type="button"

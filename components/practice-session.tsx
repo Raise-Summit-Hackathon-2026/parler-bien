@@ -25,6 +25,8 @@ import { pickRandomSentences } from "@/lib/sentences"
 import { authenticatedFetch } from "@/lib/supabase"
 import {
   getScenarioContent,
+  getScenarioFallbackLanguageId,
+  getScenarioLanguageIds,
   isBuiltInScenarioId,
   isCustomScenarioId,
   randomCharacterGender,
@@ -258,8 +260,16 @@ export function PracticeSession({
   const showWordBreakdown = isTeacher || isLanguageMode
 
   const initialTarget = null
-  const region = getRegion(languageId, regionId)
-  const scenarioContent = getScenarioContent(scenario, languageId)
+  const availableLanguageIds = useMemo(
+    () => getScenarioLanguageIds(scenario),
+    [scenario],
+  )
+  const practiceLanguageId = useMemo(
+    () => getScenarioFallbackLanguageId(scenario, languageId),
+    [scenario, languageId],
+  )
+  const region = getRegion(practiceLanguageId, regionId)
+  const scenarioContent = getScenarioContent(scenario, practiceLanguageId)
 
   const {
     isRecording,
@@ -279,10 +289,12 @@ export function PracticeSession({
   const openingPlayed = useRef(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  const [examples] = useState<SentenceSuggestion[]>(() =>
-    isTeacher
-      ? pickRandomSentences(EXAMPLE_COUNT, languageId)
-      : scenarioContent.starters
+  const examples = useMemo<SentenceSuggestion[]>(
+    () =>
+      isTeacher
+        ? pickRandomSentences(EXAMPLE_COUNT, practiceLanguageId)
+        : scenarioContent.starters,
+    [isTeacher, practiceLanguageId, scenarioContent.starters],
   )
 
   const [targetPhrase, setTargetPhrase] = useState<string | null>(initialTarget)
@@ -298,6 +310,12 @@ export function PracticeSession({
     () => randomCharacterGenderForScenario(scenario.id),
     [scenario.id]
   )
+
+  useEffect(() => {
+    if (practiceLanguageId !== languageId) {
+      setLanguageId(practiceLanguageId)
+    }
+  }, [languageId, practiceLanguageId, setLanguageId])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ block: "end" })
@@ -400,8 +418,8 @@ export function PracticeSession({
           audioBase64: audio.base64,
           audioFormat: audio.format,
           phrase: targetPhrase ?? undefined,
-          languageId,
-          regionId,
+          languageId: practiceLanguageId,
+          regionId: region.id,
           scenarioId: scenario.id,
           customScenario: isCustomScenarioId(scenario.id)
             ? scenario
@@ -691,10 +709,11 @@ export function PracticeSession({
 
       <div className="shrink-0 pt-2">
         <LanguagePicker
-          languageId={languageId}
-          regionId={regionId}
+          languageId={practiceLanguageId}
+          regionId={region.id}
           onLanguageChange={setLanguageId}
           onRegionChange={setRegionId}
+          availableLanguageIds={availableLanguageIds}
         />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import type { LanguageId, Region } from "@/lib/languages"
+import { LANGUAGES, type LanguageId, type Region } from "@/lib/languages"
 import type { SentenceSuggestion, SpeakerProfile } from "@/lib/types"
 
 export type BuiltInScenarioId =
@@ -105,25 +105,29 @@ export function resolveScenario(
   return getScenario(scenarioId)
 }
 
+export function getScenarioLanguageIds(scenario: Scenario): LanguageId[] {
+  return LANGUAGES.map((language) => language.id).filter((languageId) =>
+    Boolean(scenario.content[languageId]),
+  )
+}
+
+export function getScenarioFallbackLanguageId(
+  scenario: Scenario,
+  languageId: LanguageId,
+): LanguageId {
+  if (scenario.content[languageId]) return languageId
+
+  const primary = scenario.primaryLanguageId
+  if (primary && scenario.content[primary]) return primary
+
+  return getScenarioLanguageIds(scenario)[0] ?? languageId
+}
+
 export function getScenarioContent(
   scenario: Scenario,
   languageId: LanguageId,
 ): ScenarioContent {
-  const direct = scenario.content[languageId]
-  if (direct) return direct
-
-  const primary = scenario.primaryLanguageId
-  if (primary && scenario.content[primary]) {
-    return scenario.content[primary]
-  }
-
-  return (
-    scenario.content.fr ??
-    scenario.content.en ??
-    scenario.content.es ??
-    scenario.content.ru ??
-    EMPTY_CONTENT
-  )
+  return scenario.content[getScenarioFallbackLanguageId(scenario, languageId)] ?? EMPTY_CONTENT
 }
 
 export function formatPersona(
