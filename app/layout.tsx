@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import Script from "next/script"
 
 import "./globals.css"
 import { LanguageProvider } from "@/components/language-provider"
@@ -13,6 +14,20 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+const themeScript = `
+(() => {
+  try {
+    const storedTheme = window.localStorage.getItem("theme");
+    const theme = storedTheme === "light" || storedTheme === "dark" || storedTheme === "system" ? storedTheme : "system";
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const resolvedTheme = theme === "system" ? systemTheme : theme;
+
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+    document.documentElement.style.colorScheme = resolvedTheme;
+  } catch {}
+})();
+`
 
 export const metadata = {
   title: "Parler Bien — Pronunciation Practice",
@@ -31,6 +46,9 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
     >
       <body className="flex min-h-svh flex-col">
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         <ThemeProvider>
           <LanguageProvider>
             <SiteHeader />
