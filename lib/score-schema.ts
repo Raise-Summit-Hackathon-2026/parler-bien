@@ -17,12 +17,21 @@ export const pronunciationScoreJsonSchema = {
     reply: {
       type: "object",
       description:
-        "Character or teacher spoken response in the practice language with English hint. For teacher mode this is coach feedback.",
+        "Character or teacher response in the practice language with English hint. For teacher mode this is coach feedback.",
       properties: {
-        text: { type: "string" },
+        text: {
+          type: "string",
+          description:
+            "Visible text shown to the user. Natural prose only; do not include bracketed performance tags.",
+        },
+        tts_text: {
+          type: "string",
+          description:
+            "Audio-only version of text. Use the same spoken words as text, but add sparse Gemini square-bracket performance tags where they improve delivery, such as [whispers], [laughs softly], [sighs], [excited], [curious], or [slowly]. Tags are delivery cues, not spoken words.",
+        },
         hint: { type: "string", description: "Short English gloss" },
       },
-      required: ["text", "hint"],
+      required: ["text", "tts_text", "hint"],
       additionalProperties: false,
     },
     meter: {

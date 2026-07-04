@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     text?: string
     style?: string
     gender?: string
+    voice?: string
     ageRange?: string
     tone?: string
     accent?: string
@@ -53,7 +54,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { text, style, gender, ageRange, tone, accent } = body
+  const {
+    text,
+    style,
+    gender,
+    voice: requestedVoice,
+    ageRange,
+    tone,
+    accent,
+  } = body
 
   if (!text?.trim() || !style || !isTtsStyle(style)) {
     return NextResponse.json(
@@ -69,11 +78,15 @@ export async function POST(request: Request) {
     style === "coach" || style === "character"
       ? {
           gender: gender && isCharacterGender(gender) ? gender : undefined,
+          voice: requestedVoice?.trim() || undefined,
           ageRange: ageRange?.trim() || undefined,
           tone: tone?.trim() || undefined,
           accent: accent?.trim() || undefined,
         }
-      : { accent: accent?.trim() || undefined }
+      : {
+          accent: accent?.trim() || undefined,
+          voice: requestedVoice?.trim() || undefined,
+        }
 
   const key = ttsCacheKey(text.trim(), style, ttsOptions)
   const cached = cache.get(key)
@@ -86,10 +99,10 @@ export async function POST(request: Request) {
     })
   }
 
-  const voice =
+  const selectedVoice =
     style === "coach" || style === "character"
-      ? selectVoice(ttsOptions?.gender)
-      : selectVoice()
+      ? selectVoice(ttsOptions?.gender, ttsOptions?.voice)
+      : selectVoice(undefined, ttsOptions?.voice)
 
   try {
     const response = await fetch(OPENROUTER_SPEECH_URL, {
@@ -103,7 +116,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: TTS_MODEL,
-        voice,
+        voice: selectedVoice,
         input: buildSpeechInput(text.trim(), style, ttsOptions),
         response_format: "pcm",
       }),

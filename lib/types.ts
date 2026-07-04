@@ -15,6 +15,7 @@ export type SentenceSuggestion = {
 
 export type CharacterReply = {
   text: string
+  tts_text: string
   hint: string
 }
 

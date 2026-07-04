@@ -8,6 +8,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "test": "bun test lib/tts.test.ts",
+    "eval:tts": "bun scripts/tts.eval.ts",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bun": "^1.3.14",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^19",
