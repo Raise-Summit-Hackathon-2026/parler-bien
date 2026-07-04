@@ -1,8 +1,10 @@
 import {
-  createClient,
+  createClient as createSupabaseClient,
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js"
+
+import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/client"
 
 let browserClient: SupabaseClient | null = null
 
@@ -29,14 +31,14 @@ function getSupabaseKey() {
 
 export function getSupabaseBrowserClient() {
   if (!browserClient) {
-    browserClient = createClient(getSupabaseUrl(), getSupabaseKey())
+    browserClient = createBrowserSupabaseClient()
   }
 
   return browserClient
 }
 
 export function getSupabaseServerClient() {
-  return createClient(getSupabaseUrl(), getSupabaseKey(), {
+  return createSupabaseClient(getSupabaseUrl(), getSupabaseKey(), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
