@@ -6,7 +6,6 @@ import {
   selectVoice,
   TTS_MODEL,
   ttsCacheKey,
-  type TtsGender,
   type TtsStyle,
 } from "@/lib/tts"
 
@@ -14,15 +13,14 @@ const OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
 
 const cache = new Map<string, Buffer>()
 
-const VALID_STYLES: TtsStyle[] = ["coach", "phrase", "word"]
-const VALID_GENDERS: TtsGender[] = ["male", "female", "unsure"]
+const VALID_STYLES: TtsStyle[] = ["coach", "phrase", "word", "character"]
 
 function isTtsStyle(value: string): value is TtsStyle {
   return VALID_STYLES.includes(value as TtsStyle)
 }
 
-function isTtsGender(value: string): value is TtsGender {
-  return VALID_GENDERS.includes(value as TtsGender)
+function isCharacterGender(value: string): value is "male" | "female" {
+  return value === "male" || value === "female"
 }
 
 export async function POST(request: Request) {
@@ -39,6 +37,8 @@ export async function POST(request: Request) {
     style?: string
     gender?: string
     ageRange?: string
+    tone?: string
+    accent?: string
   }
 
   try {
@@ -47,22 +47,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { text, style, gender, ageRange } = body
+  const { text, style, gender, ageRange, tone, accent } = body
 
   if (!text?.trim() || !style || !isTtsStyle(style)) {
     return NextResponse.json(
-      { error: "text and style (coach | phrase | word) are required" },
+      { error: "text and style (coach | phrase | word | character) are required" },
       { status: 400 },
     )
   }
 
   const ttsOptions =
-    style === "coach"
+    style === "coach" || style === "character"
       ? {
-          gender: gender && isTtsGender(gender) ? gender : undefined,
+          gender:
+            gender && isCharacterGender(gender) ? gender : undefined,
           ageRange: ageRange?.trim() || undefined,
+          tone: tone?.trim() || undefined,
+          accent: accent?.trim() || undefined,
         }
-      : undefined
+      : { accent: accent?.trim() || undefined }
 
   const key = ttsCacheKey(text.trim(), style, ttsOptions)
   const cached = cache.get(key)
@@ -75,7 +78,10 @@ export async function POST(request: Request) {
     })
   }
 
-  const voice = style === "coach" ? selectVoice(ttsOptions?.gender) : selectVoice()
+  const voice =
+    style === "coach" || style === "character"
+      ? selectVoice(ttsOptions?.gender)
+      : selectVoice()
 
   try {
     const response = await fetch(OPENROUTER_SPEECH_URL, {

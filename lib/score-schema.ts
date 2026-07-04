@@ -9,15 +9,30 @@ export const pronunciationScoreJsonSchema = {
       type: "string",
       description: "One short encouraging sentence with the main fix",
     },
-    voice_line: {
-      type: "string",
-      description:
-        "Short spoken reaction for TTS from a native French teacher matching the speaker's gender and age. Warm, clear, professional — not flirtatious. Tease one next conversational step.",
-    },
     transcript: {
       type: "string",
       description:
-        "The French sentence being scored — the target phrase or what the user said in free mode",
+        "The sentence being scored — the target phrase or what the user said",
+    },
+    reply: {
+      type: "object",
+      description:
+        "Character or teacher spoken response in the practice language with English hint. For teacher mode this is coach feedback.",
+      properties: {
+        text: { type: "string" },
+        hint: { type: "string", description: "Short English gloss" },
+      },
+      required: ["text", "hint"],
+      additionalProperties: false,
+    },
+    meter: {
+      type: "number",
+      description:
+        "Goal progress 0-100 for scenario mode. Use 0 for teacher mode.",
+    },
+    goal_achieved: {
+      type: "boolean",
+      description: "True when scenario goal is met. Always false for teacher.",
     },
     words: {
       type: "array",
@@ -36,7 +51,7 @@ export const pronunciationScoreJsonSchema = {
     next_sentences: {
       type: "array",
       description:
-        "Exactly 3 French follow-up sentences that continue the conversation naturally",
+        "Exactly 3 follow-up sentences the user could say next in the practice language",
       items: {
         type: "object",
         properties: {
@@ -51,24 +66,13 @@ export const pronunciationScoreJsonSchema = {
       type: "object",
       description: "Voice metadata inferred from the recording",
       properties: {
-        accent: {
-          type: "string",
-          description:
-            "Detected native/source accent influencing French (e.g. American English, Dutch, Spanish)",
-        },
-        age_range: {
-          type: "string",
-          description: "Rough age estimate (e.g. 20-30)",
-        },
+        accent: { type: "string" },
+        age_range: { type: "string" },
         gender: {
           type: "string",
           enum: ["male", "female", "unsure"],
         },
-        notes: {
-          type: "string",
-          description:
-            "One short sentence on how this speaker profile affects their French pronunciation",
-        },
+        notes: { type: "string" },
       },
       required: ["accent", "age_range", "gender", "notes"],
       additionalProperties: false,
@@ -77,8 +81,10 @@ export const pronunciationScoreJsonSchema = {
   required: [
     "overall_score",
     "coaching",
-    "voice_line",
     "transcript",
+    "reply",
+    "meter",
+    "goal_achieved",
     "words",
     "next_sentences",
     "speaker",

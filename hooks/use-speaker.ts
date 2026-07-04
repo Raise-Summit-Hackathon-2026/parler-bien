@@ -41,6 +41,8 @@ export function useSpeaker() {
             style,
             gender: options?.gender,
             ageRange: options?.ageRange,
+            tone: options?.tone,
+            accent: options?.accent,
           }),
         })
 

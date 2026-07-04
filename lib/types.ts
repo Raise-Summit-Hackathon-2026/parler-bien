@@ -1,3 +1,6 @@
+import type { LanguageId, RegionId } from "@/lib/languages"
+import type { ScenarioId } from "@/lib/scenarios"
+
 export type WordScore = {
   word: string
   score: number
@@ -10,6 +13,16 @@ export type SentenceSuggestion = {
   hint: string
 }
 
+export type CharacterReply = {
+  text: string
+  hint: string
+}
+
+export type ConversationTurn = {
+  role: "user" | "character"
+  text: string
+}
+
 export type SpeakerProfile = {
   accent: string
   age_range: string
@@ -18,12 +31,15 @@ export type SpeakerProfile = {
 }
 
 export type { TtsStyle, TtsRequestOptions } from "@/lib/tts"
+export type { ScenarioId } from "@/lib/scenarios"
 
 export type PronunciationScore = {
   overall_score: number
   coaching: string
-  voice_line: string
   transcript: string
+  reply: CharacterReply
+  meter: number
+  goal_achieved: boolean
   words: WordScore[]
   next_sentences: SentenceSuggestion[]
   speaker: SpeakerProfile
@@ -33,5 +49,10 @@ export type ScoreRequest = {
   audioBase64: string
   audioFormat: string
   phrase?: string
-  language: string
+  languageId: LanguageId
+  regionId: RegionId
+  scenarioId?: ScenarioId
+  history?: ConversationTurn[]
+  characterGender?: "male" | "female"
+  currentMeter?: number
 }

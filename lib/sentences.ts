@@ -1,9 +1,7 @@
-export type SentenceSuggestion = {
-  text: string
-  hint: string
-}
+import type { LanguageId } from "@/lib/languages"
+import type { SentenceSuggestion } from "@/lib/types"
 
-export const STARTER_SENTENCES: SentenceSuggestion[] = [
+const FRENCH_SENTENCES: SentenceSuggestion[] = [
   { text: "Je voudrais un croissant, s'il vous plaît.", hint: "I'd like a croissant, please." },
   { text: "Un café crème, s'il vous plaît.", hint: "A coffee with milk, please." },
   { text: "Où est la station de métro ?", hint: "Where is the metro station?" },
@@ -28,13 +26,47 @@ export const STARTER_SENTENCES: SentenceSuggestion[] = [
   { text: "C'est trop cher pour moi.", hint: "It's too expensive for me." },
 ]
 
+const ENGLISH_SENTENCES: SentenceSuggestion[] = [
+  { text: "Could I get a table for two, please?", hint: "Polite restaurant request" },
+  { text: "How much does this cost?", hint: "Asking a price" },
+  { text: "I'm sorry, could you say that again?", hint: "Asking to repeat" },
+  { text: "Excuse me, where's the nearest subway station?", hint: "Asking directions" },
+  { text: "I'd like a flat white to go, please.", hint: "Ordering coffee" },
+  { text: "That sounds great — let's do it.", hint: "Agreeing enthusiastically" },
+  { text: "I'm just browsing, thanks.", hint: "Shop small talk" },
+  { text: "Could I get the check, please?", hint: "Asking for the bill" },
+  { text: "I have a reservation under Smith.", hint: "Checking in" },
+  { text: "What would you recommend?", hint: "Asking for a suggestion" },
+  { text: "It was lovely meeting you.", hint: "Warm goodbye" },
+  { text: "I'm allergic to peanuts, is that okay?", hint: "Dietary needs" },
+]
+
+const SPANISH_SENTENCES: SentenceSuggestion[] = [
+  { text: "Quisiera un café con leche, por favor.", hint: "I'd like a coffee with milk, please." },
+  { text: "¿Cuánto cuesta esto?", hint: "How much does this cost?" },
+  { text: "¿Dónde está la estación de metro?", hint: "Where is the metro station?" },
+  { text: "No entiendo, ¿puede repetir?", hint: "I don't understand, can you repeat?" },
+  { text: "La cuenta, por favor.", hint: "The bill, please." },
+  { text: "¿Tiene una mesa para dos?", hint: "Do you have a table for two?" },
+  { text: "Estoy perdido, ¿me puede ayudar?", hint: "I'm lost, can you help me?" },
+  { text: "¡Está delicioso!", hint: "It's delicious!" },
+  { text: "Soy alérgico a los frutos secos.", hint: "I'm allergic to nuts." },
+  { text: "¿Qué me recomienda?", hint: "What do you recommend?" },
+  { text: "Es demasiado caro para mí.", hint: "It's too expensive for me." },
+  { text: "¡Que tenga un buen día!", hint: "Have a good day!" },
+]
+
+const SENTENCE_POOLS: Record<LanguageId, SentenceSuggestion[]> = {
+  fr: FRENCH_SENTENCES,
+  en: ENGLISH_SENTENCES,
+  es: SPANISH_SENTENCES,
+}
+
 export function pickRandomSentences(
   count: number,
-  exclude: SentenceSuggestion[] = [],
+  languageId: LanguageId = "fr",
 ): SentenceSuggestion[] {
-  const excludeTexts = new Set(exclude.map((s) => s.text))
-  const pool = STARTER_SENTENCES.filter((s) => !excludeTexts.has(s.text))
-
+  const pool = SENTENCE_POOLS[languageId]
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, Math.min(count, shuffled.length))
 }

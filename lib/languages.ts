@@ -1,0 +1,73 @@
+export type LanguageId = "fr" | "en" | "es"
+
+export type RegionId =
+  | "fr-FR"
+  | "fr-CA"
+  | "en-US"
+  | "en-GB"
+  | "es-ES"
+  | "es-MX"
+
+export type Region = {
+  id: RegionId
+  label: string
+  city: string
+  /** Accent description used in TTS performance notes and scoring prompts, e.g. "Parisian French" */
+  accent: string
+}
+
+export type Language = {
+  id: LanguageId
+  /** Display + prompt name, e.g. "French" */
+  name: string
+  regions: Region[]
+}
+
+export const LANGUAGES: Language[] = [
+  {
+    id: "fr",
+    name: "French",
+    regions: [
+      { id: "fr-FR", label: "France", city: "Paris", accent: "Parisian French" },
+      { id: "fr-CA", label: "Québec", city: "Montréal", accent: "Québécois French" },
+    ],
+  },
+  {
+    id: "en",
+    name: "English",
+    regions: [
+      { id: "en-US", label: "United States", city: "New York", accent: "American English" },
+      { id: "en-GB", label: "United Kingdom", city: "London", accent: "British English" },
+    ],
+  },
+  {
+    id: "es",
+    name: "Spanish",
+    regions: [
+      { id: "es-ES", label: "Spain", city: "Madrid", accent: "Castilian Spanish" },
+      { id: "es-MX", label: "Mexico", city: "Mexico City", accent: "Mexican Spanish" },
+    ],
+  },
+]
+
+export const DEFAULT_LANGUAGE_ID: LanguageId = "fr"
+export const DEFAULT_REGION_ID: RegionId = "fr-FR"
+
+export function getLanguage(id: LanguageId): Language {
+  const language = LANGUAGES.find((l) => l.id === id)
+  if (!language) throw new Error(`Unknown language: ${id}`)
+  return language
+}
+
+export function getRegion(languageId: LanguageId, regionId: RegionId): Region {
+  const language = getLanguage(languageId)
+  return language.regions.find((r) => r.id === regionId) ?? language.regions[0]
+}
+
+export function isLanguageId(value: string): value is LanguageId {
+  return LANGUAGES.some((l) => l.id === value)
+}
+
+export function isRegionId(value: string): value is RegionId {
+  return LANGUAGES.some((l) => l.regions.some((r) => r.id === value))
+}
