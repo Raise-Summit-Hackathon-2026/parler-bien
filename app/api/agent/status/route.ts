@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { AGENT_TOOLKITS } from "@/lib/agent-config"
+import { resolveAuthConfigId } from "@/lib/composio-auth"
 import { getAgentUserId, getComposio } from "@/lib/composio"
 
 export async function GET(request: Request) {
@@ -10,22 +11,25 @@ export async function GET(request: Request) {
 
     const composio = getComposio()
     const accounts = await composio.connectedAccounts.list({ userIds: [userId] })
-
     const active = (accounts.items ?? []).filter((a) => a.status === "ACTIVE")
 
-    const toolkits = AGENT_TOOLKITS.map((toolkit) => {
-      const connection = active.find(
-        (a) => (a.toolkit?.slug ?? a.toolkit) === toolkit.slug,
-      )
-      return {
-        slug: toolkit.slug,
-        label: toolkit.label,
-        description: toolkit.description,
-        connected: Boolean(connection),
-        connectionId: connection?.id ?? null,
-        configured: Boolean(toolkit.authConfigId),
-      }
-    })
+    const toolkits = await Promise.all(
+      AGENT_TOOLKITS.map(async (toolkit) => {
+        const connection = active.find(
+          (a) => (a.toolkit?.slug ?? a.toolkit) === toolkit.slug,
+        )
+        const authConfigId = await resolveAuthConfigId(composio, toolkit.slug)
+        return {
+          slug: toolkit.slug,
+          label: toolkit.label,
+          description: toolkit.description,
+          connected: Boolean(connection),
+          connectionId: connection?.id ?? null,
+          configured: Boolean(authConfigId),
+          connectHint: toolkit.connectHint ?? null,
+        }
+      }),
+    )
 
     return NextResponse.json({ userId, toolkits })
   } catch (error) {

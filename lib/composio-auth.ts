@@ -1,27 +1,36 @@
 import type { Composio } from "@composio/core"
 
 import { getToolkitBySlug } from "@/lib/agent-config"
-import { ensureCustomGmailAuthConfig } from "@/lib/ensure-gmail-auth-config"
+import {
+  ensureCustomGoogleAuthConfig,
+  isGoogleToolkit,
+} from "@/lib/ensure-google-auth-config"
+
+const ENV_AUTH_KEYS: Record<string, string> = {
+  gmail: "COMPOSIO_GMAIL_AUTH_CONFIG_ID",
+  googlecalendar: "COMPOSIO_GOOGLECALENDAR_AUTH_CONFIG_ID",
+  googledrive: "COMPOSIO_GOOGLEDRIVE_AUTH_CONFIG_ID",
+  outlook: "COMPOSIO_OUTLOOK_AUTH_CONFIG_ID",
+  one_drive: "COMPOSIO_ONE_DRIVE_AUTH_CONFIG_ID",
+  microsoft_teams: "COMPOSIO_MICROSOFT_TEAMS_AUTH_CONFIG_ID",
+  whatsapp: "COMPOSIO_WHATSAPP_AUTH_CONFIG_ID",
+}
 
 export async function resolveAuthConfigId(
   composio: Composio,
   toolkitSlug: string,
 ): Promise<string | undefined> {
-  if (toolkitSlug === "gmail") {
-    const custom = await ensureCustomGmailAuthConfig(composio)
+  if (isGoogleToolkit(toolkitSlug)) {
+    const custom = await ensureCustomGoogleAuthConfig(composio, toolkitSlug)
     if (custom) return custom
   }
 
+  const envKey = ENV_AUTH_KEYS[toolkitSlug]
+  if (envKey && process.env[envKey]?.trim()) {
+    return process.env[envKey]!.trim()
+  }
+
   const toolkit = getToolkitBySlug(toolkitSlug)
-  const envKey =
-    toolkitSlug === "gmail"
-      ? process.env.COMPOSIO_GMAIL_AUTH_CONFIG_ID
-      : toolkitSlug === "googlecalendar"
-        ? process.env.COMPOSIO_GOOGLECALENDAR_AUTH_CONFIG_ID
-        : undefined
-
-  if (envKey?.trim()) return envKey.trim()
-
   const listed = await composio.authConfigs.list({})
   const matches = (listed.items ?? []).filter((item) => {
     const slug = item.toolkit?.slug ?? item.toolkit
@@ -30,7 +39,6 @@ export async function resolveAuthConfigId(
 
   if (!matches.length) return toolkit?.authConfigId
 
-  // Prefer newest Composio-managed config (best chance after Google blocks an old one)
   const composioManaged = matches.filter((item) => item.isComposioManaged)
   const pool = composioManaged.length ? composioManaged : matches
   return pool[pool.length - 1]?.id ?? toolkit?.authConfigId

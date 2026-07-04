@@ -8,6 +8,7 @@ import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useSpeaker } from "@/hooks/use-speaker"
+import { getGoogleOAuthRedirectUri } from "@/lib/agent-config"
 import { cn } from "@/lib/utils"
 
 type ToolkitStatus = {
@@ -17,6 +18,7 @@ type ToolkitStatus = {
   connected: boolean
   connectionId: string | null
   configured: boolean
+  connectHint: string | null
 }
 
 type ChatMessage = {
@@ -24,10 +26,22 @@ type ChatMessage = {
   content: string
 }
 
+type TwilioStatus = {
+  configured: boolean
+  phoneNumber: string | null
+  europePhoneNumber?: string
+  voiceWebhookUrl: string
+  tunnelUrl: string | null
+  reachable: boolean
+  publicUrl: boolean
+  canConfigureWebhooks: boolean
+}
+
 const VOICE_STARTERS = [
   "Brief me on Parler Bien for a judge.",
   "What's in my inbox today?",
   "Am I free tomorrow afternoon?",
+  "Find my latest pitch deck on Drive.",
 ]
 
 function getOrCreateUserId(storageKey: string): string {
@@ -50,6 +64,8 @@ export function PersonalAgentPanel() {
   const [mode, setMode] = useState<"voice" | "text">("voice")
   const [phase, setPhase] = useState<"idle" | "listening" | "thinking" | "speaking">("idle")
   const [error, setError] = useState<string | null>(null)
+  const [twilio, setTwilio] = useState<TwilioStatus | null>(null)
+  const [configuringTwilio, setConfiguringTwilio] = useState(false)
   const listId = useId()
 
   const { isRecording, analyser: recorderAnalyser, error: micError, startRecording, stopRecording } =
@@ -86,6 +102,13 @@ export function PersonalAgentPanel() {
       void loadStatus(userId)
     }
   }, [loadStatus, userId])
+
+  useEffect(() => {
+    void fetch("/api/twilio/status")
+      .then((r) => r.json())
+      .then((data: TwilioStatus) => setTwilio(data))
+      .catch(() => setTwilio(null))
+  }, [])
 
   useEffect(() => {
     if (isRecording) setPhase("listening")
@@ -234,12 +257,13 @@ export function PersonalAgentPanel() {
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Call the agent</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Talk in your browser — voice in, voice out. Connect Gmail for live inbox context via Composio.
+          Talk in your browser or call the Twilio line — voice in, voice out. Connect Gmail for live
+          inbox context via Composio.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-4 rounded-3xl border bg-card p-5 shadow-sm">
+        <aside className="max-h-[70vh] space-y-4 overflow-y-auto rounded-3xl border bg-card p-5 shadow-sm lg:max-h-none">
           <div className="flex items-center gap-2">
             <Link2 className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold">Connected apps</p>
@@ -264,6 +288,11 @@ export function PersonalAgentPanel() {
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{toolkit.description}</p>
+                  {toolkit.connectHint && !toolkit.configured && (
+                    <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                      {toolkit.connectHint}
+                    </p>
+                  )}
                   {!toolkit.connected && (
                     <Button
                       size="sm"
@@ -275,7 +304,7 @@ export function PersonalAgentPanel() {
                       {connecting === toolkit.slug ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
-                        "Connect Gmail"
+                        `Connect ${toolkit.label}`
                       )}
                     </Button>
                   )}
@@ -284,20 +313,106 @@ export function PersonalAgentPanel() {
             </ul>
           )}
 
-          <details className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+          {twilio?.configured && twilio.phoneNumber && (
+            <div className="rounded-2xl border bg-background p-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Phone className="size-4 text-primary" />
+                <p className="font-medium">Phone line</p>
+              </div>
+              <p className="mt-2 font-mono text-base">{twilio.phoneNumber}</p>
+              {twilio.europePhoneNumber && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Europe (CH): <span className="font-mono">{twilio.europePhoneNumber}</span>
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {twilio.reachable
+                  ? twilio.tunnelUrl
+                    ? `Live via tunnel: ${twilio.tunnelUrl} — call now.`
+                    : "Phone line live on production URL."
+                  : "Run npm run tunnel in a second terminal, set PUBLIC_TUNNEL_URL in .env.local, restart dev."}
+              </p>
+              {twilio.canConfigureWebhooks && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 w-full"
+                  disabled={configuringTwilio}
+                  onClick={() => {
+                    setConfiguringTwilio(true)
+                    void fetch("/api/twilio/status", { method: "POST" })
+                      .then((r) => r.json())
+                      .then((data: { ok?: boolean; error?: string }) => {
+                        if (!data.ok) throw new Error(data.error ?? "Failed")
+                      })
+                      .catch((err) =>
+                        setError(err instanceof Error ? err.message : "Twilio configure failed"),
+                      )
+                      .finally(() => setConfiguringTwilio(false))
+                  }}
+                >
+                  {configuringTwilio ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Point Twilio to this app"
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {!toolkits.some((t) => t.slug === "gmail" && t.connected) && (
+          <details open className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
             <summary className="cursor-pointer font-medium text-amber-800 dark:text-amber-300">
-              Google OAuth setup
+              Fix Google 403 access_denied
             </summary>
             <p className="mt-2 text-muted-foreground">
-              In Google Cloud Console, authorized redirect URI must be exactly:
+              Your redirect URI is correct. A 403 means Google&apos;s <strong>Testing mode</strong>{" "}
+              is blocking the account — not Composio.
             </p>
-            <code className="mt-1 block rounded bg-muted p-2 text-[10px] break-all">
-              https://backend.composio.dev/api/v3/toolkits/auth/callback
-            </code>
-            <p className="mt-2 text-muted-foreground">
-              Add your email under OAuth consent screen → Test users, then Connect again.
+            <p className="mt-2 font-medium text-amber-900 dark:text-amber-200">
+              In project <code>gen-lang-client-0597351768</code>:
             </p>
+            <ol className="mt-1 list-decimal space-y-2 pl-4 text-muted-foreground">
+              <li>
+                <a
+                  href="https://console.cloud.google.com/auth/audience?project=gen-lang-client-0597351768"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  Audience
+                </a>{" "}
+                → User type <strong>External</strong> → Publishing status{" "}
+                <strong>Testing</strong> → Test users → add exactly{" "}
+                <code>ivan.glushenkov.data@gmail.com</code> → Save.
+              </li>
+              <li>
+                Data access → add scopes: <code>gmail.readonly</code>,{" "}
+                <code>calendar.readonly</code>, <code>drive.readonly</code>, email, profile.
+              </li>
+              <li>
+                <a
+                  href="https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=gen-lang-client-0597351768"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  Enable Gmail API
+                </a>{" "}
+                if not already on.
+              </li>
+              <li>
+                Redirect URI (already added):{" "}
+                <code className="break-all">{getGoogleOAuthRedirectUri()}</code>
+              </li>
+              <li>
+                Sign out of Google, open an <strong>incognito</strong> window, Connect Gmail, pick{" "}
+                <strong>only</strong> the test-user account above.
+              </li>
+            </ol>
           </details>
+          )}
         </aside>
 
         <div className="flex min-h-[520px] flex-col rounded-3xl border bg-card shadow-sm">
