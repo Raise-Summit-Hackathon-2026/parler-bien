@@ -2,7 +2,7 @@ import type { AgentType, VoiceAgent } from "@/lib/agents"
 import type { Region } from "@/lib/languages"
 import type { Scenario } from "@/lib/scenarios"
 import type { ConversationTurn } from "@/lib/types"
-import type { LevelRoom } from "@/lib/tracks"
+import type { LevelRoom } from "@/lib/workspace-types"
 
 import { buildLanguagePrompt } from "@/lib/prompts/language"
 import { buildRoleplayPrompt } from "@/lib/prompts/roleplay"

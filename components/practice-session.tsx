@@ -16,8 +16,11 @@ import { markScenarioCompleted } from "@/lib/completions"
 import { hasCapability } from "@/lib/agents"
 import type { LevelContext } from "@/lib/level-scenario"
 import { resolveMeterUpdate } from "@/lib/meter"
-import { markLevelCompleted, markLevelInProgress } from "@/lib/track-progress"
-import { countPlayableLevels, getTrack } from "@/lib/tracks"
+import {
+  markLevelCompleted,
+  markLevelInProgress,
+} from "@/lib/workspace-progress"
+import { countPlayableLevels } from "@/lib/workspace-types"
 import { pickRandomSentences } from "@/lib/sentences"
 import { authenticatedFetch } from "@/lib/supabase"
 import {
@@ -253,9 +256,10 @@ export function PracticeSession({
       ? agent && hasCapability(agent, "word_breakdown")
       : isTeacher || isLanguageMode)
 
-  const track = levelContext ? getTrack(levelContext.trackId) : null
-  const levelOrder = levelContext?.level.order
-  const playableTotal = track ? countPlayableLevels(track) : 0
+  const levelOrder = levelContext?.level.position
+  const playableTotal = levelContext
+    ? countPlayableLevels(levelContext.trackLevels)
+    : 0
 
   const initialTarget =
     levelContext?.level.room.targetPhrase ?? null
@@ -286,7 +290,7 @@ export function PracticeSession({
 
   useEffect(() => {
     if (!levelContext) return
-    markLevelInProgress(levelContext.trackId, levelContext.levelId)
+    void markLevelInProgress(levelContext.levelId)
   }, [levelContext])
 
   function checkLevelWin(result: PronunciationScore): boolean {
@@ -383,9 +387,9 @@ export function PracticeSession({
     if (!hasWon) return
 
     if (levelContext) {
-      markLevelCompleted(
-        levelContext.trackId,
+      void markLevelCompleted(
         levelContext.levelId,
+        levelContext.trackLevels,
         score?.overall_score,
       )
       levelContext.onLevelComplete()

@@ -21,7 +21,7 @@ import {
   type Scenario,
 } from "@/lib/scenarios"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
-import type { LevelRoom } from "@/lib/tracks"
+import type { LevelRoom } from "@/lib/workspace-types"
 import type { ConversationTurn, PronunciationScore, VoiceAgent } from "@/lib/types"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"

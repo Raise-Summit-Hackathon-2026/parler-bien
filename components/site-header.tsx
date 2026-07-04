@@ -17,7 +17,6 @@ const HEADER_LANGUAGES = LANGUAGES.filter((language) =>
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/#free-play", label: "Free Play" },
-  { href: "/teams", label: "Teams" },
   { href: "/workspaces", label: "Workspaces" },
 ]
 

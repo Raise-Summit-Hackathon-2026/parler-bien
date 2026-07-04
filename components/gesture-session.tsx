@@ -14,7 +14,10 @@ import {
   type GestureStep,
 } from "@/lib/gestures"
 import type { LevelContext } from "@/lib/level-scenario"
-import { markLevelCompleted, markLevelInProgress } from "@/lib/track-progress"
+import {
+  markLevelCompleted,
+  markLevelInProgress,
+} from "@/lib/workspace-progress"
 import { cn } from "@/lib/utils"
 
 type GestureSessionProps = {
@@ -44,7 +47,7 @@ export function GestureSession({
   const isLastStep = stepIndex >= steps.length - 1
 
   useEffect(() => {
-    markLevelInProgress(levelContext.trackId, levelContext.levelId)
+    void markLevelInProgress(levelContext.levelId)
   }, [levelContext])
 
   useEffect(() => {
@@ -65,7 +68,10 @@ export function GestureSession({
   const handleGestureHeld = useCallback(() => {
     if (isLastStep) {
       setPhase("won")
-      markLevelCompleted(levelContext.trackId, levelContext.levelId)
+      void markLevelCompleted(
+        levelContext.levelId,
+        levelContext.trackLevels,
+      )
       levelContext.onLevelComplete()
 
       void confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } })
