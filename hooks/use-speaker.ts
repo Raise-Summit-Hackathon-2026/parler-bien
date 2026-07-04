@@ -70,6 +70,7 @@ export function useSpeaker() {
             ageRange: options?.ageRange,
             tone: options?.tone,
             accent: options?.accent,
+            deliveryStyle: options?.deliveryStyle,
           }),
         })
 

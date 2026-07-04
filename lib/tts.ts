@@ -11,6 +11,8 @@ export type TtsRequestOptions = {
   tone?: string
   /** Accent description, e.g. "Parisian French", "Mexican Spanish" */
   accent?: string
+  /** Agent-specific vocal performance notes */
+  deliveryStyle?: string
 }
 
 const DEFAULT_ACCENT = "Parisian French"
@@ -84,20 +86,26 @@ function roleLabel(gender?: TtsGender | "male" | "female", accent?: string) {
 function coachDirection(options?: TtsRequestOptions) {
   const age = options?.ageRange?.trim() || "30-40"
   const accent = options?.accent?.trim() || DEFAULT_ACCENT
-  return `Speak as ${roleLabel(options?.gender, accent)}, approximately ${age} years old. Native ${accent} accent. Warm, clear, and supportive — like a friendly pronunciation teacher. Professional and encouraging, never flirtatious or overly intimate.`
+  const delivery = options?.deliveryStyle?.trim()
+  const base = `Speak as ${roleLabel(options?.gender, accent)}, approximately ${age} years old. Native ${accent} accent. Warm and supportive — like a real teacher in the room, not a robot.`
+  return delivery ? `${delivery} ${base}` : base
 }
 
 function characterDirection(options?: TtsRequestOptions) {
   const age = options?.ageRange?.trim() || "30-40"
   const accent = options?.accent?.trim() || DEFAULT_ACCENT
   const tone = options?.tone?.trim()
+  const delivery = options?.deliveryStyle?.trim()
   const role = roleLabel(options?.gender, accent)
 
-  if (tone) {
-    return `${tone} Speak as ${role}, approximately ${age} years old. Native ${accent} accent.`
-  }
+  const parts = [
+    tone,
+    delivery,
+    `Speak as ${role}, approximately ${age} years old. Native ${accent} accent.`,
+    "Sound fully human: vary pace, breathe, whisper or brighten when the text calls for it.",
+  ].filter(Boolean)
 
-  return coachDirection(options)
+  return parts.join(" ")
 }
 
 const STYLE_DIRECTION: Record<
@@ -189,5 +197,6 @@ export function ttsCacheKey(
   const age = options?.ageRange ?? "default"
   const tone = options?.tone ?? "default"
   const accent = options?.accent ?? "default"
-  return `${style}:${gender}:${voice}:${age}:${tone}:${accent}:${text}`
+  const delivery = options?.deliveryStyle ?? "default"
+  return `${style}:${gender}:${voice}:${age}:${tone}:${accent}:${delivery}:${text}`
 }
