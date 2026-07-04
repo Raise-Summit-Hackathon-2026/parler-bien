@@ -15,7 +15,7 @@ export type TtsRequestOptions = {
   deliveryStyle?: string
 }
 
-const DEFAULT_ACCENT = "Parisian French"
+const DEFAULT_ACCENT = "American English"
 
 export const TTS_MODEL = "google/gemini-3.1-flash-tts-preview"
 export const TTS_SAMPLE_RATE = 24000

@@ -1,4 +1,5 @@
 import type { LanguageId } from "@/lib/languages"
+import { DEFAULT_LANGUAGE_ID } from "@/lib/languages"
 import type { SentenceSuggestion } from "@/lib/types"
 
 const FRENCH_SENTENCES: SentenceSuggestion[] = [
@@ -83,7 +84,7 @@ const SENTENCE_POOLS: Record<LanguageId, SentenceSuggestion[]> = {
 
 export function pickRandomSentences(
   count: number,
-  languageId: LanguageId = "fr",
+  languageId: LanguageId = DEFAULT_LANGUAGE_ID,
 ): SentenceSuggestion[] {
   const pool = SENTENCE_POOLS[languageId]
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
