@@ -1,0 +1,32 @@
+lib/characters.ts
+  s_7ef95eb36dc1e5::t_8576c9f30874a6 5,133,135-149,151-165
+  s_7ef95eb36dc1e5::t_e2347a922b4737 29,56,121-124,134,150,189,206
+  s_7ef95eb36dc1e5::t_5f047a47a4a66c 166
+components/workspace-detail-page.tsx
+  s_7ef95eb36dc1e5::t_7bfbea73fe0a24 3-10,43,181-187,194-206,211-213,215-244,246-247
+  s_7ef95eb36dc1e5::t_8576c9f30874a6 13,22-23,26-30,40,42,45,50,54,59,87-105,107-111,188-193,209-210,214,245,248
+  s_7ef95eb36dc1e5::t_eac7cf33802d6c 63
+  s_7ef95eb36dc1e5::t_e2347a922b4737 66-68,81-83,106,155-157,159-160,207-208,260
+  s_7ef95eb36dc1e5::t_839027cfdea75c 84-86
+  s_7ef95eb36dc1e5::t_df81a221e99cf1 249
+lib/workspace-types.ts
+  s_7ef95eb36dc1e5::t_8576c9f30874a6 23-27
+supabase/migrations/20260704211000_workspace_member_invites.sql
+  s_7ef95eb36dc1e5::t_8576c9f30874a6 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5b455f9fc5f87db4ba315b744025fcd7ac341a36",
+  "prompts": {},
+  "sessions": {
+    "s_7ef95eb36dc1e5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2ed0-c7c5-7ff2-a229-10c294165957",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
