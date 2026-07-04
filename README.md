@@ -1,21 +1,22 @@
-# Next.js template
+# Parler Bien
 
-This is a Next.js template with shadcn/ui.
+Voice training organized by use case — language, sales, lingua, laugh, and more.
 
-## Adding components
+## Use cases
 
-To add components to your app, run the following command:
+| Category | What's live |
+|----------|-------------|
+| **Language practice** | Teacher + Paris roleplay (croissant, waiter, etc.) |
+| **Sales practice** | Sales Pitch Coach + vendor/landlord roleplay · [`/demo`](http://localhost:3000/demo) |
+| **Lingua practice** | VC Lingua — investor cadence |
+| **Rich laugh practice** | Laugh taxonomy + reference clips |
+| **Team workspaces** | Coming soon |
+| **Personal agents** | Coming soon · [Call Ivan](https://lifeosint.com/callivan/) reference |
+| **Voice cloning** | Coming soon |
+
+## Setup
 
 ```bash
-npx shadcn@latest add button
-```
-
-This will place the ui components in the `components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button";
+cp .env.example .env.local
+npm install && npm run dev
 ```

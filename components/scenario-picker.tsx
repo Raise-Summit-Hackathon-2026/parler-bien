@@ -1,10 +1,17 @@
 "use client"
 
 import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 
 import { CustomScenarioBuilder } from "@/components/custom-scenario-builder"
 import { ScenarioScene } from "@/components/scenario-scene"
+import {
+  ComingSoonCard,
+  DemoPathLink,
+  ScenarioGrid,
+  UseCaseSection,
+} from "@/components/use-case-section"
 import { Button } from "@/components/ui/button"
 import { LanguagePicker } from "@/components/language-picker"
 import {
@@ -12,15 +19,21 @@ import {
   getCustomScenarios,
 } from "@/lib/custom-scenarios"
 import { getCompletedScenarios } from "@/lib/completions"
-import { getLanguage, getRegion, type LanguageId, type RegionId } from "@/lib/languages"
+import { getRegion, type LanguageId, type RegionId } from "@/lib/languages"
+import { isLinguaTrainerId } from "@/lib/lingua-trainers"
 import {
   isBuiltInScenarioId,
   isCustomScenarioId,
-  SCENARIOS,
   type Scenario,
   type ScenarioId,
 } from "@/lib/scenarios"
-import { LINGUA_TRAINERS, isLinguaTrainerId } from "@/lib/lingua-trainers"
+import {
+  USE_CASES,
+  getLanguagePracticeScenarios,
+  getLinguaPracticeScenarios,
+  getRichLaughPracticeScenarios,
+  getSalesPracticeScenarios,
+} from "@/lib/use-cases"
 import { cn } from "@/lib/utils"
 
 type ScenarioPickerProps = {
@@ -103,6 +116,27 @@ function ScenarioCard({
   )
 }
 
+function renderScenarioCards(
+  scenarios: Scenario[],
+  completed: ScenarioId[],
+  onSelect: (scenario: Scenario) => void,
+  onDelete?: (id: ScenarioId) => void,
+) {
+  return scenarios.map((scenario) => (
+    <ScenarioCard
+      key={scenario.id}
+      scenario={scenario}
+      completed={completed.includes(scenario.id)}
+      onSelect={() => onSelect(scenario)}
+      onDelete={
+        isCustomScenarioId(scenario.id) && onDelete
+          ? () => onDelete(scenario.id)
+          : undefined
+      }
+    />
+  ))
+}
+
 export function ScenarioPicker({
   languageId,
   regionId,
@@ -116,8 +150,15 @@ export function ScenarioPicker({
   )
   const [showBuilder, setShowBuilder] = useState(false)
 
-  const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
+
+  const languageUseCase = USE_CASES.find((u) => u.id === "language")!
+  const salesUseCase = USE_CASES.find((u) => u.id === "sales")!
+  const linguaUseCase = USE_CASES.find((u) => u.id === "lingua")!
+  const laughUseCase = USE_CASES.find((u) => u.id === "rich_laugh")!
+  const teamUseCase = USE_CASES.find((u) => u.id === "team")!
+  const agentsUseCase = USE_CASES.find((u) => u.id === "agents")!
+  const cloneUseCase = USE_CASES.find((u) => u.id === "voice_clone")!
 
   function handleCreated(scenario: Scenario) {
     setCustomScenarios(getCustomScenarios())
@@ -140,16 +181,14 @@ export function ScenarioPicker({
 
   return (
     <>
-      <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col items-center justify-center gap-8 px-6 py-12">
+      <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-8 px-6 py-12">
         <div className="space-y-4 text-center">
           <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
             Parler Bien
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Choose your scenario
-          </h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Choose a use case</h1>
           <p className="text-muted-foreground">
-            Speak {language.name}. Get scored. Win the conversation.
+            Voice training for language, sales, status, and social delivery.
           </p>
           <LanguagePicker
             languageId={languageId}
@@ -162,50 +201,30 @@ export function ScenarioPicker({
           </p>
         </div>
 
-        <div className="w-full space-y-8">
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                Lingua Trainers
-              </h2>
-              <span className="text-xs text-muted-foreground">Meme modes · English</span>
-            </div>
-            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {LINGUA_TRAINERS.map((scenario) => (
-                <ScenarioCard
-                  key={scenario.id}
-                  scenario={scenario}
-                  completed={completed.includes(scenario.id)}
-                  onSelect={() => handleSelect(scenario)}
-                />
-              ))}
-            </div>
-          </section>
+        <nav className="flex flex-wrap justify-center gap-2">
+          {USE_CASES.map((useCase) => (
+            <a
+              key={useCase.id}
+              href={`#${useCase.id}`}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted",
+                useCase.status === "coming_soon" && "text-muted-foreground",
+              )}
+            >
+              {useCase.title}
+            </a>
+          ))}
+        </nav>
 
-          <section className="space-y-4">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-              Paris Scenarios
-            </h2>
-            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {SCENARIOS.map((scenario) => (
-                <ScenarioCard
-                  key={scenario.id}
-                  scenario={scenario}
-                  completed={completed.includes(scenario.id)}
-                  onSelect={() => handleSelect(scenario)}
-                />
-              ))}
-
-              {customScenarios.map((scenario) => (
-                <ScenarioCard
-                  key={scenario.id}
-                  scenario={scenario}
-                  completed={completed.includes(scenario.id)}
-                  onSelect={() => handleSelect(scenario)}
-                  onDelete={() => handleDelete(scenario.id)}
-                />
-              ))}
-
+        <div className="w-full space-y-10">
+          <UseCaseSection useCase={languageUseCase}>
+            <ScenarioGrid>
+              {renderScenarioCards(
+                getLanguagePracticeScenarios(),
+                completed,
+                handleSelect,
+              )}
+              {renderScenarioCards(customScenarios, completed, handleSelect, handleDelete)}
               <button
                 type="button"
                 onClick={() => setShowBuilder(true)}
@@ -224,8 +243,59 @@ export function ScenarioPicker({
                   </p>
                 </div>
               </button>
-            </div>
-          </section>
+            </ScenarioGrid>
+          </UseCaseSection>
+
+          <UseCaseSection useCase={salesUseCase} action={<DemoPathLink />}>
+            <ScenarioGrid>
+              {renderScenarioCards(
+                getSalesPracticeScenarios(),
+                completed,
+                handleSelect,
+              )}
+            </ScenarioGrid>
+          </UseCaseSection>
+
+          <UseCaseSection useCase={linguaUseCase}>
+            <ScenarioGrid>
+              {renderScenarioCards(
+                getLinguaPracticeScenarios(),
+                completed,
+                handleSelect,
+              )}
+            </ScenarioGrid>
+          </UseCaseSection>
+
+          <UseCaseSection useCase={laughUseCase}>
+            <ScenarioGrid>
+              {renderScenarioCards(
+                getRichLaughPracticeScenarios(),
+                completed,
+                handleSelect,
+              )}
+            </ScenarioGrid>
+          </UseCaseSection>
+
+          <UseCaseSection useCase={teamUseCase}>
+            <ComingSoonCard useCase={teamUseCase} />
+          </UseCaseSection>
+
+          <UseCaseSection useCase={agentsUseCase}>
+            <Link
+              href="/agent"
+              className="flex min-h-[140px] flex-col justify-center rounded-3xl border bg-card p-6 shadow-sm transition-colors hover:border-foreground/20 hover:shadow-md"
+            >
+              <p className="font-semibold">Open personal agent</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Connect Gmail, ask about your inbox or schedule — Composio-powered tools.
+              </p>
+              <p className="mt-3 text-xs font-medium text-primary">Launch →</p>
+            </Link>
+          </UseCaseSection>
+
+          <UseCaseSection useCase={cloneUseCase}>
+            <ComingSoonCard useCase={cloneUseCase} />
+          </UseCaseSection>
         </div>
       </div>
 
@@ -245,7 +315,7 @@ export function ScenarioBackButton({ onBack }: { onBack: () => void }) {
   return (
     <Button variant="ghost" size="sm" onClick={onBack} className="self-start">
       <ArrowLeft />
-      Scenarios
+      Use cases
     </Button>
   )
 }

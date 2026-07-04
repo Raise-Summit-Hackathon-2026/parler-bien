@@ -2,9 +2,8 @@ import type { SentenceSuggestion } from "@/lib/types"
 import type { BuiltInScenarioId, Scenario } from "@/lib/scenarios"
 
 export const LINGUA_TRAINER_IDS = [
-  "genz",
+  "sales_pitch",
   "vc_lingua",
-  "hot_girl_lingua",
   "rich_laugher",
 ] as const
 
@@ -18,18 +17,33 @@ export function isTrainerScenarioId(id: BuiltInScenarioId): boolean {
   return id === "teacher" || isLinguaTrainerId(id)
 }
 
-const GENZ_STARTERS: SentenceSuggestion[] = [
-  { text: "No cap, that was actually fire.", hint: "Authentic hype — no filler words." },
-  { text: "It's giving main character energy.", hint: "Classic Gen Z metaphor." },
-  { text: "I'm low-key obsessed with this.", hint: "Understated enthusiasm." },
-  { text: "That's so mid, fr fr.", hint: "Dismissive but playful." },
-  { text: "We need to lock in before the function.", hint: "Party/event slang." },
+const SALES_PITCH_STARTERS: SentenceSuggestion[] = [
+  {
+    text: "Hi Sarah — this is Alex. Did I catch you at a bad time?",
+    hint: "Warm, brief, permission-based open.",
+  },
+  {
+    text: "We help reps practice pitch delivery before the live call — AI scores how you sound.",
+    hint: "One-sentence value prop · land the outcome.",
+  },
+  {
+    text: "I hear you — most teams already have a CRM. The gap isn't the script, it's delivery under pressure.",
+    hint: "Acknowledge objection · reframe without arguing.",
+  },
+  {
+    text: "What does your team do today when a rep's close rate drops?",
+    hint: "Open discovery · curious, not interrogating.",
+  },
+  {
+    text: "If I send a one-pager, would Tuesday or Thursday work for fifteen minutes?",
+    hint: "Assumptive close · binary choice, downward inflection.",
+  },
 ]
 
 const VC_STARTERS: SentenceSuggestion[] = [
   {
-    text: "We're pre-revenue but post-product-market-fit.",
-    hint: "Classic paradox pitch line.",
+    text: "We're raising a seed round — twelve million pre, default alive.",
+    hint: "Conviction without uptalk · land the number.",
   },
   {
     text: "Our TAM is massive — we're just capturing the wedge.",
@@ -47,14 +61,6 @@ const VC_STARTERS: SentenceSuggestion[] = [
     text: "We're default alive and capital efficient.",
     hint: "Investor reassurance.",
   },
-]
-
-const HOT_GIRL_STARTERS: SentenceSuggestion[] = [
-  { text: "Like, I literally cannot even.", hint: "Peak upspeak energy." },
-  { text: "It's so aesthetic, I'm obsessed.", hint: "TikTok-core compliment." },
-  { text: "Bestie, that's so valid.", hint: "Affirming your girlies." },
-  { text: "The way I screamed — no because same.", hint: "Reaction posting IRL." },
-  { text: "It's giving clean girl, low effort, high impact.", hint: "Trend vocabulary stack." },
 ]
 
 const RICH_LAUGHER_STARTERS: SentenceSuggestion[] = [
@@ -82,12 +88,10 @@ const RICH_LAUGHER_STARTERS: SentenceSuggestion[] = [
 
 export function getLinguaTrainerStarters(id: LinguaTrainerId): SentenceSuggestion[] {
   switch (id) {
-    case "genz":
-      return GENZ_STARTERS
+    case "sales_pitch":
+      return SALES_PITCH_STARTERS
     case "vc_lingua":
       return VC_STARTERS
-    case "hot_girl_lingua":
-      return HOT_GIRL_STARTERS
     case "rich_laugher":
       return RICH_LAUGHER_STARTERS
   }
@@ -95,21 +99,21 @@ export function getLinguaTrainerStarters(id: LinguaTrainerId): SentenceSuggestio
 
 export const LINGUA_TRAINERS: Scenario[] = [
   {
-    id: "genz",
-    title: "Gen Z Lingua",
-    tagline: "No cap — train your chronically online English.",
+    id: "sales_pitch",
+    title: "Sales Pitch Coach",
+    tagline: "Cold open to close — train delivery, not the deck.",
     goal: null,
     meterLabel: null,
     winMessage: null,
     persona: "",
     voice: {
-      ageRange: "18-24",
+      ageRange: "35-45",
       tone:
-        "Chill chronically-online friend. Uses current slang naturally, never cringe or try-hard. Encouraging but roast-y when you're mid.",
+        "Seasoned sales leader. Direct, supportive, allergic to filler and fake urgency. Coaches like you've closed seven-figure deals and still remember your first cold call.",
     },
-    content: { en: { openingLine: null, starters: GENZ_STARTERS } },
+    content: { en: { openingLine: null, starters: SALES_PITCH_STARTERS } },
     imagePrompt:
-      "Neon-lit Gen Z bedroom with LED strips, headphones, meme posters, purple and cyan glow, cinematic illustration, no text, no logos",
+      "Modern sales floor with glass conference room, CRM dashboards blurred, confident professional energy, warm cinematic illustration, no text, no logos",
   },
   {
     id: "vc_lingua",
@@ -127,23 +131,6 @@ export const LINGUA_TRAINERS: Scenario[] = [
     content: { en: { openingLine: null, starters: VC_STARTERS } },
     imagePrompt:
       "Minimalist venture capital office overlooking Palo Alto hills, glass walls, espresso, cinematic illustration, no text, no logos",
-  },
-  {
-    id: "hot_girl_lingua",
-    title: "Hot Girl Lingua",
-    tagline: "Main character speech for the group chat era.",
-    goal: null,
-    meterLabel: null,
-    winMessage: null,
-    persona: "",
-    voice: {
-      ageRange: "22-28",
-      tone:
-        "Supportive bestie energy. TikTok-native vocabulary, playful upspeak, affirming but honest when you're giving NPC.",
-    },
-    content: { en: { openingLine: null, starters: HOT_GIRL_STARTERS } },
-    imagePrompt:
-      "Soft pink aesthetic vanity setup with ring light, skincare, golden hour glow, cinematic illustration, no text, no logos",
   },
   {
     id: "rich_laugher",

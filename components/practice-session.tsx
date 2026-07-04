@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useSpeaker } from "@/hooks/use-speaker"
 import { markScenarioCompleted } from "@/lib/completions"
+import { DEMO_BEATS, type DemoBeat } from "@/lib/demo"
 import {
   getLinguaTrainerStarters,
   isLinguaTrainerId,
@@ -39,6 +40,13 @@ import { cn } from "@/lib/utils"
 
 const EXAMPLE_COUNT = 4
 
+type DemoSessionConfig = {
+  beat: DemoBeat
+  beatIndex: number
+  beatCount: number
+  onNextBeat: () => void
+}
+
 type PracticeSessionProps = {
   scenario: Scenario
   languageId: LanguageId
@@ -46,6 +54,7 @@ type PracticeSessionProps = {
   onLanguageChange: (languageId: LanguageId) => void
   onRegionChange: (regionId: RegionId) => void
   onBack: () => void
+  demo?: DemoSessionConfig
 }
 
 function scoreColor(score: number) {
@@ -219,11 +228,13 @@ export function PracticeSession({
   onLanguageChange,
   onRegionChange,
   onBack,
+  demo,
 }: PracticeSessionProps) {
   const isTeacher = scenario.id === "teacher"
   const isTrainer =
     isBuiltInScenarioId(scenario.id) && isTrainerScenarioId(scenario.id)
   const isLaughTrainer = scenario.id === "rich_laugher"
+  const isSalesPitch = scenario.id === "sales_pitch"
   const isCoachMode = isTeacher || isTrainer
   const isRoleplay =
     !isCoachMode && Boolean(scenario.goal || scenario.meterLabel)
@@ -237,15 +248,19 @@ export function PracticeSession({
     useSpeaker()
 
   const openingPlayed = useRef(false)
+  const demoPhrasePlayed = useRef(false)
 
   const [examples, setExamples] = useState<SentenceSuggestion[]>(() => {
+    if (demo) return [demo.beat.starter]
     if (isTrainer && isLinguaTrainerId(scenario.id)) {
       return getLinguaTrainerStarters(scenario.id).slice(0, EXAMPLE_COUNT)
     }
     if (isTeacher) return pickRandomSentences(EXAMPLE_COUNT, languageId)
     return scenarioContent.starters
   })
-  const [targetPhrase, setTargetPhrase] = useState<string | null>(null)
+  const [targetPhrase, setTargetPhrase] = useState<string | null>(() =>
+    demo ? demo.beat.starter.text : null,
+  )
   const [history, setHistory] = useState<ConversationTurn[]>([])
   const [meter, setMeter] = useState(0)
   const [hasWon, setHasWon] = useState(false)
@@ -300,6 +315,12 @@ export function PracticeSession({
     setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
     speakCharacterLine(scenarioContent.openingLine.text, "character")
   }, [isTeacher, scenarioContent.openingLine, speakCharacterLine])
+
+  useEffect(() => {
+    if (!demo || demoPhrasePlayed.current || !targetPhrase || !isCoachMode) return
+    demoPhrasePlayed.current = true
+    speakCharacterLine(targetPhrase, "phrase")
+  }, [demo, targetPhrase, speakCharacterLine, isCoachMode])
 
   useEffect(() => {
     if (!hasWon) return
@@ -476,8 +497,13 @@ export function PracticeSession({
       : []
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-6 px-6 py-12">
-      <ScenarioBackButton onBack={onBack} />
+    <div
+      className={cn(
+        "mx-auto flex w-full max-w-lg flex-col items-center justify-center",
+        demo ? "gap-4" : "min-h-svh gap-6 px-6 py-12",
+      )}
+    >
+      {!demo && <ScenarioBackButton onBack={onBack} />}
 
       <div className="w-full space-y-4 text-center">
         <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
@@ -499,7 +525,9 @@ export function PracticeSession({
           />
         )}
         {isTrainer && (
-          <p className="text-xs text-muted-foreground">English · satirical coach mode</p>
+          <p className="text-xs text-muted-foreground">
+            {isSalesPitch ? "English · sales coach mode" : "English · voice coach mode"}
+          </p>
         )}
         <p className="text-muted-foreground">
           {hasWon
@@ -657,7 +685,13 @@ export function PracticeSession({
           <div className="space-y-5 border-t pt-5">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                {isLaughTrainer ? "Laugh score" : isTrainer ? "Authenticity" : "Pronunciation"}
+                {isLaughTrainer
+                  ? "Laugh score"
+                  : isSalesPitch
+                    ? "Delivery score"
+                    : isTrainer
+                      ? "Authenticity"
+                      : "Pronunciation"}
               </p>
               <p
                 className={cn(
@@ -697,6 +731,14 @@ export function PracticeSession({
               <RotateCcw />
               Try again
             </Button>
+
+            {demo && (
+              <Button className="w-full" onClick={demo.onNextBeat}>
+                {demo.beatIndex < demo.beatCount - 1
+                  ? `Next — ${DEMO_BEATS[demo.beatIndex + 1]?.title ?? "beat"}`
+                  : "Finish demo"}
+              </Button>
+            )}
 
             <SpeakerProfileStrip speaker={score.speaker} />
 
