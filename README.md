@@ -58,6 +58,8 @@ and set:
 - `SUPABASE_DB_POOLER_REGION`: the pooler region, if using Supabase's pooler.
 - `SUPABASE_DATABASE_URL`: optional full database URL instead of password and
   pooler-region assembly.
+- `LIVEAVATAR_API_KEY`: server-only key from [app.liveavatar.com](https://app.liveavatar.com/home) for real-time avatar sessions.
+- `NEXT_PUBLIC_LIVEAVATAR_SANDBOX`: set to `true` in development to use sandbox sessions (no credits consumed). In sandbox mode, sessions use the default public avatar (June HR). Live avatar streams are capped at **60 seconds** per session.
 
 Auth configuration is partly captured for local Supabase in
 `supabase/config.toml`: email/password signup is enabled, email confirmation is

@@ -19,6 +19,10 @@ export type VoiceAgent = {
   name: string
   tagline: string
   avatarPrompt: string
+  /** LiveAvatar public avatar UUID for real-time video */
+  liveAvatarId?: string
+  /** Optional LiveAvatar voice override */
+  liveAvatarVoiceId?: string
   voice: { ageRange: string; tone: string }
   deliveryStyle: string
   coachingStyle: string

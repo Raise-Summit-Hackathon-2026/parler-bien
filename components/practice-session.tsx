@@ -6,16 +6,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useLanguage } from "@/components/language-provider"
 import { LanguagePicker } from "@/components/language-picker"
+import { AvatarStage } from "@/components/avatar-stage"
 import { ScenarioBackButton } from "@/components/scenario-picker"
-import { ScenarioScene } from "@/components/scenario-scene"
 import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
+import { useLiveAvatar } from "@/hooks/use-live-avatar"
 import { useSpeaker } from "@/hooks/use-speaker"
 import { markScenarioCompleted } from "@/lib/completions"
 import { hasCapability } from "@/lib/agents"
 import type { LevelContext } from "@/lib/level-scenario"
 import { resolveMeterUpdate } from "@/lib/meter"
+import { resolveLiveAvatarIdForScenario } from "@/lib/liveavatar"
 import {
   markLevelCompleted,
   markLevelInProgress,
@@ -330,11 +332,38 @@ export function PracticeSession({
     randomScenarioGender
   )
 
-  const displayError = error ?? requestError
-  const isBusy = isScoring || isSpeaking
+  const liveAvatarId = useMemo(
+    () =>
+      resolveLiveAvatarIdForScenario(
+        levelContext?.agent ?? null,
+        characterGender,
+        scenario.id,
+      ),
+    [levelContext?.agent, characterGender, scenario.id],
+  )
+
+  const {
+    status: liveAvatarStatus,
+    isReady: liveAvatarReady,
+    isSpeaking: liveAvatarSpeaking,
+    error: liveAvatarError,
+    remainingSeconds: liveAvatarRemaining,
+    attachVideo,
+    speak: speakWithAvatar,
+    interrupt: interruptAvatar,
+  } = useLiveAvatar({
+    avatarId: liveAvatarId,
+    agentId: levelContext?.agent.id,
+    languageId,
+    enabled: true,
+  })
+
+  const displayError = error ?? requestError ?? liveAvatarError
+  const isCharacterSpeaking = isSpeaking || liveAvatarSpeaking
+  const isBusy = isScoring || isCharacterSpeaking
 
   const waveformAnalyser = isRecording ? recorderAnalyser : speakerAnalyser
-  const waveformActive = isRecording || isSpeaking
+  const waveformActive = isRecording || isCharacterSpeaking
 
   const displayedPhrase = score?.transcript ?? targetPhrase
 
@@ -349,26 +378,41 @@ export function PracticeSession({
       style: "coach" | "character" | "phrase" | "word",
       speaker?: SpeakerProfile | null
     ) => {
-      const gender = resolveCharacterGender(
-        scenario,
-        speaker?.gender,
-        randomScenarioGender
-      )
-      const voice = resolveCharacterVoice(scenario, gender)
-      const ageRange =
-        scenario.id === "parisian" && speaker?.age_range
-          ? speaker.age_range
-          : scenario.voice.ageRange
-      void speak(text, style, {
-        gender,
-        voice,
-        ageRange,
-        tone: scenario.voice.tone,
-        accent: region.accent,
-        deliveryStyle: levelContext?.agent.deliveryStyle,
-      })
+      void (async () => {
+        if (liveAvatarReady) {
+          const spoke = await speakWithAvatar(text)
+          if (spoke) return
+        }
+
+        const gender = resolveCharacterGender(
+          scenario,
+          speaker?.gender,
+          randomScenarioGender
+        )
+        const voice = resolveCharacterVoice(scenario, gender)
+        const ageRange =
+          scenario.id === "parisian" && speaker?.age_range
+            ? speaker.age_range
+            : scenario.voice.ageRange
+        void speak(text, style, {
+          gender,
+          voice,
+          ageRange,
+          tone: scenario.voice.tone,
+          accent: region.accent,
+          deliveryStyle: levelContext?.agent.deliveryStyle,
+        })
+      })()
     },
-    [scenario, randomScenarioGender, region.accent, speak, levelContext?.agent.deliveryStyle],
+    [
+      scenario,
+      randomScenarioGender,
+      region.accent,
+      speak,
+      levelContext?.agent.deliveryStyle,
+      liveAvatarReady,
+      speakWithAvatar,
+    ],
   )
 
   useEffect(() => {
@@ -512,6 +556,7 @@ export function PracticeSession({
     }
 
     stopSpeaking()
+    interruptAvatar()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
@@ -520,6 +565,7 @@ export function PracticeSession({
 
   function handleReset() {
     stopSpeaking()
+    interruptAvatar()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
@@ -527,6 +573,7 @@ export function PracticeSession({
 
   function handleReplayScenario() {
     stopSpeaking()
+    interruptAvatar()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
@@ -558,6 +605,7 @@ export function PracticeSession({
 
   function handleSelectExample(sentence: SentenceSuggestion) {
     stopSpeaking()
+    interruptAvatar()
     setTargetPhrase(sentence.text)
     setScore(null)
     setSelectedWord(null)
@@ -567,6 +615,7 @@ export function PracticeSession({
 
   function handleSelectNext(sentence: SentenceSuggestion) {
     stopSpeaking()
+    interruptAvatar()
     setTargetPhrase(sentence.text)
     setScore(null)
     setSelectedWord(null)
@@ -608,10 +657,13 @@ export function PracticeSession({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <ScenarioScene
+        <AvatarStage
+          status={liveAvatarStatus}
+          attachVideo={attachVideo}
+          remainingSeconds={liveAvatarRemaining}
           scenarioId={isBuiltInScenarioId(scenario.id) ? scenario.id : undefined}
           imagePrompt={isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt}
-          className="h-20 w-full shrink-0 rounded-none"
+          className="aspect-video max-h-44 w-full shrink-0 rounded-none"
           overlay
         />
 

@@ -8,6 +8,18 @@ import type { User } from "@supabase/supabase-js"
 
 type AuthMode = "login" | "register"
 
+function formatAuthError(error: unknown) {
+  if (error instanceof TypeError && error.message === "Failed to fetch") {
+    return "Cannot reach Supabase. Check NEXT_PUBLIC_SUPABASE_URL in .env and confirm the project exists in your Supabase dashboard."
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return "Something went wrong"
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -55,23 +67,29 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setSubmitting(true)
 
     const supabase = getSupabaseBrowserClient()
-    const result =
-      mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password })
 
-    setSubmitting(false)
-    if (result.error) {
-      setError(result.error.message)
-      return
+    try {
+      const result =
+        mode === "login"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password })
+
+      setSubmitting(false)
+      if (result.error) {
+        setError(result.error.message)
+        return
+      }
+
+      if (result.data.user && !result.data.session) {
+        setNotice("Check your email to confirm the account, then sign in.")
+      }
+
+      setUser(result.data.session?.user ?? null)
+      setPassword("")
+    } catch (error) {
+      setSubmitting(false)
+      setError(formatAuthError(error))
     }
-
-    if (result.data.user && !result.data.session) {
-      setNotice("Check your email to confirm the account, then sign in.")
-    }
-
-    setUser(result.data.session?.user ?? null)
-    setPassword("")
   }
 
   if (loading) {
