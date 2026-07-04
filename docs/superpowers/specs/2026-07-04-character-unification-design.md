@@ -126,16 +126,17 @@ Deleted after migration: `lib/agents.ts`, `lib/free-play-experiences.ts`,
 
 ## 3. Persistence
 
-Workspace model stays as-is (it is already clean): `user_workspaces`,
-`workspace_members`, `workspace_share_links`, `characters` table, RLS, share
-tokens.
+**Constraint: no backend access — zero Supabase changes.** No migrations, no
+schema edits, no RLS changes. The workspace model stays exactly as deployed:
+`user_workspaces`, `workspace_members`, `workspace_share_links`, `characters`
+table, RLS, share tokens.
 
-- Migration: rename `characters.scenario` → `characters.definition` (jsonb),
-  now storing the `Character` shape.
+- The `characters.scenario` jsonb column keeps its name and now stores the
+  `Character` shape (jsonb is schemaless; no migration required).
 - A read-mapper (`lib/character-compat.ts`) detects old-shape rows (a `Scenario`
-  jsonb) and maps them to `Character` with one VoiceLevel on read. Writes always
-  use the new shape. (Hackathon-era data; mapper is small and can be removed
-  later.)
+  jsonb, no `levels` array) and maps them to `Character` with one VoiceLevel on
+  read. Writes always use the new shape. (Hackathon-era data; mapper is small
+  and can be removed later.)
 - Personal characters: `workspace_id IS NULL`, unchanged.
 
 ## 4. Routes & engine
@@ -214,8 +215,8 @@ Model-first, each step ends with `tsc --noEmit` clean and the TTS tests
    `CharacterSession` consume `Character`/`Level`.
 3. **Route**: `/play/[characterId]`; delete the four old play routes and
    converters; delete `agents.ts`, `free-play-experiences.ts`, `scenarios.ts`.
-4. **DB**: migration (`scenario` → `definition`) + read-mapper; builder/
-   generate save the new shape.
+4. **Persistence**: read-mapper for old-shape rows (no DB changes); builder/
+   generate save the new shape into the existing `scenario` jsonb column.
 5. **UX**: category rows, home copy, renames, nav cleanup.
 6. **Content**: sports coach + job interview characters.
 7. **Sweep**: dead files, README, `AGENTS.md` check.
@@ -225,8 +226,8 @@ Captain Eva through all 3 levels incl. camera, (c) create + play a custom
 character, (d) workspace: create, invite via share link, play a workspace
 character.
 
-Rollback safety: every deletion is recoverable from git; DB migration is a
-column rename with a compat mapper, reversible.
+Rollback safety: every deletion is recoverable from git; the database is never
+touched (compat handled entirely in the read-mapper).
 
 ## Out of scope
 
