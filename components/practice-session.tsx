@@ -4,7 +4,7 @@ import confetti from "canvas-confetti"
 import { Loader2, Mic, Play, RotateCcw, Square } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 
-import { ExperienceLevelStrip } from "@/components/experience-level-strip"
+import { LevelStrip } from "@/components/level-strip"
 import { useLanguage } from "@/components/language-provider"
 import { ScenarioBackButton } from "@/components/scenario-back-button"
 import { ScenarioScene } from "@/components/scenario-scene"
@@ -250,11 +250,7 @@ export function PracticeSession({
 
       <div className="shrink-0 space-y-2 py-2">
         {levelTotal > 1 ? (
-          <ExperienceLevelStrip
-            levelIndex={levelIndex}
-            levelTotal={levelTotal}
-            levelTitle={scenario.title}
-          />
+          <LevelStrip levels={character.levels} levelIndex={levelIndex} />
         ) : (
           <div className="space-y-0.5 text-center">
             <h1 className="text-lg font-semibold leading-tight">{scenario.title}</h1>

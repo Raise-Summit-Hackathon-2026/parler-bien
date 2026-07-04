@@ -134,7 +134,7 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
           onSelect={({ characterId }) => {
             if (characterId) {
               router.push(
-                `/workspaces/${workspaceId}/play/${characterId}`,
+                `/play/${characterId}?from=workspace:${workspaceId}`,
               )
             }
           }}
