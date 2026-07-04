@@ -20,6 +20,11 @@ export type WorkspaceMemberRow = {
   created_at: string
 }
 
+export type WorkspaceMemberWithEmail = WorkspaceMemberRow & {
+  email: string
+  already_member?: boolean
+}
+
 export type CharacterRow = {
   id: string
   created_by: string
