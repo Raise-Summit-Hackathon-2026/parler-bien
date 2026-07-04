@@ -13,7 +13,7 @@ import {
   getActiveShareLink,
   getWorkspace,
   listWorkspaceCharacters,
-} from "@/lib/characters"
+} from "@/lib/character-db"
 import type { CharacterRow, WorkspaceRow } from "@/lib/workspace-types"
 
 type WorkspaceDetailPageProps = {

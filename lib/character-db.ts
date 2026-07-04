@@ -1,5 +1,5 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import type { Scenario } from "@/lib/scenarios"
+import type { Character } from "@/lib/character"
 import type {
   CharacterRow,
   WorkspaceMemberRow,
@@ -51,7 +51,7 @@ export async function getCharacter(id: string): Promise<CharacterRow | null> {
 }
 
 export async function saveCharacter(
-  scenario: Scenario,
+  character: Character,
   workspaceId?: string,
 ): Promise<CharacterRow> {
   const supabase = getSupabaseBrowserClient()
@@ -65,7 +65,7 @@ export async function saveCharacter(
     .insert({
       created_by: user.id,
       workspace_id: workspaceId ?? null,
-      scenario,
+      scenario: character,
     })
     .select("*")
     .single()

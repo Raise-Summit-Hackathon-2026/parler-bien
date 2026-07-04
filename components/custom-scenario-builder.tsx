@@ -6,7 +6,8 @@ import { useRef, useState } from "react"
 import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { saveCharacter } from "@/lib/characters"
+import { scenarioToCharacter } from "@/lib/character"
+import { saveCharacter } from "@/lib/character-db"
 import type { LanguageId, RegionId } from "@/lib/languages"
 import { authenticatedFetch } from "@/lib/supabase"
 import type { CharacterRow } from "@/lib/workspace-types"
@@ -138,7 +139,12 @@ export function CustomScenarioBuilder({
       }
 
       const characters = await Promise.all(
-        scenarios.map((scenario) => saveCharacter(scenario, workspaceId)),
+        scenarios.map((scenario) =>
+          saveCharacter(
+            scenarioToCharacter(scenario, crypto.randomUUID()),
+            workspaceId,
+          ),
+        ),
       )
       onCreated(characters)
     } catch (err) {

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 
 import { AuthGate } from "@/components/auth-gate"
 import { PracticeSession } from "@/components/practice-session"
-import { getCharacter } from "@/lib/characters"
+import { getCharacter } from "@/lib/character-db"
 import type { Scenario } from "@/lib/scenarios"
 
 export default function PersonalCharacterPlayPage() {
@@ -20,7 +20,9 @@ export default function PersonalCharacterPlayPage() {
         if (!character || character.workspace_id) {
           throw new Error("Character not found")
         }
-        setScenario(character.scenario)
+        // TODO(task 4+): CharacterRow.scenario is Character | Scenario post-unification;
+        // this page still expects legacy Scenario shape until migrated to Character.
+        setScenario(character.scenario as Scenario)
       })
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Failed to load character"),

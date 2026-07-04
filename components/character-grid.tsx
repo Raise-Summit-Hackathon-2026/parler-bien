@@ -133,18 +133,23 @@ export function CharacterGrid({
           />
         ))}
 
-        {characters.map((character) => (
-          <ScenarioCard
-            key={character.id}
-            scenario={character.scenario}
-            completed={completedIds.includes(character.scenario.id)}
-            deletable
-            onSelect={() =>
-              onSelect({ scenario: character.scenario, characterId: character.id })
-            }
-            onDelete={() => onCharacterDeleted?.(character.id)}
-          />
-        ))}
+        {characters.map((character) => {
+          // TODO(task 4+): CharacterRow.scenario is Character | Scenario post-unification;
+          // this grid still expects legacy Scenario shape until it's migrated to Character.
+          const scenario = character.scenario as Scenario
+          return (
+            <ScenarioCard
+              key={character.id}
+              scenario={scenario}
+              completed={completedIds.includes(scenario.id)}
+              deletable
+              onSelect={() =>
+                onSelect({ scenario, characterId: character.id })
+              }
+              onDelete={() => onCharacterDeleted?.(character.id)}
+            />
+          )
+        })}
 
         {showCreateCard && (
           <button
@@ -180,7 +185,7 @@ export function CharacterGrid({
             const first = characters[0]
             if (characters.length === 1 && first) {
               onSelect({
-                scenario: first.scenario,
+                scenario: first.scenario as Scenario,
                 characterId: first.id,
               })
             }

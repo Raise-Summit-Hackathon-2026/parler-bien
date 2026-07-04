@@ -6,7 +6,7 @@ import {
   CharacterGrid,
   type CharacterSelection,
 } from "@/components/character-grid"
-import { deleteCharacter, listPersonalCharacters } from "@/lib/characters"
+import { deleteCharacter, listPersonalCharacters } from "@/lib/character-db"
 import { getCompletedScenarios } from "@/lib/completions"
 import type { CharacterRow } from "@/lib/workspace-types"
 import type { ScenarioId } from "@/lib/scenarios"

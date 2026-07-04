@@ -1,3 +1,4 @@
+import type { Character } from "@/lib/character"
 import type { Scenario } from "@/lib/scenarios"
 
 export type WorkspaceRow = {
@@ -24,7 +25,8 @@ export type CharacterRow = {
   id: string
   created_by: string
   workspace_id: string | null
-  scenario: Scenario
+  /** jsonb column. New rows store Character; pre-unification rows store Scenario. Read via rowToCharacter(). */
+  scenario: Character | Scenario
   created_at: string
 }
 
