@@ -10,10 +10,24 @@ type ActivePlayback = {
   stop: () => void
 }
 
+export type AvatarAudioSink = {
+  isReady: boolean
+  speakText: (text: string) => Promise<boolean>
+}
+
+type UseSpeakerOptions = {
+  avatarSink?: AvatarAudioSink | null
+}
+
 let playbackVersion = 0
 let activePlayback: ActivePlayback | null = null
 
-export function useSpeaker() {
+function shouldRouteToAvatar(style: TtsStyle, avatarSink?: AvatarAudioSink | null) {
+  return Boolean(avatarSink?.isReady && (style === "character" || style === "coach"))
+}
+
+export function useSpeaker(options?: UseSpeakerOptions) {
+  const avatarSink = options?.avatarSink
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
 
@@ -50,7 +64,7 @@ export function useSpeaker() {
   useEffect(() => stop, [stop])
 
   const speak = useCallback(
-    async (text: string, style: TtsStyle, options?: TtsRequestOptions) => {
+    async (text: string, style: TtsStyle, ttsOptions?: TtsRequestOptions) => {
       if (!text.trim()) return
 
       const playbackId = playbackVersion + 1
@@ -59,6 +73,29 @@ export function useSpeaker() {
       activePlayback?.stop()
       cleanupPlayback()
 
+      const routeToAvatar = shouldRouteToAvatar(style, avatarSink)
+
+      if (routeToAvatar && avatarSink) {
+        setIsSpeaking(true)
+        playbackIdRef.current = playbackId
+        activePlayback = {
+          id: playbackId,
+          stop: () => {
+            setIsSpeaking(false)
+          },
+        }
+
+        const spoke = await avatarSink.speakText(text.trim())
+        if (playbackVersion === playbackId) {
+          setIsSpeaking(false)
+          if (activePlayback?.id === playbackId) {
+            activePlayback = null
+          }
+        }
+
+        if (spoke) return
+      }
+
       try {
         const response = await authenticatedFetch("/api/tts", {
           method: "POST",
@@ -66,12 +103,13 @@ export function useSpeaker() {
           body: JSON.stringify({
             text: text.trim(),
             style,
-            gender: options?.gender,
-            voice: options?.voice,
-            ageRange: options?.ageRange,
-            tone: options?.tone,
-            accent: options?.accent,
-            deliveryStyle: options?.deliveryStyle,
+            gender: ttsOptions?.gender,
+            voice: ttsOptions?.voice,
+            ageRange: ttsOptions?.ageRange,
+            tone: ttsOptions?.tone,
+            accent: ttsOptions?.accent,
+            deliveryStyle: ttsOptions?.deliveryStyle,
+            format: "wav",
           }),
         })
 
@@ -120,7 +158,7 @@ export function useSpeaker() {
         }
       }
     },
-    [cleanupPlayback]
+    [avatarSink, cleanupPlayback]
   )
 
   return { isSpeaking, analyser, speak, stop }

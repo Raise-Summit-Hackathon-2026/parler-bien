@@ -80,6 +80,8 @@ export type Character = {
   tagline: string
   category: CharacterCategoryId
   avatarPrompt: string
+  /** LiveAvatar public avatar id chosen at generation time */
+  liveAvatarId?: string
   voice: Scenario["voice"]
   deliveryStyle?: string
   coachingStyle?: string
@@ -119,6 +121,7 @@ export function characterLevelScenario(
     coachingStyle: character.coachingStyle,
     content: level.content ?? {},
     imagePrompt: character.avatarPrompt,
+    liveAvatarId: character.liveAvatarId,
     primaryLanguageId: character.primaryLanguageId ?? languageId,
     sourceLabel: character.sourceLabel,
   }
@@ -140,6 +143,7 @@ export function scenarioToCharacter(
     coachingStyle: scenario.coachingStyle,
     persona: scenario.persona,
     primaryLanguageId: scenario.primaryLanguageId,
+    liveAvatarId: scenario.liveAvatarId,
     sourceLabel: scenario.sourceLabel,
     levels: [
       {
@@ -200,6 +204,8 @@ export type Scenario = {
   coachingStyle?: string
   content: Partial<Record<LanguageId, ScenarioContent>>
   imagePrompt: string
+  /** LiveAvatar public avatar id for this scenario */
+  liveAvatarId?: string
   /** Set on AI-generated custom scenarios */
   primaryLanguageId?: LanguageId
   createdAt?: number

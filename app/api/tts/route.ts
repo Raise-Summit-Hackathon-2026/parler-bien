@@ -64,6 +64,7 @@ export async function POST(request: Request) {
     tone?: string
     accent?: string
     deliveryStyle?: string
+    format?: string
   }
 
   try {
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
     tone,
     accent,
     deliveryStyle,
+    format: responseFormat = "wav",
   } = body
 
   if (!text?.trim() || !style || !isTtsStyle(style)) {
@@ -108,12 +110,13 @@ export async function POST(request: Request) {
           voice: requestedVoice?.trim() || undefined,
         }
 
-  const key = ttsCacheKey(text.trim(), style, ttsOptions)
+  const wantsPcm = responseFormat === "pcm"
+  const key = `${wantsPcm ? "pcm" : "wav"}:${ttsCacheKey(text.trim(), style, ttsOptions)}`
   const cached = cache.get(key)
   if (cached) {
     return new NextResponse(new Uint8Array(cached), {
       headers: {
-        "Content-Type": "audio/wav",
+        "Content-Type": wantsPcm ? "audio/pcm" : "audio/wav",
         "Cache-Control": "private, max-age=3600",
       },
     })
@@ -217,12 +220,12 @@ export async function POST(request: Request) {
     }
 
     const pcm = Buffer.from(await response.arrayBuffer())
-    const wav = pcmToWav(pcm)
-    cache.set(key, wav)
+    const output = wantsPcm ? pcm : pcmToWav(pcm)
+    cache.set(key, output)
 
-    return new NextResponse(new Uint8Array(wav), {
+    return new NextResponse(new Uint8Array(output), {
       headers: {
-        "Content-Type": "audio/wav",
+        "Content-Type": wantsPcm ? "audio/pcm" : "audio/wav",
         "Cache-Control": "private, max-age=3600",
       },
     })

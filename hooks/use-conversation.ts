@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { useSpeaker } from "@/hooks/use-speaker"
+import { useSpeaker, type AvatarAudioSink } from "@/hooks/use-speaker"
 import { getRegion, type LanguageId, type RegionId } from "@/lib/languages"
 import { resolveMeterUpdate } from "@/lib/meter"
 import { authenticatedFetch } from "@/lib/supabase"
@@ -40,6 +40,8 @@ export type UseConversationOptions = {
   scenario: Scenario
   languageId: LanguageId
   regionId: RegionId
+  avatarSink?: AvatarAudioSink | null
+  interruptAvatar?: () => void
 }
 
 export type UseConversationResult = {
@@ -73,6 +75,8 @@ export function useConversation({
   scenario,
   languageId,
   regionId,
+  avatarSink,
+  interruptAvatar,
 }: UseConversationOptions): UseConversationResult {
   const mode = scenario.mode ?? "roleplay"
   const isRoleplayMode = mode === "roleplay"
@@ -87,7 +91,7 @@ export function useConversation({
     analyser: speakerAnalyser,
     speak,
     stop: stopSpeaking,
-  } = useSpeaker()
+  } = useSpeaker({ avatarSink })
 
   const openingPlayed = useRef(false)
 
@@ -236,10 +240,11 @@ export function useConversation({
 
   const clearScore = useCallback(() => {
     stopSpeaking()
+    interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
-  }, [stopSpeaking])
+  }, [stopSpeaking, interruptAvatar])
 
   const selectWord = useCallback(
     (word: WordScore) => {
@@ -252,17 +257,19 @@ export function useConversation({
   const pickPhrase = useCallback(
     (text: string) => {
       stopSpeaking()
+      interruptAvatar?.()
       setTargetPhrase(text)
       setScore(null)
       setSelectedWord(null)
       setRequestError(null)
       speakLine(text, "phrase")
     },
-    [stopSpeaking, speakLine],
+    [stopSpeaking, interruptAvatar, speakLine],
   )
 
   const reset = useCallback(() => {
     stopSpeaking()
+    interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
@@ -281,6 +288,7 @@ export function useConversation({
     }
   }, [
     stopSpeaking,
+    interruptAvatar,
     isRoleplayMode,
     hasGoal,
     scenarioContent.openingLine,

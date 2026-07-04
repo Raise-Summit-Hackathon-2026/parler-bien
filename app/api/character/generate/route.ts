@@ -13,6 +13,10 @@ import {
   type GeneratedCharacterPayload,
 } from "@/lib/character-generate-schema"
 import {
+  formatLiveAvatarCatalogForPrompt,
+  validateGeneratedLiveAvatarId,
+} from "@/lib/liveavatar"
+import {
   getLanguage,
   getRegion,
   isLanguageId,
@@ -63,7 +67,10 @@ The scenario must:
 - openingLine.text and all starters must be in ${languageName}
 - hints are short English glosses
 - Be appropriate for language practice (no explicit content)
-- Feel specific and fun, inspired by the user's source material when provided`
+- Feel specific and fun, inspired by the user's source material when provided
+
+LIVE AVATAR — pick liveAvatarId from this catalog (match gender, profession, and vibe):
+${formatLiveAvatarCatalogForPrompt()}`
 }
 
 function parseGenerated(content: string): GeneratedCharacterPayload {
@@ -72,6 +79,11 @@ function parseGenerated(content: string): GeneratedCharacterPayload {
   if (!validateGeneratedCharacterPayload(parsed)) {
     throw new Error("Invalid generated character shape")
   }
+
+  parsed.liveAvatarId = validateGeneratedLiveAvatarId(
+    parsed.liveAvatarId,
+    parsed.voice.gender,
+  )
 
   return parsed
 }
@@ -90,7 +102,13 @@ function parseGeneratedBatch(
     throw new Error("Invalid generated characters batch shape")
   }
 
-  return parsed.characters
+  return parsed.characters.map((character) => {
+    character.liveAvatarId = validateGeneratedLiveAvatarId(
+      character.liveAvatarId,
+      character.voice.gender,
+    )
+    return character
+  })
 }
 
 export async function POST(request: Request) {
