@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -27,6 +28,11 @@ type LanguageState = {
   regionId: RegionId
 }
 
+const DEFAULT_STATE: LanguageState = {
+  languageId: DEFAULT_LANGUAGE_ID,
+  regionId: DEFAULT_REGION_ID,
+}
+
 type LanguageContextValue = LanguageState & {
   setLanguageId: (languageId: LanguageId) => void
   setRegionId: (regionId: RegionId) => void
@@ -35,15 +41,9 @@ type LanguageContextValue = LanguageState & {
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 function readStoredLanguage(): LanguageState {
-  if (typeof window === "undefined") {
-    return { languageId: DEFAULT_LANGUAGE_ID, regionId: DEFAULT_REGION_ID }
-  }
-
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return { languageId: DEFAULT_LANGUAGE_ID, regionId: DEFAULT_REGION_ID }
-    }
+    if (!raw) return DEFAULT_STATE
 
     const parsed = JSON.parse(raw) as Partial<LanguageState>
     const languageId =
@@ -57,14 +57,22 @@ function readStoredLanguage(): LanguageState {
 
     return { languageId, regionId }
   } catch {
-    return { languageId: DEFAULT_LANGUAGE_ID, regionId: DEFAULT_REGION_ID }
+    return DEFAULT_STATE
   }
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<LanguageState>(() => readStoredLanguage())
+  const [state, setState] = useState<LanguageState>(DEFAULT_STATE)
+  const hydratedRef = useRef(false)
 
   useEffect(() => {
+    setState(readStoredLanguage())
+    hydratedRef.current = true
+  }, [])
+
+  useEffect(() => {
+    if (!hydratedRef.current) return
+
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {

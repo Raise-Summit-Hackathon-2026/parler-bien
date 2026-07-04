@@ -14,23 +14,15 @@ import {
 import { useLanguage } from "@/components/language-provider"
 import { LanguagePicker } from "@/components/language-picker"
 import { AvatarStage } from "@/components/avatar-stage"
-import { ScenarioBackButton } from "@/components/scenario-picker"
+import { ScenarioBackButton } from "@/components/scenario-back-button"
 import { Waveform } from "@/components/waveform"
 import { Button } from "@/components/ui/button"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useLiveAvatar } from "@/hooks/use-live-avatar"
 import { useSpeaker } from "@/hooks/use-speaker"
 import { markScenarioCompleted } from "@/lib/completions"
-import { hasCapability } from "@/lib/agents"
-import type { LevelContext } from "@/lib/level-scenario"
+import { resolveLiveAvatarIdForPractice } from "@/lib/liveavatar"
 import { resolveMeterUpdate } from "@/lib/meter"
-import { resolveLiveAvatarIdForScenario } from "@/lib/liveavatar"
-import {
-  markLevelCompleted,
-  markLevelInProgress,
-  recordLevelScore,
-} from "@/lib/workspace-progress"
-import { countPlayableLevels } from "@/lib/workspace-types"
 import { pickRandomSentences } from "@/lib/sentences"
 import { authenticatedFetch } from "@/lib/supabase"
 import {
@@ -64,7 +56,7 @@ type RecordedAudio = {
 type PracticeSessionProps = {
   scenario: Scenario
   onBack: () => void
-  levelContext?: LevelContext
+  backLabel?: string
 }
 
 function scoreColor(score: number) {
@@ -255,38 +247,19 @@ function randomCharacterGenderForScenario(
 export function PracticeSession({
   scenario,
   onBack,
-  levelContext,
+  backLabel = "Back",
 }: PracticeSessionProps) {
   const { languageId, regionId, setLanguageId, setRegionId } = useLanguage()
-  const agent = levelContext?.agent
-  const isLanguageMode =
-    levelContext?.agent.type === "language" || scenario.id === "teacher"
-  const isSpiritualMode = levelContext?.agent.type === "spiritual"
-  const isRoleplayMode =
-    levelContext?.agent.type === "roleplay" ||
-    (!isLanguageMode && !isSpiritualMode && scenario.id !== "teacher")
-  const isTeacher = isLanguageMode && !levelContext
-  const showPronunciation =
-    !levelContext ||
-    (agent && hasCapability(agent, "pronunciation_score"))
+  const isTeacher = scenario.id === "teacher"
+  const isLanguageMode = isTeacher
+  const isSpiritualMode = false
+  const isRoleplayMode = !isTeacher
+  const showPronunciation = isTeacher || isLanguageMode
   const showMeter =
-    !isSpiritualMode &&
-    (levelContext
-      ? agent && hasCapability(agent, "goal_meter")
-      : !isTeacher && Boolean(scenario.meterLabel && scenario.goal))
-  const showWordBreakdown =
-    !isSpiritualMode &&
-    (levelContext
-      ? agent && hasCapability(agent, "word_breakdown")
-      : isTeacher || isLanguageMode)
+    !isTeacher && Boolean(scenario.meterLabel && scenario.goal)
+  const showWordBreakdown = isTeacher || isLanguageMode
 
-  const levelOrder = levelContext?.level.position
-  const playableTotal = levelContext
-    ? countPlayableLevels(levelContext.trackLevels)
-    : 0
-
-  const initialTarget =
-    levelContext?.level.room.targetPhrase ?? null
+  const initialTarget = null
   const region = getRegion(languageId, regionId)
   const scenarioContent = getScenarioContent(scenario, languageId)
 
@@ -314,29 +287,7 @@ export function PracticeSession({
       : scenarioContent.starters
   )
 
-  useEffect(() => {
-    if (!levelContext) return
-    void markLevelInProgress(levelContext.levelId)
-  }, [levelContext])
-
-  function checkLevelWin(result: PronunciationScore): boolean {
-    if (!levelContext) return false
-
-    const { passCriteria } = levelContext
-
-    switch (passCriteria.type) {
-      case "pronunciation":
-        return result.overall_score >= passCriteria.minScore
-      case "goal":
-        return result.goal_achieved || result.meter >= 95
-      case "complete":
-        return userTurnCount + 1 >= passCriteria.minTurns
-      default:
-        return false
-    }
-  }
   const [targetPhrase, setTargetPhrase] = useState<string | null>(initialTarget)
-  const [userTurnCount, setUserTurnCount] = useState(0)
   const [history, setHistory] = useState<ConversationTurn[]>([])
   const [meter, setMeter] = useState(0)
   const [hasWon, setHasWon] = useState(false)
@@ -361,19 +312,8 @@ export function PracticeSession({
   )
 
   const liveAvatarId = useMemo(
-    () =>
-      resolveLiveAvatarIdForScenario(
-        levelContext?.agent ?? null,
-        characterGender,
-        scenario.id,
-        levelContext?.level.room.liveAvatarId,
-      ),
-    [
-      levelContext?.agent,
-      levelContext?.level.room.liveAvatarId,
-      characterGender,
-      scenario.id,
-    ],
+    () => resolveLiveAvatarIdForPractice(scenario, characterGender),
+    [scenario, characterGender],
   )
 
   const {
@@ -387,7 +327,6 @@ export function PracticeSession({
     interrupt: interruptAvatar,
   } = useLiveAvatar({
     avatarId: liveAvatarId,
-    agentId: levelContext?.agent.id,
     languageId,
     enabled: true,
   })
@@ -434,7 +373,6 @@ export function PracticeSession({
           ageRange,
           tone: scenario.voice.tone,
           accent: region.accent,
-          deliveryStyle: levelContext?.agent.deliveryStyle,
         })
       })()
     },
@@ -443,7 +381,6 @@ export function PracticeSession({
       randomScenarioGender,
       region.accent,
       speak,
-      levelContext?.agent.deliveryStyle,
       liveAvatarReady,
       speakWithAvatar,
     ],
@@ -464,16 +401,7 @@ export function PracticeSession({
   useEffect(() => {
     if (!hasWon) return
 
-    if (levelContext) {
-      void markLevelCompleted(
-        levelContext.levelId,
-        levelContext.trackLevels,
-        score?.overall_score,
-      )
-      levelContext.onLevelComplete()
-    } else {
-      markScenarioCompleted(scenario.id)
-    }
+    markScenarioCompleted(scenario.id)
 
     const fire = (particleRatio: number, options: confetti.Options) => {
       void confetti({
@@ -489,7 +417,7 @@ export function PracticeSession({
     fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 })
     fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 })
     fire(0.1, { spread: 120, startVelocity: 45 })
-  }, [hasWon, scenario.id, levelContext, score?.overall_score])
+  }, [hasWon, scenario.id])
 
   async function handleRecordedAudio(audio: RecordedAudio | null) {
     setRequestError(null)
@@ -518,9 +446,6 @@ export function PracticeSession({
           history,
           characterGender,
           currentMeter: meter,
-          agentType: levelContext?.agent.type,
-          agent: levelContext?.agent,
-          levelRoom: levelContext?.level.room,
         }),
       })
 
@@ -535,21 +460,10 @@ export function PracticeSession({
       setLastSpeaker(result.speaker)
       setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
 
-      if (levelContext) {
-        if (isRoleplayMode) {
-          const nextMeter = resolveMeterUpdate(meter, result)
-          void recordLevelScore(levelContext.levelId, nextMeter)
-        } else if (isLanguageMode || showPronunciation) {
-          void recordLevelScore(levelContext.levelId, result.overall_score)
-        }
-      }
-
       if (isRoleplayMode) {
         const nextMeter = resolveMeterUpdate(meter, result)
         setMeter(nextMeter)
-        const won = levelContext
-          ? checkLevelWin({ ...result, meter: nextMeter })
-          : result.goal_achieved || nextMeter >= 100
+        const won = result.goal_achieved || nextMeter >= 100
         setHasWon(won)
         setHistory((prev) => [
           ...prev,
@@ -561,27 +475,7 @@ export function PracticeSession({
           "character",
           result.speaker
         )
-      } else if (isSpiritualMode) {
-        const nextTurnCount = userTurnCount + 1
-        setUserTurnCount(nextTurnCount)
-        setHistory((prev) => [
-          ...prev,
-          { role: "user", text: result.transcript },
-          { role: "character", text: result.reply.text },
-        ])
-        const won =
-          levelContext &&
-          levelContext.passCriteria.type === "complete" &&
-          nextTurnCount >= levelContext.passCriteria.minTurns
-        setHasWon(Boolean(won))
-        speakCharacterLine(
-          replySpeechText(result.reply),
-          "coach",
-          result.speaker
-        )
       } else if (isLanguageMode) {
-        const won = levelContext ? checkLevelWin(result) : false
-        setHasWon(won)
         speakCharacterLine(
           replySpeechText(result.reply),
           "coach",
@@ -638,7 +532,6 @@ export function PracticeSession({
     setMeter(0)
     setHasWon(false)
     setLastSpeaker(null)
-    setUserTurnCount(0)
     setTargetPhrase(initialTarget)
 
     if (scenarioContent.openingLine) {
@@ -695,12 +588,7 @@ export function PracticeSession({
   return (
     <div className="mx-auto flex h-svh w-full max-w-lg flex-col overflow-hidden px-4 py-3">
       <div className="flex shrink-0 items-center justify-between gap-2">
-        <ScenarioBackButton onBack={onBack} label={levelContext ? "Path" : "Back"} />
-        {levelContext && levelOrder && (
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {levelOrder}/{playableTotal}
-          </span>
-        )}
+        <ScenarioBackButton onBack={onBack} label={backLabel} />
       </div>
 
       <div className="shrink-0 space-y-0.5 py-2 text-center">
@@ -747,16 +635,10 @@ export function PracticeSession({
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                 {scenario.winMessage}
               </p>
-              {levelContext ? (
-                <Button className="mt-3" size="sm" variant="outline" onClick={onBack}>
-                  Back to path
-                </Button>
-              ) : (
-                <Button className="mt-3" size="sm" variant="outline" onClick={handleReplayScenario}>
-                  <RotateCcw />
-                  Play again
-                </Button>
-              )}
+              <Button className="mt-3" size="sm" variant="outline" onClick={handleReplayScenario}>
+                <RotateCcw />
+                Play again
+              </Button>
             </div>
           )}
 
@@ -852,16 +734,14 @@ export function PracticeSession({
         </div>
       </div>
 
-      {!levelContext && (
-        <div className="shrink-0 pt-2">
-          <LanguagePicker
-            languageId={languageId}
-            regionId={regionId}
-            onLanguageChange={setLanguageId}
-            onRegionChange={setRegionId}
-          />
-        </div>
-      )}
+      <div className="shrink-0 pt-2">
+        <LanguagePicker
+          languageId={languageId}
+          regionId={regionId}
+          onLanguageChange={setLanguageId}
+          onRegionChange={setRegionId}
+        />
+      </div>
     </div>
   )
 }

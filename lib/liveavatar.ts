@@ -98,18 +98,14 @@ export function resolveLiveAvatarIdForGender(
   return pool[Math.abs(seed) % pool.length] ?? DEFAULT_LIVE_AVATAR_ID
 }
 
-export function resolveLiveAvatarIdForScenario(
-  agent: VoiceAgent | null,
+export function resolveLiveAvatarIdForPractice(
+  scenario: { liveAvatarId?: string; id?: string },
   gender: CharacterGender,
-  scenarioId?: string,
-  roomLiveAvatarId?: string | null,
 ): string {
-  if (roomLiveAvatarId?.trim()) return roomLiveAvatarId.trim()
-  if (agent?.liveAvatarId) return agent.liveAvatarId
-  if (agent) return resolveLiveAvatarIdForGender(gender)
+  if (scenario.liveAvatarId?.trim()) return scenario.liveAvatarId.trim()
 
-  const seed = scenarioId
-    ? scenarioId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const seed = scenario.id
+    ? scenario.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
     : 0
 
   return resolveLiveAvatarIdForGender(gender, seed)

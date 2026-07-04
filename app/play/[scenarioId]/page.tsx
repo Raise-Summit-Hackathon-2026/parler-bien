@@ -5,13 +5,10 @@ import { useParams, useRouter } from "next/navigation"
 
 import { AuthGate } from "@/components/auth-gate"
 import { PracticeSession } from "@/components/practice-session"
-import { getCustomScenarios } from "@/lib/custom-scenarios"
 import {
   getScenario,
   isBuiltInScenarioId,
-  isCustomScenarioId,
   isScenarioId,
-  resolveScenario,
 } from "@/lib/scenarios"
 
 export default function PlaySessionPage() {
@@ -22,13 +19,6 @@ export default function PlaySessionPage() {
     const decodedId = decodeURIComponent(params.scenarioId)
     if (!isScenarioId(decodedId)) {
       throw new Error(`Unknown scenario: ${decodedId}`)
-    }
-
-    if (isCustomScenarioId(decodedId)) {
-      const customScenario = getCustomScenarios().find(
-        (item) => item.id === decodedId,
-      )
-      return resolveScenario(decodedId, customScenario)
     }
 
     if (isBuiltInScenarioId(decodedId)) {

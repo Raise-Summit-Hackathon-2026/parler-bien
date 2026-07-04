@@ -31,8 +31,8 @@ export function HomeHero() {
         </h1>
 
         <p className="max-w-2xl text-lg text-muted-foreground text-pretty">
-          Build company workspaces with personas, learning tracks, and levels —
-          then practice roleplays with AI feedback word by word.
+          Practice real conversations with AI feedback — solo in free play, or
+          together in shared workspaces.
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -68,9 +68,8 @@ export function WorkspacesCta() {
             <div className="space-y-1">
               <p className="text-xl font-semibold">Build your training workspace</p>
               <p className="max-w-xl text-sm text-muted-foreground">
-                Define personas with full voice and coaching settings, create
-                tracks with ordered levels, and configure pass criteria — goal
-                meters, pronunciation scores, gestures, and more.
+                Create a group, invite teammates, and share custom practice
+                characters generated from prompts or PDFs.
               </p>
             </div>
           </div>

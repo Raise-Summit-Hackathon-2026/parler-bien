@@ -38,6 +38,8 @@ export type Scenario = {
   imagePrompt: string
   /** Set on AI-generated custom scenarios */
   primaryLanguageId?: LanguageId
+  /** HeyGen LiveAvatar public avatar UUID */
+  liveAvatarId?: string
   createdAt?: number
   sourceLabel?: string
 }

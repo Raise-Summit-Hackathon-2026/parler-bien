@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import Script from "next/script"
 
 import "./globals.css"
 import { LanguageProvider } from "@/components/language-provider"
@@ -31,6 +32,7 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
     >
       <body className="flex min-h-svh flex-col">
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
         <ThemeProvider>
           <LanguageProvider>
             <SiteHeader />
