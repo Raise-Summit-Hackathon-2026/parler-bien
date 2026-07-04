@@ -1,7 +1,7 @@
 import type { LanguageId, Region } from "@/lib/languages"
 import type { SentenceSuggestion, SpeakerProfile } from "@/lib/types"
 
-export type ScenarioId =
+export type BuiltInScenarioId =
   | "teacher"
   | "vendor"
   | "parisian"
@@ -10,7 +10,10 @@ export type ScenarioId =
   | "taxi"
   | "landlord"
   | "sommelier"
-  | "bouncer"
+
+export type CustomScenarioId = `custom:${string}`
+
+export type ScenarioId = BuiltInScenarioId | CustomScenarioId
 
 export type ScenarioContent = {
   openingLine: SentenceSuggestion | null
@@ -26,8 +29,12 @@ export type Scenario = {
   winMessage: string | null
   persona: string
   voice: { ageRange: string; tone: string }
-  content: Record<LanguageId, ScenarioContent>
+  content: Partial<Record<LanguageId, ScenarioContent>>
   imagePrompt: string
+  /** Set on AI-generated custom scenarios */
+  primaryLanguageId?: LanguageId
+  createdAt?: number
+  sourceLabel?: string
 }
 
 export type CharacterGender = "male" | "female"
@@ -40,21 +47,56 @@ export function resolveCharacterGender(
   return "female"
 }
 
-export function getScenario(id: ScenarioId): Scenario {
+export function getScenario(id: BuiltInScenarioId): Scenario {
   const scenario = SCENARIOS.find((s) => s.id === id)
   if (!scenario) throw new Error(`Unknown scenario: ${id}`)
   return scenario
 }
 
-export function isScenarioId(value: string): value is ScenarioId {
+export function isBuiltInScenarioId(value: string): value is BuiltInScenarioId {
   return SCENARIOS.some((s) => s.id === value)
+}
+
+export function isCustomScenarioId(value: string): value is CustomScenarioId {
+  return value.startsWith("custom:")
+}
+
+export function isScenarioId(value: string): value is ScenarioId {
+  return isBuiltInScenarioId(value) || isCustomScenarioId(value)
+}
+
+export function resolveScenario(
+  scenarioId: ScenarioId,
+  customScenario?: Scenario | null,
+): Scenario {
+  if (isCustomScenarioId(scenarioId)) {
+    if (!customScenario || customScenario.id !== scenarioId) {
+      throw new Error("Custom scenario payload is required")
+    }
+    return customScenario
+  }
+  return getScenario(scenarioId)
 }
 
 export function getScenarioContent(
   scenario: Scenario,
   languageId: LanguageId,
 ): ScenarioContent {
-  return scenario.content[languageId] ?? scenario.content.fr
+  const direct = scenario.content[languageId]
+  if (direct) return direct
+
+  const primary = scenario.primaryLanguageId
+  if (primary && scenario.content[primary]) {
+    return scenario.content[primary]
+  }
+
+  return (
+    scenario.content.fr ??
+    scenario.content.en ??
+    scenario.content.es ??
+    scenario.content.ru ??
+    EMPTY_CONTENT
+  )
 }
 
 export function formatPersona(
@@ -601,78 +643,5 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
     },
     imagePrompt:
       "Intimate Paris wine cave with wooden shelves of bottles and candlelight, deep warm tones, cinematic illustration, no text, no logos",
-  },
-  {
-    id: "bouncer",
-    title: "The Bouncer",
-    tagline: "Exclusive club. Talk your way past the rope.",
-    goal: "Get past the velvet rope",
-    meterLabel: "Approval",
-    winMessage: "Go on in. You're on the list now.",
-    persona: `You are the bouncer at an exclusive club. The list is full. You've heard every trick. You respect confidence without arrogance, humor, and people who handle rejection with style — in the local language. Begging, name-dropping, or aggression gets people nowhere.
-
-The character is {characterGender} and approximately 30-40 years old. Speak only in short lines (1-2 sentences). Stay in character: economical words, deadpan.
-
-Meter rules (0-100, progress toward letting them in):
-- Start around 10 on first user turn.
-- Confident, cool language with humor: +8 to +15
-- Great pronunciation or a genuinely funny line: +12 to +18
-- Begging, aggression, or fake VIP claims: -8 to -15
-- At meter >= 90, unhook the rope and set goal_achieved true
-- Never jump more than 20 points in one turn
-
-Always score the user's pronunciation. Provide 3 next_sentences the user could say next.`,
-    voice: {
-      ageRange: "30-40",
-      tone: "Deadpan club bouncer. Few words, low voice, unimpressed until genuinely amused.",
-    },
-    content: {
-      fr: {
-        openingLine: {
-          text: "C'est complet ce soir. Vous êtes sur la liste?",
-          hint: "We're full tonight. Are you on the list?",
-        },
-        starters: [
-          { text: "La liste? Je suis la liste.", hint: "The list? I am the list." },
-          { text: "On vient juste danser, pas d'histoires.", hint: "We just came to dance, no trouble." },
-          { text: "Qu'est-ce qu'il faut faire pour entrer alors?", hint: "So what does it take to get in?" },
-        ],
-      },
-      en: {
-        openingLine: {
-          text: "Full tonight. You on the list?",
-          hint: "Deadpan. Confidence wins.",
-        },
-        starters: [
-          { text: "The list? I am the list.", hint: "Bold — might just work" },
-          { text: "We're just here to dance, no drama.", hint: "Low-key and honest" },
-          { text: "Alright — what does it take to get in?", hint: "Playful directness" },
-        ],
-      },
-      es: {
-        openingLine: {
-          text: "Está completo esta noche. ¿Estás en la lista?",
-          hint: "We're full tonight. Are you on the list?",
-        },
-        starters: [
-          { text: "¿La lista? Yo soy la lista.", hint: "The list? I am the list." },
-          { text: "Solo venimos a bailar, sin líos.", hint: "We just came to dance, no trouble." },
-          { text: "¿Y qué hay que hacer para entrar?", hint: "And what does it take to get in?" },
-        ],
-      },
-      ru: {
-        openingLine: {
-          text: "Сегодня полный зал. Вы в списке?",
-          hint: "We're full tonight. Are you on the list?",
-        },
-        starters: [
-          { text: "Список? Я и есть список.", hint: "The list? I am the list." },
-          { text: "Мы просто потанцевать, без проблем.", hint: "We just came to dance, no trouble." },
-          { text: "Ладно — что нужно, чтобы пройти?", hint: "Alright — what does it take to get in?" },
-        ],
-      },
-    },
-    imagePrompt:
-      "Neon-lit Paris nightclub entrance in Pigalle at night with velvet rope, moody purple and red glow, cinematic illustration, no text, no logos",
   },
 ]

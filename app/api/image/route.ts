@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { getScenario, isScenarioId } from "@/lib/scenarios"
+import { getScenario, isBuiltInScenarioId } from "@/lib/scenarios"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const IMAGE_MODEL = "google/gemini-3.1-flash-lite-image"
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   let cacheKey = prompt?.trim()
 
   if (scenarioId) {
-    if (!isScenarioId(scenarioId)) {
+    if (!isBuiltInScenarioId(scenarioId)) {
       return NextResponse.json({ error: "Invalid scenarioId" }, { status: 400 })
     }
     const scenario = getScenario(scenarioId)

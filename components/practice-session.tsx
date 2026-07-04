@@ -15,6 +15,8 @@ import { markScenarioCompleted } from "@/lib/completions"
 import { pickRandomSentences } from "@/lib/sentences"
 import {
   getScenarioContent,
+  isBuiltInScenarioId,
+  isCustomScenarioId,
   resolveCharacterGender,
   type CharacterGender,
   type Scenario,
@@ -331,6 +333,7 @@ export function PracticeSession({
             languageId,
             regionId,
             scenarioId: scenario.id,
+            customScenario: isCustomScenarioId(scenario.id) ? scenario : undefined,
             history,
             characterGender,
             currentMeter: meter,
@@ -483,7 +486,8 @@ export function PracticeSession({
 
       <div className="w-full space-y-6 overflow-hidden rounded-3xl border bg-card shadow-sm">
         <ScenarioScene
-          scenarioId={scenario.id}
+          scenarioId={isBuiltInScenarioId(scenario.id) ? scenario.id : undefined}
+          imagePrompt={isBuiltInScenarioId(scenario.id) ? undefined : scenario.imagePrompt}
           className="h-40 w-full rounded-none"
           overlay
         />

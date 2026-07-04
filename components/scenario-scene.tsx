@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react"
 
-import type { ScenarioId } from "@/lib/scenarios"
+import type { BuiltInScenarioId } from "@/lib/scenarios"
 import { cn } from "@/lib/utils"
+
+type UseScenarioImageOptions = {
+  scenarioId?: BuiltInScenarioId
+  imagePrompt?: string
+}
 
 type UseScenarioImageResult = {
   url: string | null
@@ -11,12 +16,18 @@ type UseScenarioImageResult = {
   error: boolean
 }
 
-export function useScenarioImage(scenarioId: ScenarioId): UseScenarioImageResult {
+export function useScenarioImage({
+  scenarioId,
+  imagePrompt,
+}: UseScenarioImageOptions): UseScenarioImageResult {
+  const hasSource = Boolean(scenarioId || imagePrompt)
   const [url, setUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(hasSource)
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    if (!hasSource) return
+
     let cancelled = false
 
     async function load() {
@@ -27,7 +38,9 @@ export function useScenarioImage(scenarioId: ScenarioId): UseScenarioImageResult
         const response = await fetch("/api/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scenarioId }),
+          body: JSON.stringify(
+            imagePrompt ? { prompt: imagePrompt } : { scenarioId },
+          ),
         })
 
         if (!response.ok) throw new Error("Image fetch failed")
@@ -48,23 +61,25 @@ export function useScenarioImage(scenarioId: ScenarioId): UseScenarioImageResult
     return () => {
       cancelled = true
     }
-  }, [scenarioId])
+  }, [scenarioId, imagePrompt, hasSource])
 
   return { url, isLoading, error }
 }
 
 type ScenarioSceneProps = {
-  scenarioId: ScenarioId
+  scenarioId?: BuiltInScenarioId
+  imagePrompt?: string
   className?: string
   overlay?: boolean
 }
 
 export function ScenarioScene({
   scenarioId,
+  imagePrompt,
   className,
   overlay = true,
 }: ScenarioSceneProps) {
-  const { url, isLoading, error } = useScenarioImage(scenarioId)
+  const { url, isLoading, error } = useScenarioImage({ scenarioId, imagePrompt })
 
   return (
     <div

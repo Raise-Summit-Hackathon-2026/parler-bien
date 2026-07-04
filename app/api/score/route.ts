@@ -14,9 +14,10 @@ import {
 } from "@/lib/languages"
 import {
   formatPersona,
-  getScenario,
+  isCustomScenarioId,
   isScenarioId,
-  type ScenarioId,
+  resolveScenario,
+  type Scenario,
 } from "@/lib/scenarios"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
 import type { ConversationTurn, PronunciationScore } from "@/lib/types"
@@ -65,7 +66,7 @@ Provide exactly 3 next_sentences: short ${languageName} follow-up sentences to p
 }
 
 function buildScenarioPrompt(
-  scenarioId: Exclude<ScenarioId, "teacher">,
+  scenario: Scenario,
   characterGender: "male" | "female",
   history: ConversationTurn[],
   currentMeter: number,
@@ -73,7 +74,6 @@ function buildScenarioPrompt(
   languageName: string,
   region: Region,
 ) {
-  const scenario = getScenario(scenarioId)
   const persona = formatPersona(scenario, characterGender, languageName, region)
 
   const targetNote = phrase
@@ -101,7 +101,7 @@ function buildPrompt(
   phrase: string | undefined,
   languageId: LanguageId,
   regionId: RegionId,
-  scenarioId: ScenarioId = "teacher",
+  scenario: Scenario,
   history: ConversationTurn[] = [],
   characterGender: "male" | "female" = "female",
   currentMeter = 0,
@@ -109,12 +109,12 @@ function buildPrompt(
   const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
 
-  if (scenarioId === "teacher") {
+  if (scenario.id === "teacher") {
     return buildTeacherPrompt(phrase, language.name, region)
   }
 
   return buildScenarioPrompt(
-    scenarioId,
+    scenario,
     characterGender,
     history,
     currentMeter,
@@ -170,6 +170,7 @@ export async function POST(request: Request) {
     history?: ConversationTurn[]
     characterGender?: "male" | "female"
     currentMeter?: number
+    customScenario?: Scenario
   }
 
   try {
@@ -189,6 +190,7 @@ export async function POST(request: Request) {
     history = [],
     characterGender = "female",
     currentMeter = 0,
+    customScenario,
   } = body
 
   const languageId =
@@ -216,6 +218,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid scenarioId" }, { status: 400 })
   }
 
+  if (isCustomScenarioId(scenarioId) && !customScenario) {
+    return NextResponse.json(
+      { error: "customScenario is required for custom scenarios" },
+      { status: 400 },
+    )
+  }
+
+  let scenario: Scenario
+  try {
+    scenario = resolveScenario(scenarioId, customScenario)
+  } catch {
+    return NextResponse.json({ error: "Invalid custom scenario" }, { status: 400 })
+  }
+
   const cappedHistory = history.slice(-12)
 
   try {
@@ -239,7 +255,7 @@ export async function POST(request: Request) {
                   phrase,
                   languageId,
                   regionId,
-                  scenarioId,
+                  scenario,
                   cappedHistory,
                   characterGender,
                   currentMeter,
@@ -289,7 +305,6 @@ export async function POST(request: Request) {
 
     const score = parseScore(content)
 
-    const scenario = getScenario(scenarioId)
     const language = getLanguage(languageId)
     const assistantText = [
       score.reply.text,
@@ -304,7 +319,7 @@ export async function POST(request: Request) {
       {
         scenarioTitle: scenario.title,
         languageName: language.name,
-        isRoleplay: scenarioId !== "teacher",
+        isRoleplay: scenario.id !== "teacher",
       },
     )
 
