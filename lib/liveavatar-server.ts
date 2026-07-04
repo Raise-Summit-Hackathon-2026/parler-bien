@@ -40,7 +40,11 @@ export async function createLiveAvatarSessionToken(options: {
   voiceId?: string
 }) {
   const sandbox = isLiveAvatarSandbox()
-  const avatarId = sandbox ? DEFAULT_LIVE_AVATAR_ID : options.avatarId
+  // Sandbox mode only supports the default public avatar; the API rejects any
+  // other avatar_id with a 400. Custom avatars require a non-sandbox session.
+  const avatarId = sandbox
+    ? DEFAULT_LIVE_AVATAR_ID
+    : resolveSessionAvatarId({ avatarId: options.avatarId })
 
   const payload: Record<string, unknown> = {
     mode: "FULL",

@@ -224,7 +224,10 @@ export function useLiveAvatar({
 
         if (cancelled || sessionIdRef.current !== localSessionId) return
 
-        const data = (await response.json()) as { sessionToken: string }
+        const data = (await response.json()) as {
+          sessionToken: string
+          avatarId?: string
+        }
         const session = new LiveAvatarSession(data.sessionToken, {
           voiceChat: false,
         })

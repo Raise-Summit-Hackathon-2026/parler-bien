@@ -1,4 +1,3 @@
-import type { VoiceAgent } from "@/lib/agents"
 import type { LanguageId } from "@/lib/languages"
 import type { CharacterGender } from "@/lib/scenarios"
 
@@ -86,7 +85,7 @@ export type LiveAvatarSessionRequest = {
   language?: LanguageId
 }
 
-export function resolveLiveAvatarIdForAgent(agent: VoiceAgent): string {
+export function resolveLiveAvatarIdForAgent(agent: { liveAvatarId?: string }): string {
   return agent.liveAvatarId ?? DEFAULT_LIVE_AVATAR_ID
 }
 
@@ -99,10 +98,19 @@ export function resolveLiveAvatarIdForGender(
 }
 
 export function resolveLiveAvatarIdForPractice(
-  scenario: { liveAvatarId?: string; id?: string },
-  gender: CharacterGender,
+  scenario: {
+    liveAvatarId?: string
+    id?: string
+    voice?: { gender?: "male" | "female" | "random" | "opposite-speaker" }
+  },
+  randomGender: CharacterGender,
 ): string {
   if (scenario.liveAvatarId?.trim()) return scenario.liveAvatarId.trim()
+
+  const gender =
+    scenario.voice?.gender === "male" || scenario.voice?.gender === "female"
+      ? scenario.voice.gender
+      : randomGender
 
   const seed = scenario.id
     ? scenario.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)

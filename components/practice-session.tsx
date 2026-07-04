@@ -312,8 +312,8 @@ export function PracticeSession({
   )
 
   const liveAvatarId = useMemo(
-    () => resolveLiveAvatarIdForPractice(scenario, characterGender),
-    [scenario, characterGender],
+    () => resolveLiveAvatarIdForPractice(scenario, randomScenarioGender),
+    [scenario, randomScenarioGender],
   )
 
   const {
