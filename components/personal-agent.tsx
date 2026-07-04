@@ -153,6 +153,8 @@ export function PersonalAgentPanel() {
   const [creatingLine, setCreatingLine] = useState(false)
   const [provisioningNumber, setProvisioningNumber] = useState(false)
   const [callingMe, setCallingMe] = useState(false)
+  const [callBackDelay, setCallBackDelay] = useState(0)
+  const [callBackNotice, setCallBackNotice] = useState<string | null>(null)
   const [copiedPhone, setCopiedPhone] = useState(false)
   const [telephonyProvider, setTelephonyProvider] = useState<"agentphone" | "twilio">("twilio")
   const [agentPhoneConfigured, setAgentPhoneConfigured] = useState(false)
@@ -552,14 +554,25 @@ export function PersonalAgentPanel() {
 
     setCallingMe(true)
     setError(null)
+    setCallBackNotice(null)
     try {
       const response = await fetch("/api/agent/line/call-me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: resolveUserId() }),
+        body: JSON.stringify({
+          userId: resolveUserId(),
+          delaySeconds: callBackDelay,
+        }),
       })
-      const data = (await response.json()) as { ok?: boolean; error?: string; message?: string }
+      const data = (await response.json()) as {
+        ok?: boolean
+        error?: string
+        message?: string
+        welcomePreview?: string
+        scheduled?: boolean
+      }
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Call failed")
+      setCallBackNotice(data.message ?? "Calling you back…")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Call failed")
     } finally {
@@ -736,18 +749,48 @@ export function PersonalAgentPanel() {
           <p className="mt-2 text-sm text-muted-foreground">
             Call or text this number anytime — same agent as here in the browser.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              disabled={callingMe || !agentLine}
-              onClick={() => void handleCallMe()}
-            >
-              {callingMe ? <Loader2 className="size-4 animate-spin" /> : "Call me on my phone"}
-            </Button>
-            {gmailConnected && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs whitespace-nowrap text-emerald-700 dark:text-emerald-400">
-                <Check className="size-3" />
-                Life data connected
-              </span>
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={callingMe || !agentLine}
+                onClick={() => void handleCallMe()}
+              >
+                {callingMe ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    {callBackDelay > 0 ? "Scheduling…" : "Preparing call…"}
+                  </>
+                ) : callBackDelay > 0 ? (
+                  `Schedule callback (${callBackDelay}s)`
+                ) : (
+                  "Call me back now"
+                )}
+              </Button>
+              {gmailConnected && (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs whitespace-nowrap text-emerald-700 dark:text-emerald-400">
+                  <Check className="size-3" />
+                  Life data connected
+                </span>
+              )}
+            </div>
+            <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Callback in</span>
+              <select
+                value={callBackDelay}
+                onChange={(event) => setCallBackDelay(Number(event.target.value))}
+                className="rounded-md border bg-background px-2 py-1 text-foreground"
+              >
+                <option value={0}>Now</option>
+                <option value={30}>30 seconds</option>
+                <option value={60}>1 minute</option>
+                <option value={120}>2 minutes</option>
+              </select>
+              <span>— opening line is generated from your connected data, not a script.</span>
+            </label>
+            {callBackNotice && (
+              <p className="rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-300">
+                {callBackNotice}
+              </p>
             )}
           </div>
         </section>

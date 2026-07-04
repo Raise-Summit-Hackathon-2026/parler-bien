@@ -44,19 +44,6 @@ async function readResponseBody(response: Response) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireCurrentUser(request)
-  if ("error" in auth) {
-    return NextResponse.json({ error: auth.error }, { status: 401 })
-  }
-
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 }
-    )
-  }
-
   let body: {
     text?: string
     style?: string
@@ -73,6 +60,20 @@ export async function POST(request: Request) {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  const auth = await requireCurrentUser(request)
+  const hasAgentUserId = Boolean(body.userId?.trim())
+  if ("error" in auth && !hasAgentUserId) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "OPENROUTER_API_KEY is not configured" },
+      { status: 500 }
+    )
   }
 
   const {

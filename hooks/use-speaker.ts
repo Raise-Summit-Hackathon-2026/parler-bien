@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { authenticatedFetch } from "@/lib/supabase"
+import { getSupabaseAccessToken } from "@/lib/supabase"
 import type { TtsRequestOptions, TtsStyle } from "@/lib/tts"
 
 type ActivePlayback = {
@@ -60,9 +60,17 @@ export function useSpeaker() {
       cleanupPlayback()
 
       try {
-        const response = await authenticatedFetch("/api/tts", {
+        const token = await getSupabaseAccessToken()
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        }
+        if (token) {
+          headers.Authorization = `Bearer ${token}`
+        }
+
+        const response = await fetch("/api/tts", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             text: text.trim(),
             style,

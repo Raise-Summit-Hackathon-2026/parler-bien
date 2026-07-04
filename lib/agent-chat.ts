@@ -150,3 +150,38 @@ export async function runAgentChat(
     usage: { promptTokens, completionTokens, costUsd },
   }
 }
+
+export async function generateSituationalWelcome(
+  userId: string,
+  context: {
+    agentName?: string
+    ownerName?: string
+    direction?: "outbound" | "inbound"
+  } = {},
+): Promise<string> {
+  const agentName = context.agentName?.trim() || "your agent"
+  const ownerName = context.ownerName?.trim() || "the owner"
+  const direction = context.direction ?? "outbound"
+
+  const prompt =
+    direction === "outbound"
+      ? `[Outbound callback — opening line only]
+You are ${agentName}, calling ${ownerName} on their mobile. They just answered.
+
+Write the first 2–3 sentences they hear — warm, spoken, no markdown.
+- Use connected tools NOW to mention something timely from their inbox or calendar (urgent mail, next meeting, travel, etc.).
+- Do NOT use a generic template like "Hi, this is X, how can I help?"
+- If nothing is connected yet, say you're ready and mention they can connect Gmail and Calendar in the app.
+- End with one short question to keep the conversation going.`
+      : `[Inbound call — opening line only]
+You are ${agentName}. Someone just called your number and you are picking up.
+
+Write the first 2–3 spoken sentences — warm, no markdown.
+- Use connected tools NOW to reference something timely from their inbox or calendar when possible.
+- Avoid generic phone-tree greetings.
+- If you cannot access life data yet, welcome them and offer to help once sources are connected.`
+
+  const { reply } = await runAgentChat(userId, [{ role: "user", content: prompt }])
+  const trimmed = reply.trim()
+  return trimmed || `Hey ${ownerName}, it's ${agentName}. What should we tackle first?`
+}

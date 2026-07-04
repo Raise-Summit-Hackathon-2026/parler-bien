@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { runAgentChat } from "@/lib/agent-chat"
+import { runAgentChat, generateSituationalWelcome } from "@/lib/agent-chat"
 import {
   getLineByAgentPhoneId,
   isInboundCallerAllowed,
@@ -44,6 +44,27 @@ export async function POST(request: NextRequest) {
 
   if (payload.event === "agent.call_ended") {
     return NextResponse.json({ ok: true })
+  }
+
+  if (payload.event === "agent.call_started" && payload.agentId) {
+    const line = getLineByAgentPhoneId(payload.agentId)
+    if (!line) {
+      return NextResponse.json({ text: "This agent is not configured yet." })
+    }
+
+    try {
+      const welcome = await generateSituationalWelcome(line.userId, {
+        agentName: line.agentName,
+        ownerName: line.agentName,
+        direction: payload.data?.direction === "outbound" ? "outbound" : "inbound",
+      })
+      return NextResponse.json({ text: welcome })
+    } catch (error) {
+      console.error("AgentPhone welcome error:", error)
+      return NextResponse.json({
+        text: `Hey, it's ${line.agentName ?? "your agent"}. What can I help with?`,
+      })
+    }
   }
 
   if (payload.event !== "agent.message" || !payload.agentId) {
