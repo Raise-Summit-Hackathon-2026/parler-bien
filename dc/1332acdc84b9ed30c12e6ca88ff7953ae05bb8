@@ -1,0 +1,36 @@
+lib/image-cache-db.ts
+  s_2b088684ad6fb8::t_a0856feb1d3ada 1-31,33-36,38-43,48-58,60-68,72-78,82-94,99-108,110-118,120-130,132-134
+  s_2b088684ad6fb8::t_20ec4b55a90a3c 32,44-47,59
+  s_2b088684ad6fb8::t_4207ea4d35ed27 37,69-71,79-81,95-98,109,119,131
+app/api/image/route.ts
+  s_2b088684ad6fb8::t_a0856feb1d3ada 3,115-120,124-131
+package.json
+  s_2b088684ad6fb8::t_f722a62b880abf 25,37
+migrations/001_image_cache.sql
+  s_2b088684ad6fb8::t_a0856feb1d3ada 1-7
+.env.example
+  s_2b088684ad6fb8::t_a0856feb1d3ada 6,8-9
+  s_2b088684ad6fb8::t_20ec4b55a90a3c 7
+README.md
+  s_2b088684ad6fb8::t_20ec4b55a90a3c 27
+  s_2b088684ad6fb8::t_a0856feb1d3ada 26,33-36
+  s_2b088684ad6fb8::t_448c9277a5063a 37
+package-lock.json
+  s_2b088684ad6fb8::t_0fbdcc958a45fe 19,31,2340-2351,7684-7773,7925-7963,8918-8926,9927-9935
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "dc1332acdc84b9ed30c12e6ca88ff7953ae05bb8",
+  "prompts": {},
+  "sessions": {
+    "s_2b088684ad6fb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2da2-1b49-73d1-a311-ec7542833425",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
