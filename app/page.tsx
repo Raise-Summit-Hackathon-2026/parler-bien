@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { AuthGate } from "@/components/auth-gate"
 import {
   DEFAULT_LANGUAGE_ID,
   DEFAULT_REGION_ID,
@@ -24,25 +25,29 @@ export default function Page() {
 
   if (!scenario) {
     return (
-      <ScenarioPicker
-        languageId={languageId}
-        regionId={regionId}
-        onLanguageChange={handleLanguageChange}
-        onRegionChange={setRegionId}
-        onSelect={setScenario}
-      />
+      <AuthGate>
+        <ScenarioPicker
+          languageId={languageId}
+          regionId={regionId}
+          onLanguageChange={handleLanguageChange}
+          onRegionChange={setRegionId}
+          onSelect={setScenario}
+        />
+      </AuthGate>
     )
   }
 
   return (
-    <PracticeSession
-      key={`${scenario.id}-${languageId}-${regionId}`}
-      scenario={scenario}
-      languageId={languageId}
-      regionId={regionId}
-      onLanguageChange={handleLanguageChange}
-      onRegionChange={setRegionId}
-      onBack={() => setScenario(null)}
-    />
+    <AuthGate>
+      <PracticeSession
+        key={`${scenario.id}-${languageId}-${regionId}`}
+        scenario={scenario}
+        languageId={languageId}
+        regionId={regionId}
+        onLanguageChange={handleLanguageChange}
+        onRegionChange={setRegionId}
+        onBack={() => setScenario(null)}
+      />
+    </AuthGate>
   )
 }

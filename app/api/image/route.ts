@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { requireCurrentUser } from "@/lib/auth"
 import { getScenario, isBuiltInScenarioId } from "@/lib/scenarios"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -11,7 +12,10 @@ function extractImageUrl(data: unknown): string | null {
   const response = data as {
     choices?: Array<{
       message?: {
-        images?: Array<{ image_url?: { url?: string }; imageUrl?: { url?: string } }>
+        images?: Array<{
+          image_url?: { url?: string }
+          imageUrl?: { url?: string }
+        }>
       }
     }>
   }
@@ -24,11 +28,16 @@ function extractImageUrl(data: unknown): string | null {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireCurrentUser()
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     return NextResponse.json(
       { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 
@@ -57,7 +66,7 @@ export async function POST(request: Request) {
   if (!imagePrompt || !cacheKey) {
     return NextResponse.json(
       { error: "scenarioId or prompt is required" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -72,7 +81,8 @@ export async function POST(request: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
         "X-Title": "Parler Bien",
       },
       body: JSON.stringify({
@@ -90,20 +100,29 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error("OpenRouter image error:", errorText)
-      return NextResponse.json({ error: "Failed to generate image" }, { status: 502 })
+      return NextResponse.json(
+        { error: "Failed to generate image" },
+        { status: 502 }
+      )
     }
 
     const data = await response.json()
     const url = extractImageUrl(data)
 
     if (!url) {
-      return NextResponse.json({ error: "No image in response" }, { status: 502 })
+      return NextResponse.json(
+        { error: "No image in response" },
+        { status: 502 }
+      )
     }
 
     cache.set(cacheKey, url)
     return NextResponse.json({ url })
   } catch (error) {
     console.error("Image route error:", error)
-    return NextResponse.json({ error: "Failed to process image" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to process image" },
+      { status: 500 }
+    )
   }
 }

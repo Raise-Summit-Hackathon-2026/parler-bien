@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 
 import { NextResponse } from "next/server"
 
+import { requireCurrentUser } from "@/lib/auth"
 import {
   getLanguage,
   getRegion,
@@ -23,7 +24,11 @@ const MAX_PDF_BYTES = 4 * 1024 * 1024
 
 type SourceType = "prompt" | "text" | "pdf"
 
-function buildInstructions(languageName: string, regionLabel: string, city: string) {
+function buildInstructions(
+  languageName: string,
+  regionLabel: string,
+  city: string
+) {
   return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).
 
 The scenario must:
@@ -64,7 +69,7 @@ function parseGenerated(content: string): GeneratedScenarioPayload {
 function toScenario(
   payload: GeneratedScenarioPayload,
   languageId: LanguageId,
-  sourceLabel?: string,
+  sourceLabel?: string
 ): Scenario {
   const id = `custom:${randomUUID()}` as const
 
@@ -91,11 +96,16 @@ function toScenario(
 }
 
 export async function POST(request: Request) {
+  const auth = await requireCurrentUser()
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     return NextResponse.json(
       { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 
@@ -126,7 +136,10 @@ export async function POST(request: Request) {
   } = body
 
   if (!rawLanguageId || !isLanguageId(rawLanguageId)) {
-    return NextResponse.json({ error: "Valid languageId is required" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Valid languageId is required" },
+      { status: 400 }
+    )
   }
 
   const languageId = rawLanguageId
@@ -145,7 +158,7 @@ export async function POST(request: Request) {
   if (sourceType === "prompt" && !trimmedPrompt) {
     return NextResponse.json(
       { error: "Describe the scenario you want to practice" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -154,13 +167,16 @@ export async function POST(request: Request) {
   }
 
   if (sourceType === "text" && !trimmedPrompt) {
-    return NextResponse.json({ error: "Uploaded text is empty" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Uploaded text is empty" },
+      { status: 400 }
+    )
   }
 
   if (hasTextUpload && trimmedPrompt.length > MAX_TEXT_CHARS) {
     return NextResponse.json(
       { error: `Text uploads must be under ${MAX_TEXT_CHARS} characters` },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -169,12 +185,16 @@ export async function POST(request: Request) {
     if (byteLength > MAX_PDF_BYTES) {
       return NextResponse.json(
         { error: "PDF must be under 4 MB" },
-        { status: 400 },
+        { status: 400 }
       )
     }
   }
 
-  const instructions = buildInstructions(language.name, region.label, region.city)
+  const instructions = buildInstructions(
+    language.name,
+    region.label,
+    region.city
+  )
 
   const sourceDescription =
     sourceType === "prompt"
@@ -209,7 +229,8 @@ export async function POST(request: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
         "X-Title": "Parler Bien",
       },
       body: JSON.stringify({
@@ -231,7 +252,7 @@ export async function POST(request: Request) {
       console.error("Scenario generate error:", errorText)
       return NextResponse.json(
         { error: "Failed to generate scenario" },
-        { status: 502 },
+        { status: 502 }
       )
     }
 
@@ -243,7 +264,7 @@ export async function POST(request: Request) {
     if (!content) {
       return NextResponse.json(
         { error: "Empty response from model" },
-        { status: 502 },
+        { status: 502 }
       )
     }
 
@@ -251,7 +272,9 @@ export async function POST(request: Request) {
     const scenario = toScenario(
       payload,
       languageId,
-      sourceLabel ?? fileName ?? (sourceType === "prompt" ? "Custom prompt" : undefined),
+      sourceLabel ??
+        fileName ??
+        (sourceType === "prompt" ? "Custom prompt" : undefined)
     )
 
     return NextResponse.json({ scenario })
@@ -259,7 +282,7 @@ export async function POST(request: Request) {
     console.error("Scenario generate route error:", error)
     return NextResponse.json(
       { error: "Failed to process scenario generation" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }

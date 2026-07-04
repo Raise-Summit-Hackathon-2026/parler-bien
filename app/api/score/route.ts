@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { requireCurrentUser } from "@/lib/auth"
 import { moderateExchange } from "@/lib/content-safety"
 import {
   DEFAULT_LANGUAGE_ID,
@@ -29,14 +30,16 @@ function formatHistory(history: ConversationTurn[]) {
   if (history.length === 0) return "No prior conversation."
 
   return history
-    .map((turn) => `${turn.role === "user" ? "User" : "Character"}: ${turn.text}`)
+    .map(
+      (turn) => `${turn.role === "user" ? "User" : "Character"}: ${turn.text}`
+    )
     .join("\n")
 }
 
 function buildTeacherPrompt(
   phrase: string | undefined,
   languageName: string,
-  region: Region,
+  region: Region
 ) {
   const modeInstructions = phrase
     ? `Target phrase: "${phrase}"
@@ -72,7 +75,7 @@ function buildScenarioPrompt(
   currentMeter: number,
   phrase: string | undefined,
   languageName: string,
-  region: Region,
+  region: Region
 ) {
   const persona = formatPersona(scenario, characterGender, languageName, region)
 
@@ -104,7 +107,7 @@ function buildPrompt(
   scenario: Scenario,
   history: ConversationTurn[] = [],
   characterGender: "male" | "female" = "female",
-  currentMeter = 0,
+  currentMeter = 0
 ) {
   const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
@@ -120,7 +123,7 @@ function buildPrompt(
     currentMeter,
     phrase,
     language.name,
-    region,
+    region
   )
 }
 
@@ -151,11 +154,16 @@ function parseScore(content: string): PronunciationScore {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireCurrentUser()
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: 401 })
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     return NextResponse.json(
       { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 
@@ -210,7 +218,7 @@ export async function POST(request: Request) {
   if (!audioBase64 || !audioFormat) {
     return NextResponse.json(
       { error: "audioBase64 and audioFormat are required" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -221,7 +229,7 @@ export async function POST(request: Request) {
   if (isCustomScenarioId(scenarioId) && !customScenario) {
     return NextResponse.json(
       { error: "customScenario is required for custom scenarios" },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -229,7 +237,10 @@ export async function POST(request: Request) {
   try {
     scenario = resolveScenario(scenarioId, customScenario)
   } catch {
-    return NextResponse.json({ error: "Invalid custom scenario" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid custom scenario" },
+      { status: 400 }
+    )
   }
 
   const cappedHistory = history.slice(-12)
@@ -240,7 +251,8 @@ export async function POST(request: Request) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
         "X-Title": "Parler Bien",
       },
       body: JSON.stringify({
@@ -258,7 +270,7 @@ export async function POST(request: Request) {
                   scenario,
                   cappedHistory,
                   characterGender,
-                  currentMeter,
+                  currentMeter
                 ),
               },
               {
@@ -287,7 +299,7 @@ export async function POST(request: Request) {
       console.error("OpenRouter error:", errorText)
       return NextResponse.json(
         { error: "Failed to score pronunciation" },
-        { status: 502 },
+        { status: 502 }
       )
     }
 
@@ -299,7 +311,7 @@ export async function POST(request: Request) {
     if (!content) {
       return NextResponse.json(
         { error: "Empty response from model" },
-        { status: 502 },
+        { status: 502 }
       )
     }
 
@@ -320,27 +332,26 @@ export async function POST(request: Request) {
         scenarioTitle: scenario.title,
         languageName: language.name,
         isRoleplay: scenario.id !== "teacher",
-      },
+      }
     )
 
     if (moderation.status === "blocked") {
       console.warn("Content blocked:", moderation.reason)
       return NextResponse.json(
         {
-          error:
-            !moderation.userSafe
-              ? "That message wasn't appropriate for practice. Try rephrasing and stay in the scenario."
-              : "We couldn't generate a safe response. Please try again.",
+          error: !moderation.userSafe
+            ? "That message wasn't appropriate for practice. Try rephrasing and stay in the scenario."
+            : "We couldn't generate a safe response. Please try again.",
           code: "content_blocked",
         },
-        { status: 422 },
+        { status: 422 }
       )
     }
 
     if (moderation.status === "error") {
       console.warn(
         "Content safety check failed, allowing through:",
-        moderation.message,
+        moderation.message
       )
     }
 
@@ -349,7 +360,7 @@ export async function POST(request: Request) {
     console.error("Score route error:", error)
     return NextResponse.json(
       { error: "Failed to process pronunciation score" },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }
