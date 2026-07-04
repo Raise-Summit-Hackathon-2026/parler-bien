@@ -1,6 +1,6 @@
 import { Volume2 } from "lucide-react"
 
-import type { PronunciationScore, SentenceSuggestion, WordScore } from "@/lib/types"
+import type { SentenceSuggestion, WordScore } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export function scoreColor(score: number) {
@@ -100,73 +100,3 @@ export function MeterBar({
   )
 }
 
-export type SessionHUDProps = {
-  score: PronunciationScore | null
-  meter: number
-  meterLabel: string | null
-  selectedWord: WordScore | null
-  onSelectWord: (word: WordScore | null) => void
-  suggestions: SentenceSuggestion[]
-  onPickSuggestion: (sentence: SentenceSuggestion) => void
-  /** Optional meter goal caption. */
-  goal?: string | null
-  /** When false, hide per-word chips and only show the overall score. */
-  showWordBreakdown?: boolean
-}
-
-/**
- * Presentational scoring HUD. Composes the meter bar, the overall score with
- * per-word breakdown, and a suggested-phrase card. Each region renders only
- * when its data is present, so callers gate visibility by passing `null`.
- */
-export function SessionHUD({
-  score,
-  meter,
-  meterLabel,
-  selectedWord,
-  onSelectWord,
-  suggestions,
-  onPickSuggestion,
-  goal,
-  showWordBreakdown = true,
-}: SessionHUDProps) {
-  const suggestion = suggestions[0] ?? null
-
-  return (
-    <>
-      {meterLabel && <MeterBar meter={meter} label={meterLabel} goal={goal} />}
-
-      {score && (
-        <div className="flex items-center justify-center gap-3">
-          <p
-            className={cn(
-              "text-2xl font-semibold tabular-nums",
-              scoreColor(score.overall_score),
-            )}
-          >
-            {Math.round(score.overall_score)}
-          </p>
-          {showWordBreakdown && score.words.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {score.words.slice(0, 5).map((word, index) => (
-                <WordChip
-                  key={`${word.word}-${index}`}
-                  word={word}
-                  selected={selectedWord?.word === word.word}
-                  onSelect={() => onSelectWord(word)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {suggestion && (
-        <ExampleSuggestionCard
-          sentence={suggestion}
-          onSelect={() => onPickSuggestion(suggestion)}
-        />
-      )}
-    </>
-  )
-}

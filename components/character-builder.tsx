@@ -105,7 +105,7 @@ export function CharacterBuilder({
           }
         }
       } else if (!requestPrompt) {
-        throw new Error("Describe the scenario you want to practice")
+        throw new Error("Describe the character you want to practice with")
       }
 
       const response = await authenticatedFetch("/api/character/generate", {
@@ -235,7 +235,7 @@ export function CharacterBuilder({
           {mode === "prompt" ? (
             <div className="space-y-2">
               <label htmlFor="character-prompt" className="text-sm font-medium">
-                Describe the scenario
+                Describe the character
               </label>
               <textarea
                 id="character-prompt"
