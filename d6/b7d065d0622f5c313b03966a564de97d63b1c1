@@ -1,0 +1,24 @@
+components/site-header.tsx
+  s_5026ce805d8b26::t_7b33a2ff171815 66
+  s_5026ce805d8b26::t_54c0b908747e13 56,63-65
+  s_5026ce805d8b26::t_e610a97c128dca 3,47-50,57,61-62,67-69,75-76,78-80,96,103-131
+  s_5026ce805d8b26::t_63de9319ead84c 132
+components/practice-session.tsx
+  s_5026ce805d8b26::t_faa7544729dc45 4,212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d6b7d065d0622f5c313b03966a564de97d63b1c1",
+  "prompts": {},
+  "sessions": {
+    "s_5026ce805d8b26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2ec4-1053-78e3-bbda-441ba3b474d4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
