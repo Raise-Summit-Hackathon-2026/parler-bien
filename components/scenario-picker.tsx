@@ -1,19 +1,17 @@
 "use client"
 
-import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Check, ArrowLeft } from "lucide-react"
 import { useState } from "react"
 
 import { CustomScenarioBuilder } from "@/components/custom-scenario-builder"
 import { useLanguage } from "@/components/language-provider"
 import { ScenarioScene } from "@/components/scenario-scene"
 import { Button } from "@/components/ui/button"
-import { LanguagePicker } from "@/components/language-picker"
 import {
   deleteCustomScenario,
   getCustomScenarios,
 } from "@/lib/custom-scenarios"
 import { getCompletedScenarios } from "@/lib/completions"
-import { getLanguage, getRegion } from "@/lib/languages"
 import {
   isBuiltInScenarioId,
   isCustomScenarioId,
@@ -100,15 +98,12 @@ function ScenarioCard({
 }
 
 export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
-  const { languageId, regionId, setLanguageId, setRegionId } = useLanguage()
+  const { languageId, regionId } = useLanguage()
   const [completed] = useState<ScenarioId[]>(() => getCompletedScenarios())
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>(() =>
     getCustomScenarios(),
   )
   const [showBuilder, setShowBuilder] = useState(false)
-
-  const language = getLanguage(languageId)
-  const region = getRegion(languageId, regionId)
 
   function handleCreated(scenario: Scenario) {
     setCustomScenarios(getCustomScenarios())
@@ -123,67 +118,44 @@ export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
 
   return (
     <>
-      <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col items-center justify-center gap-8 px-6 py-12">
-        <div className="space-y-4 text-center">
-          <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            Parler Bien
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Choose your scenario
-          </h1>
-          <p className="text-muted-foreground">
-            Speak {language.name}. Get scored. Win the conversation.
-          </p>
-          <LanguagePicker
-            languageId={languageId}
-            regionId={regionId}
-            onLanguageChange={setLanguageId}
-            onRegionChange={setRegionId}
+      <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {SCENARIOS.map((scenario) => (
+          <ScenarioCard
+            key={scenario.id}
+            scenario={scenario}
+            completed={completed.includes(scenario.id)}
+            onSelect={() => onSelect(scenario)}
           />
-          <p className="text-xs text-muted-foreground">
-            {region.accent} · {region.city}
-          </p>
-        </div>
+        ))}
 
-        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SCENARIOS.map((scenario) => (
-            <ScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              completed={completed.includes(scenario.id)}
-              onSelect={() => onSelect(scenario)}
-            />
-          ))}
+        {customScenarios.map((scenario) => (
+          <ScenarioCard
+            key={scenario.id}
+            scenario={scenario}
+            completed={completed.includes(scenario.id)}
+            onSelect={() => onSelect(scenario)}
+            onDelete={() => handleDelete(scenario.id)}
+          />
+        ))}
 
-          {customScenarios.map((scenario) => (
-            <ScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              completed={completed.includes(scenario.id)}
-              onSelect={() => onSelect(scenario)}
-              onDelete={() => handleDelete(scenario.id)}
-            />
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setShowBuilder(true)}
-            className={cn(
-              "flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed bg-muted/20 p-6 text-center transition-all",
-              "hover:border-foreground/30 hover:bg-muted/40",
-            )}
-          >
-            <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Plus className="size-6" />
-            </span>
-            <div>
-              <p className="font-semibold">Create your own</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                From a prompt, PDF, or course upload
-              </p>
-            </div>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowBuilder(true)}
+          className={cn(
+            "flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed bg-muted/20 p-6 text-center transition-all",
+            "hover:border-foreground/30 hover:bg-muted/40",
+          )}
+        >
+          <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Plus className="size-6" />
+          </span>
+          <div>
+            <p className="font-semibold">Create your own</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              From a prompt, PDF, or course upload
+            </p>
+          </div>
+        </button>
       </div>
 
       {showBuilder && (

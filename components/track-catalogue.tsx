@@ -4,12 +4,11 @@ import { ArrowRight, BriefcaseBusiness, Mic, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 import { useLanguage } from "@/components/language-provider"
-import { getLanguage, getRegion } from "@/lib/languages"
+import { getLanguage } from "@/lib/languages"
 
 export function HomeHero() {
-  const { languageId, regionId } = useLanguage()
+  const { languageId } = useLanguage()
   const language = getLanguage(languageId)
-  const region = getRegion(languageId, regionId)
 
   return (
     <section className="relative overflow-hidden border-b">
@@ -52,10 +51,6 @@ export function HomeHero() {
             Open workspaces
           </Link>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          Now practicing {language.name} · {region.accent} · {region.city}
-        </p>
       </div>
     </section>
   )
