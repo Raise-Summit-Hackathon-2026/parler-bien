@@ -30,6 +30,7 @@ Return a full program with:
 - 1-4 personas with full agent config (key, name, roleTitle, tagline, agentType, capabilities, voice fields, skills, previewScript, personaBase with 0-100 meter rules and concede at 90+, avatarPrompt, greeting, themeColor)
 - 2-4 tracks, each linked to a personaKey, with 2-5 ordered levels of escalating difficulty
 - passCriteriaType per level: "goal", "pronunciation" (include minScore), or "complete" (include minTurns). Do NOT use gesture criteria.
+- For unused level fields, use empty string or 0 (minScore/minTurns) rather than omitting keys
 - Each level needs room fields: targetPhrase, openingLineText+openingLineHint, goal, meterLabel, winMessage, starters (text+hint), customPersonaOverlay when useful
 - All learner-facing lines (openingLineText, starters, targetPhrase) must be in ${languageName}
 - Hints are short English glosses
@@ -69,9 +70,45 @@ function parseGenerated(content: string): GeneratedWorkspacePayload {
     ) {
       throw new Error("Invalid track in generated workspace")
     }
+
+    for (const level of track.levels) {
+      if (
+        typeof level.position !== "number" ||
+        typeof level.title !== "string" ||
+        typeof level.subtitle !== "string" ||
+        typeof level.passCriteriaType !== "string" ||
+        typeof level.winMessage !== "string"
+      ) {
+        throw new Error("Invalid level in generated workspace")
+      }
+    }
   }
 
   return parsed
+}
+
+async function requestGeneration(
+  apiKey: string,
+  userContent: Array<
+    | { type: "text"; text: string }
+    | { type: "file"; file: { filename: string; file_data: string } }
+  >,
+  responseFormat: Record<string, unknown>,
+) {
+  return fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      "X-Title": "Parler Bien",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [{ role: "user", content: userContent }],
+      response_format: responseFormat,
+    }),
+  })
 }
 
 export async function POST(request: Request) {
@@ -188,27 +225,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-        "X-Title": "Parler Bien",
+    const schemaFormat = {
+      type: "json_schema",
+      json_schema: {
+        name: "generated_workspace",
+        strict: true,
+        schema: generatedWorkspaceJsonSchema,
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: "user", content: userContent }],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "generated_workspace",
-            strict: true,
-            schema: generatedWorkspaceJsonSchema,
-          },
-        },
-      }),
-    })
+    }
+
+    let response = await requestGeneration(apiKey, userContent, schemaFormat)
+
+    if (!response.ok) {
+      const schemaError = await response.text()
+      console.warn("Workspace generate strict schema failed, retrying with json_object:", schemaError)
+
+      response = await requestGeneration(apiKey, userContent, { type: "json_object" })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()

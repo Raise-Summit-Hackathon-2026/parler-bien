@@ -6,13 +6,18 @@ import type { WorkspaceTemplateInput } from "@/lib/workspace-template"
 function buildPassCriteria(level: GeneratedWorkspacePayload["tracks"][number]["levels"][number]): PassCriteria {
   switch (level.passCriteriaType) {
     case "pronunciation":
-      return { type: "pronunciation", minScore: level.minScore ?? 80 }
+      return { type: "pronunciation", minScore: level.minScore > 0 ? level.minScore : 80 }
     case "complete":
-      return { type: "complete", minTurns: level.minTurns ?? 4 }
+      return { type: "complete", minTurns: level.minTurns > 0 ? level.minTurns : 4 }
     case "goal":
     default:
       return { type: "goal" }
   }
+}
+
+function optionalString(value: string | undefined) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
 }
 
 export function generatedPayloadToTemplate(
@@ -68,22 +73,25 @@ export function generatedPayloadToTemplate(
         language_id: languageId,
         region_id: regionId,
         room: {
-          targetPhrase: level.targetPhrase?.trim(),
-          goal: level.goal?.trim() ?? null,
-          meterLabel: level.meterLabel?.trim() ?? null,
+          targetPhrase: optionalString(level.targetPhrase),
+          goal: optionalString(level.goal) ?? null,
+          meterLabel: optionalString(level.meterLabel) ?? null,
           winMessage: level.winMessage.trim(),
-          customPersonaOverlay: level.customPersonaOverlay?.trim(),
+          customPersonaOverlay: optionalString(level.customPersonaOverlay),
           openingLine:
-            level.openingLineText && level.openingLineHint
+            optionalString(level.openingLineText) && optionalString(level.openingLineHint)
               ? {
                   text: level.openingLineText.trim(),
                   hint: level.openingLineHint.trim(),
                 }
               : undefined,
-          starters: level.starters?.map((starter) => ({
-            text: starter.text.trim(),
-            hint: starter.hint.trim(),
-          })),
+          starters:
+            level.starters.length > 0
+              ? level.starters.map((starter) => ({
+                  text: starter.text.trim(),
+                  hint: starter.hint.trim(),
+                }))
+              : undefined,
         },
       })),
     })),

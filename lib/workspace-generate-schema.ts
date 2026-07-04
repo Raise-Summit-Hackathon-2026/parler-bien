@@ -19,8 +19,7 @@ export const generatedWorkspaceJsonSchema = {
     },
     personas: {
       type: "array",
-      minItems: 1,
-      maxItems: 4,
+      description: "1-4 personas",
       items: {
         type: "object",
         properties: {
@@ -103,8 +102,7 @@ export const generatedWorkspaceJsonSchema = {
     },
     tracks: {
       type: "array",
-      minItems: 1,
-      maxItems: 4,
+      description: "2-4 tracks",
       items: {
         type: "object",
         properties: {
@@ -115,8 +113,7 @@ export const generatedWorkspaceJsonSchema = {
           personaKey: { type: "string" },
           levels: {
             type: "array",
-            minItems: 2,
-            maxItems: 5,
+            description: "2-5 ordered levels per track",
             items: {
               type: "object",
               properties: {
@@ -127,13 +124,31 @@ export const generatedWorkspaceJsonSchema = {
                   type: "string",
                   enum: ["goal", "pronunciation", "complete"],
                 },
-                minScore: { type: "number" },
-                minTurns: { type: "number" },
-                targetPhrase: { type: "string" },
-                goal: { type: "string" },
-                meterLabel: { type: "string" },
+                minScore: {
+                  type: "number",
+                  description: "Pronunciation pass threshold (e.g. 80); use 0 otherwise",
+                },
+                minTurns: {
+                  type: "number",
+                  description: "Minimum turns for complete criteria; use 0 otherwise",
+                },
+                targetPhrase: {
+                  type: "string",
+                  description: "Target phrase for pronunciation levels; empty string otherwise",
+                },
+                goal: {
+                  type: "string",
+                  description: "Win goal for goal-meter levels; empty string otherwise",
+                },
+                meterLabel: {
+                  type: "string",
+                  description: "Progress meter label e.g. Trust; empty string otherwise",
+                },
                 winMessage: { type: "string" },
-                customPersonaOverlay: { type: "string" },
+                customPersonaOverlay: {
+                  type: "string",
+                  description: "Optional scene overlay; empty string if none",
+                },
                 openingLineText: { type: "string" },
                 openingLineHint: { type: "string" },
                 starters: {
@@ -154,7 +169,16 @@ export const generatedWorkspaceJsonSchema = {
                 "title",
                 "subtitle",
                 "passCriteriaType",
+                "minScore",
+                "minTurns",
+                "targetPhrase",
+                "goal",
+                "meterLabel",
                 "winMessage",
+                "customPersonaOverlay",
+                "openingLineText",
+                "openingLineHint",
+                "starters",
               ],
               additionalProperties: false,
             },
@@ -220,16 +244,16 @@ export type GeneratedWorkspacePayload = {
       title: string
       subtitle: string
       passCriteriaType: "goal" | "pronunciation" | "complete"
-      minScore?: number
-      minTurns?: number
-      targetPhrase?: string
-      goal?: string
-      meterLabel?: string
+      minScore: number
+      minTurns: number
+      targetPhrase: string
+      goal: string
+      meterLabel: string
       winMessage: string
-      customPersonaOverlay?: string
-      openingLineText?: string
-      openingLineHint?: string
-      starters?: Array<{ text: string; hint: string }>
+      customPersonaOverlay: string
+      openingLineText: string
+      openingLineHint: string
+      starters: Array<{ text: string; hint: string }>
     }>
   }>
 }
