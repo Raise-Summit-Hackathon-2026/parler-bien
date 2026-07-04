@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 
 import type { AgentType } from "@/lib/agents"
-import { requireCurrentUser } from "@/lib/supabase"
-import { moderateExchange } from "@/lib/content-safety"
 import {
   DEFAULT_LANGUAGE_ID,
   DEFAULT_REGION_ID,
@@ -21,8 +19,13 @@ import {
   type Scenario,
 } from "@/lib/scenarios"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
+import { requireCurrentUser } from "@/lib/supabase"
+import type {
+  ConversationTurn,
+  PronunciationScore,
+  VoiceAgent,
+} from "@/lib/types"
 import type { LevelRoom } from "@/lib/workspace-types"
-import type { ConversationTurn, PronunciationScore, VoiceAgent } from "@/lib/types"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
@@ -34,7 +37,7 @@ function buildLegacyPrompt(
   scenario: Scenario,
   history: ConversationTurn[],
   characterGender: "male" | "female",
-  currentMeter: number,
+  currentMeter: number
 ) {
   const language = getLanguage(languageId)
   const region = getRegion(languageId, regionId)
@@ -240,7 +243,7 @@ export async function POST(request: Request) {
           scenario,
           cappedHistory,
           characterGender,
-          currentMeter,
+          currentMeter
         )
 
   try {
@@ -306,44 +309,6 @@ export async function POST(request: Request) {
     }
 
     const score = parseScore(content)
-
-    const assistantText = [
-      score.reply.text,
-      score.reply.tts_text,
-      score.coaching,
-      ...score.next_sentences.map((sentence) => sentence.text),
-    ].join("\n")
-
-    const moderation = await moderateExchange(
-      apiKey,
-      score.transcript,
-      assistantText,
-      {
-        scenarioTitle: scenario.title,
-        languageName: languageMeta.name,
-        isRoleplay: agentType === "roleplay" || (scenario.id !== "teacher" && !agentType),
-      },
-    )
-
-    if (moderation.status === "blocked") {
-      console.warn("Content blocked:", moderation.reason)
-      return NextResponse.json(
-        {
-          error: !moderation.userSafe
-            ? "That message wasn't appropriate for practice. Try rephrasing and stay in the scenario."
-            : "We couldn't generate a safe response. Please try again.",
-          code: "content_blocked",
-        },
-        { status: 422 }
-      )
-    }
-
-    if (moderation.status === "error") {
-      console.warn(
-        "Content safety check failed, allowing through:",
-        moderation.message
-      )
-    }
 
     return NextResponse.json(score)
   } catch (error) {

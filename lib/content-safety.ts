@@ -1,10 +1,12 @@
+import type { GeneratedScenarioPayload } from "@/lib/scenario-generate-schema"
+import type { GeneratedWorkspacePayload } from "@/lib/workspace-generate-schema"
+
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const CONTENT_SAFETY_MODEL = "nvidia/nemotron-3.5-content-safety:free"
 
-export type ModerationContext = {
-  scenarioTitle: string
+export type GenerationModerationContext = {
+  kind: "workspace" | "scenario"
   languageName: string
-  isRoleplay: boolean
 }
 
 export type ModerationOutcome =
@@ -15,12 +17,7 @@ export type ModerationOutcome =
       responseSafe: boolean
       reason: string
     }
-  | { status: "skipped" }
   | { status: "error"; message: string }
-
-export function isContentSafetyEnabled() {
-  return process.env.CONTENT_SAFETY_ENABLED !== "false"
-}
 
 function parseModerationResponse(text: string) {
   const normalized = text.toLowerCase()
@@ -34,35 +31,72 @@ function parseModerationResponse(text: string) {
   }
 }
 
-export async function moderateExchange(
-  apiKey: string,
-  userText: string,
-  assistantText: string,
-  context: ModerationContext,
-): Promise<ModerationOutcome> {
-  if (!isContentSafetyEnabled()) {
-    return { status: "skipped" }
-  }
+export function workspaceTextForModeration(payload: GeneratedWorkspacePayload) {
+  const parts = [
+    payload.workspace.name,
+    payload.workspace.description,
+    payload.contextSummary,
+    ...payload.personas.flatMap((persona) => [
+      persona.name,
+      persona.tagline,
+      persona.personaBase,
+      persona.previewScript,
+      persona.greeting,
+    ]),
+    ...payload.tracks.flatMap((track) =>
+      track.levels.flatMap((level) => [
+        level.title,
+        level.subtitle,
+        level.winMessage,
+        level.targetPhrase,
+        level.openingLineText,
+        level.goal,
+        level.customPersonaOverlay,
+      ]),
+    ),
+  ]
 
-  const trimmedUser = userText.trim()
-  const trimmedAssistant = assistantText.trim()
-  if (!trimmedUser && !trimmedAssistant) {
+  return parts.filter(Boolean).join("\n")
+}
+
+export function scenarioTextForModeration(payload: GeneratedScenarioPayload) {
+  return [
+    payload.title,
+    payload.tagline,
+    payload.goal,
+    payload.persona,
+    payload.openingLine.text,
+    ...payload.starters.map((starter) => starter.text),
+    payload.winMessage,
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export async function moderateGeneratedContent(
+  apiKey: string,
+  userSource: string,
+  generatedText: string,
+  context: GenerationModerationContext,
+): Promise<ModerationOutcome> {
+  const trimmedUser = userSource.trim()
+  const trimmedGenerated = generatedText.trim()
+  if (!trimmedUser && !trimmedGenerated) {
     return { status: "safe" }
   }
 
-  const contextLine = context.isRoleplay
-    ? `This is a language-learning roleplay scenario ("${context.scenarioTitle}") in ${context.languageName}. In-character rudeness, negotiation, or mild flirting is expected and should be allowed.`
-    : `This is a language-learning pronunciation coach session in ${context.languageName}.`
+  const kindLabel =
+    context.kind === "workspace" ? "training workspace" : "roleplay scenario"
 
-  const prompt = `${contextLine}
+  const prompt = `This is AI-generated content for a language-learning ${kindLabel} in ${context.languageName}, created from user-provided source material. Review whether the source and generated content are appropriate to publish in the app.
 
-Only flag severe harm: hate speech, harassment, explicit sexual content, violence, self-harm, illegal instructions, or content involving minors. Do not flag normal language practice or in-character scenario dialogue.
+Only flag severe harm: hate speech, harassment, explicit sexual content, violence, self-harm, illegal instructions, or content involving minors. Normal language-practice roleplay and workplace training scenarios should be allowed.
 
-User said:
-${trimmedUser || "(empty or unintelligible)"}
+User source:
+${trimmedUser || "(empty)"}
 
-Assistant replied:
-${trimmedAssistant || "(empty)"}`
+Generated content:
+${trimmedGenerated || "(empty)"}`
 
   try {
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -71,7 +105,8 @@ ${trimmedAssistant || "(empty)"}`
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+          "HTTP-Referer":
+            process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
           "X-Title": "Parler Bien",
         },
         body: JSON.stringify({
@@ -80,7 +115,7 @@ ${trimmedAssistant || "(empty)"}`
             {
               role: "system",
               content:
-                "You are a content safety moderator for a language-learning app. Classify the user message and assistant response.",
+                "You are a content safety moderator for a language-learning app. Classify the user source and generated content.",
             },
             { role: "user", content: prompt },
           ],
@@ -126,4 +161,15 @@ ${trimmedAssistant || "(empty)"}`
       message: error instanceof Error ? error.message : "Unknown error",
     }
   }
+}
+
+export function generationBlockedMessage(moderation: {
+  userSafe: boolean
+  responseSafe: boolean
+}) {
+  if (!moderation.userSafe) {
+    return "Your source material wasn't appropriate for training content. Try rephrasing or using different material."
+  }
+
+  return "The generated content didn't pass safety review. Try adjusting your prompt or source material."
 }

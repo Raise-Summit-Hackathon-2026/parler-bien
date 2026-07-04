@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Parler Bien">
+  <rect width="32" height="32" rx="8" fill="#1a1a1a"/>
+  <path
+    d="M16 6.5c-2.76 0-5 2.01-5 4.5v4.25c0 2.49 2.24 4.5 5 4.5s5-2.01 5-4.5V11c0-2.49-2.24-4.5-5-4.5Z"
+    fill="#fafafa"
+  />
+  <path
+    d="M11 19.25v1.5c0 2.76 2.24 5 5 5 1.04 0 2-.32 2.78-.86"
+    fill="none"
+    stroke="#fafafa"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M16 24.75v2.25"
+    fill="none"
+    stroke="#fafafa"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M12.5 27h7"
+    fill="none"
+    stroke="#fafafa"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M21.5 12.5c1.2 1.05 2 2.55 2 4.25"
+    fill="none"
+    stroke="#60a5fa"
+    stroke-width="1.75"
+    stroke-linecap="round"
+  />
+  <path
+    d="M23.75 10.25c2.05 1.8 3.25 4.35 3.25 7.25"
+    fill="none"
+    stroke="#60a5fa"
+    stroke-width="1.75"
+    stroke-linecap="round"
+  />
+</svg>
