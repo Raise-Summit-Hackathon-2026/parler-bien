@@ -1,8 +1,7 @@
-import type { VoiceAgent } from "@/lib/agents"
 import type { ConversationTurn } from "@/lib/types"
-import type { Region } from "@/lib/languages"
 
 import { agentCoachingBlock } from "@/lib/prompts/personality"
+import type { PromptContext } from "@/lib/prompts"
 
 export function formatHistory(history: ConversationTurn[]) {
   if (history.length === 0) return "No prior conversation."
@@ -12,13 +11,9 @@ export function formatHistory(history: ConversationTurn[]) {
     .join("\n")
 }
 
-export function buildLanguagePrompt(
-  phrase: string | undefined,
-  languageName: string,
-  region: Region,
-  personaOverlay?: string,
-  agent?: VoiceAgent,
-) {
+export function buildCoachPrompt(ctx: PromptContext) {
+  const { scenario, phrase, languageName, region } = ctx
+
   const modeInstructions = phrase
     ? `Target phrase: "${phrase}"
 Score their pronunciation against this target phrase. Set transcript to the target phrase.`
@@ -29,11 +24,11 @@ Score their pronunciation against this target phrase. Set transcript to the targ
       ? `${languageName} with a ${region.accent} accent`
       : `${languageName} or simple ${languageName} with brief English gloss in reply.hint`
 
-  const persona = personaOverlay ? `${personaOverlay}\n\n` : ""
+  const persona = scenario.persona ? `${scenario.persona}\n\n` : ""
 
   return `${persona}You are a pronunciation coach. The user is practicing speaking ${languageName} with a ${region.accent} accent. The setting is ${region.city}.
 
-${agentCoachingBlock(agent)}
+${agentCoachingBlock({ deliveryStyle: scenario.deliveryStyle, coachingStyle: scenario.coachingStyle ?? "" })}
 
 ${modeInstructions}
 

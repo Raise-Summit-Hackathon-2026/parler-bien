@@ -7,10 +7,8 @@ import {
   getRegion,
   isLanguageId,
   isRegionId,
-  type LanguageId,
-  type RegionId,
 } from "@/lib/languages"
-import { buildAgentPrompt } from "@/lib/prompts"
+import { buildCharacterPrompt } from "@/lib/prompts"
 import {
   isCustomScenarioId,
   isScenarioId,
@@ -26,71 +24,6 @@ import type {
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
-
-function buildLegacyPrompt(
-  phrase: string | undefined,
-  languageId: LanguageId,
-  regionId: RegionId,
-  scenario: Scenario,
-  history: ConversationTurn[],
-  characterGender: "male" | "female",
-  currentMeter: number
-) {
-  const language = getLanguage(languageId)
-  const region = getRegion(languageId, regionId)
-
-  if (scenario.id === "teacher") {
-    return buildAgentPrompt({
-      agentType: "language",
-      agent: {
-        id: "teacher",
-        type: "language",
-        name: "Coach",
-        tagline: "",
-        avatarPrompt: "",
-        voice: scenario.voice,
-        skills: [],
-        previewScript: "",
-        capabilities: ["pronunciation_score", "word_breakdown"],
-        personaBase: "",
-        deliveryStyle: "",
-        coachingStyle: "",
-      },
-      scenario,
-      characterGender,
-      history,
-      currentMeter,
-      phrase,
-      languageName: language.name,
-      region,
-    })
-  }
-
-  return buildAgentPrompt({
-    agentType: "roleplay",
-    agent: {
-      id: scenario.id,
-      type: "roleplay",
-      name: scenario.title,
-      tagline: scenario.tagline,
-      avatarPrompt: scenario.imagePrompt,
-      voice: scenario.voice,
-      skills: [],
-      previewScript: "",
-      capabilities: ["goal_meter", "goal_completion"],
-      personaBase: scenario.persona,
-      deliveryStyle: "",
-      coachingStyle: "",
-    },
-    scenario,
-    characterGender,
-    history,
-    currentMeter,
-    phrase,
-    languageName: language.name,
-    region,
-  })
-}
 
 function parseScore(content: string): PronunciationScore {
   const parsed = JSON.parse(content) as PronunciationScore
@@ -211,15 +144,18 @@ export async function POST(request: Request) {
 
   const cappedHistory = history.slice(-12)
 
-  const prompt = buildLegacyPrompt(
-    phrase,
-    languageId,
-    regionId,
+  const languageDef = getLanguage(languageId)
+  const region = getRegion(languageId, regionId)
+
+  const prompt = buildCharacterPrompt({
     scenario,
-    cappedHistory,
     characterGender,
+    history: cappedHistory,
     currentMeter,
-  )
+    phrase,
+    languageName: languageDef.name,
+    region,
+  })
 
   try {
     const response = await fetch(OPENROUTER_URL, {

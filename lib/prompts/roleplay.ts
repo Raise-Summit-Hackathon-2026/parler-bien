@@ -1,32 +1,21 @@
-import type { VoiceAgent } from "@/lib/agents"
-import type { Region } from "@/lib/languages"
-import { formatPersona, type Scenario } from "@/lib/scenarios"
-import type { ConversationTurn } from "@/lib/types"
+import { formatPersona } from "@/lib/scenarios"
 
-import { formatHistory } from "@/lib/prompts/language"
+import { formatHistory } from "@/lib/prompts/coach"
 import { agentCoachingBlock } from "@/lib/prompts/personality"
+import type { PromptContext } from "@/lib/prompts"
 
-export function buildRoleplayPrompt(
-  scenario: Scenario,
-  characterGender: "male" | "female",
-  history: ConversationTurn[],
-  currentMeter: number,
-  phrase: string | undefined,
-  languageName: string,
-  region: Region,
-  personaOverlay?: string,
-  agent?: VoiceAgent,
-) {
+export function buildRoleplayPrompt(ctx: PromptContext) {
+  const { scenario, characterGender, history, currentMeter, phrase, languageName, region } = ctx
+
   const persona = formatPersona(scenario, characterGender, languageName, region)
-  const overlay = personaOverlay ? `\n\n${personaOverlay}` : ""
 
   const targetNote = phrase
     ? `The user is practicing: ${phrase}. Score against this if they attempted it.`
     : `Transcribe what the user said in ${languageName}. If unintelligible, return low scores and stay in character asking them to repeat.`
 
-  return `${persona}${overlay}
+  return `${persona}
 
-${agentCoachingBlock(agent)}
+${agentCoachingBlock({ deliveryStyle: scenario.deliveryStyle, coachingStyle: scenario.coachingStyle ?? "" })}
 
 Conversation so far:
 ${formatHistory(history)}

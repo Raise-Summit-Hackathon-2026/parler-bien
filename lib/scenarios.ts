@@ -162,6 +162,7 @@ export const SCENARIOS: Scenario[] = [
       tone:
         "Warm, clear, and supportive — like a friendly pronunciation teacher. Professional and encouraging.",
     },
+    mode: "coach",
     content: { fr: EMPTY_CONTENT, en: EMPTY_CONTENT, es: EMPTY_CONTENT, ru: EMPTY_CONTENT },
     imagePrompt:
       "Elegant Parisian language classroom with soft morning light, books and chalkboard, warm cinematic illustration, no text, no logos",
