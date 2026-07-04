@@ -1,0 +1,23 @@
+components/practice-session.tsx
+  s_2129c23849a9b9::t_53bcf505540472 52,229-236,286,289,430-432,434-438,440-465,468-489,491-521,524-538,749-753
+  s_2129c23849a9b9::t_0300331d2a33e9 49-51,53
+hooks/use-audio-recorder.ts
+  s_2129c23849a9b9::t_425f8318699082 6-31,70-162,166,171-174,177-180,182-195,207-297,303-309,316-317,334-339,346,349,355
+  s_2129c23849a9b9::t_4344c04da7c349 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9288005a79e77c044d3ba668efede3a57f823aed",
+  "prompts": {},
+  "sessions": {
+    "s_2129c23849a9b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2e25-9da4-7d81-93fb-77705014ce66",
+        "model": "gpt-5.5"
+      },
+      "human_author": "sno <serrnovik@gmail.com>"
+    }
+  }
+}
