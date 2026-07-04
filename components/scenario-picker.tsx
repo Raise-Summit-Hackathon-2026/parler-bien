@@ -16,7 +16,9 @@ type ScenarioPickerProps = {
 }
 
 export function ScenarioPicker({ onSelect }: ScenarioPickerProps) {
-  const [completed] = useState<ScenarioId[]>(() => getCompletedScenarios())
+  const [completed] = useState<ScenarioId[]>(
+    () => getCompletedScenarios() as ScenarioId[],
+  )
   const [characters, setCharacters] = useState<CharacterRow[]>([])
   const [loading, setLoading] = useState(true)
 

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 
 import { AuthGate } from "@/components/auth-gate"
 import { PracticeSession } from "@/components/practice-session"
+import { scenarioToCharacter } from "@/lib/character"
 import {
   getScenario,
   isBuiltInScenarioId,
@@ -32,7 +33,8 @@ export default function PlaySessionPage() {
     <AuthGate>
       <PracticeSession
         key={scenario.id}
-        scenario={scenario}
+        character={scenarioToCharacter(scenario, scenario.id)}
+        levelIndex={0}
         onBack={() => router.push("/#free-play")}
       />
     </AuthGate>
