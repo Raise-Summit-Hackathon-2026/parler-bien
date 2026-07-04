@@ -19,6 +19,7 @@ import { resolveMeterUpdate } from "@/lib/meter"
 import {
   markLevelCompleted,
   markLevelInProgress,
+  recordLevelScore,
 } from "@/lib/workspace-progress"
 import { countPlayableLevels } from "@/lib/workspace-types"
 import { pickRandomSentences } from "@/lib/sentences"
@@ -96,60 +97,25 @@ function WordChip({
   )
 }
 
-function SentenceChip({
+function ExampleSuggestionCard({
   sentence,
   onSelect,
-  compact = false,
 }: {
   sentence: SentenceSuggestion
   onSelect: () => void
-  compact?: boolean
 }) {
-  if (compact) {
-    return (
-      <button
-        type="button"
-        onClick={onSelect}
-        className="shrink-0 max-w-[min(72vw,220px)] rounded-xl border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/60"
-      >
-        <p className="truncate text-sm font-medium">{sentence.text}</p>
-        <p className="truncate text-[10px] text-muted-foreground">{sentence.hint}</p>
-      </button>
-    )
-  }
-
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="group w-full rounded-2xl border bg-background p-3 text-left transition-colors hover:bg-muted/60"
+      className="w-full rounded-xl border border-dashed bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
     >
-      <p className="font-medium">{sentence.text}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{sentence.hint}</p>
+      <p className="text-[10px] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
+        Try saying
+      </p>
+      <p className="mt-1.5 text-sm font-medium leading-snug">{sentence.text}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{sentence.hint}</p>
     </button>
-  )
-}
-
-function PhraseRail({
-  sentences,
-  onSelect,
-}: {
-  sentences: SentenceSuggestion[]
-  onSelect: (sentence: SentenceSuggestion) => void
-}) {
-  if (sentences.length === 0) return null
-
-  return (
-    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-none [&::-webkit-scrollbar]:hidden">
-      {sentences.map((sentence, index) => (
-        <SentenceChip
-          key={`${sentence.text}-${index}`}
-          sentence={sentence}
-          compact
-          onSelect={() => onSelect(sentence)}
-        />
-      ))}
-    </div>
   )
 }
 
@@ -463,6 +429,15 @@ export function PracticeSession({
           result.words.find((w) => w.score < 80) ?? result.words[0]
         )
 
+        if (levelContext) {
+          if (isRoleplayMode) {
+            const nextMeter = resolveMeterUpdate(meter, result)
+            void recordLevelScore(levelContext.levelId, nextMeter)
+          } else if (isLanguageMode || showPronunciation) {
+            void recordLevelScore(levelContext.levelId, result.overall_score)
+          }
+        }
+
         if (isRoleplayMode) {
           const nextMeter = resolveMeterUpdate(meter, result)
           setMeter(nextMeter)
@@ -580,7 +555,7 @@ export function PracticeSession({
       ? examples
       : []
 
-  const compactPhrases = suggestionList.slice(0, 3)
+  const exampleSuggestion = suggestionList[0] ?? null
 
   return (
     <div className="mx-auto flex h-svh w-full max-w-lg flex-col overflow-hidden px-4 py-3">
@@ -695,6 +670,17 @@ export function PracticeSession({
 
           <Waveform analyser={waveformAnalyser} active={waveformActive} className="h-10 shrink-0" />
 
+          {!hasWon && exampleSuggestion && (
+            <ExampleSuggestionCard
+              sentence={exampleSuggestion}
+              onSelect={() =>
+                score
+                  ? handleSelectNext(exampleSuggestion)
+                  : handleSelectExample(exampleSuggestion)
+              }
+            />
+          )}
+
           {!hasWon && (
             <div className="flex shrink-0 flex-col items-center gap-1">
               <Button
@@ -723,15 +709,6 @@ export function PracticeSession({
 
           {displayError && (
             <p className="text-center text-xs text-destructive">{displayError}</p>
-          )}
-
-          {!hasWon && compactPhrases.length > 0 && (
-            <PhraseRail
-              sentences={compactPhrases}
-              onSelect={(sentence) =>
-                score ? handleSelectNext(sentence) : handleSelectExample(sentence)
-              }
-            />
           )}
 
           {score && !hasWon && !isSpiritualMode && (

@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Camera, Check, Lock } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import {
   fetchLevelProgress,
@@ -23,24 +23,39 @@ type WorkspaceLevelPathProps = {
   levels: WorkspaceLevelRow[]
 }
 
+function scoreColor(score: number) {
+  if (score >= 80) return "text-emerald-600 dark:text-emerald-400"
+  if (score >= 60) return "text-amber-600 dark:text-amber-400"
+  return "text-muted-foreground"
+}
+
 function LevelNode({
   level,
   status,
   themeColor,
   isLast,
   href,
+  progressRow,
 }: {
   level: WorkspaceLevelRow
   status: LevelStatus
   themeColor: string
   isLast: boolean
   href: string
+  progressRow?: WorkspaceLevelProgressRow
 }) {
   const isDraft = status === "draft"
   const isLocked = status === "locked"
   const isCompleted = status === "completed"
   const isCurrent = status === "available" || status === "in_progress"
   const isClickable = isCurrent || isCompleted
+  const bestScore = progressRow?.best_score ?? null
+  const attempts = progressRow?.attempts ?? 0
+  const passHint =
+    isCurrent &&
+    level.pass_criteria.type === "pronunciation"
+      ? `Pass: ${level.pass_criteria.minScore}+`
+      : null
 
   const content = (
     <div
@@ -85,7 +100,35 @@ function LevelNode({
       <div className="min-w-0 flex-1">
         <p className="font-semibold">{level.title}</p>
         <p className="text-sm text-muted-foreground">{level.subtitle}</p>
+        {passHint && (
+          <p className="mt-1 text-xs font-medium" style={{ color: themeColor }}>
+            {passHint}
+          </p>
+        )}
+        {isLocked && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Complete the previous level to unlock
+          </p>
+        )}
       </div>
+      {bestScore !== null && (
+        <div className="shrink-0 text-right">
+          <p
+            className={cn(
+              "text-lg font-semibold tabular-nums",
+              isCompleted ? "text-emerald-600 dark:text-emerald-400" : scoreColor(bestScore),
+            )}
+            style={isCurrent && !isCompleted ? { color: themeColor } : undefined}
+          >
+            {Math.round(bestScore)}
+          </p>
+          {attempts > 0 && (
+            <p className="text-[10px] text-muted-foreground tabular-nums">
+              {attempts} {attempts === 1 ? "try" : "tries"}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 
@@ -117,11 +160,23 @@ export function WorkspaceLevelPath({
     Record<string, WorkspaceLevelProgressRow>
   >({})
 
-  const sorted = [...levels].sort((a, b) => a.position - b.position)
+  const sorted = useMemo(
+    () => [...levels].sort((a, b) => a.position - b.position),
+    [levels],
+  )
   const playable = getPlayableLevels(sorted)
   const completed = playable.filter(
     (l) => getLevelStatusFromProgress(l, progress, sorted) === "completed",
   ).length
+
+  const scoredLevels = playable.filter((l) => progress[l.id]?.best_score != null)
+  const trackAverage =
+    scoredLevels.length > 0
+      ? Math.round(
+          scoredLevels.reduce((sum, l) => sum + (progress[l.id]?.best_score ?? 0), 0) /
+            scoredLevels.length,
+        )
+      : null
 
   useEffect(() => {
     void fetchLevelProgress(sorted.map((l) => l.id)).then(setProgress)
@@ -144,6 +199,13 @@ export function WorkspaceLevelPath({
         <h1 className="text-2xl font-semibold tracking-tight">{track.description}</h1>
         <p className="text-sm text-muted-foreground">
           {completed}/{playable.length} levels complete
+          {trackAverage !== null && (
+            <>
+              {" "}
+              · avg score{" "}
+              <span className="font-medium tabular-nums text-foreground">{trackAverage}</span>
+            </>
+          )}
         </p>
         <div className="mx-auto h-1.5 max-w-xs overflow-hidden rounded-full bg-muted">
           <div
@@ -165,6 +227,7 @@ export function WorkspaceLevelPath({
             themeColor={track.theme_color}
             isLast={index === sorted.length - 1}
             href={`/workspaces/${workspaceId}/tracks/${track.id}/levels/${level.id}`}
+            progressRow={progress[level.id]}
           />
         ))}
       </div>
