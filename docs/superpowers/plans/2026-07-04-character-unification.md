@@ -263,7 +263,8 @@ export type VoiceLevel = {
   winMessage?: string
   /** Appended to Character.persona for this level */
   personaOverlay?: string
-  content?: ScenarioContent
+  /** Per-language opening line + starters (preserves built-ins' en/es/ru translations) */
+  content?: Partial<Record<LanguageId, ScenarioContent>>
 }
 
 export type GestureLevel = {
@@ -322,9 +323,7 @@ export function characterLevelScenario(
     mode: level.mode ?? "roleplay",
     deliveryStyle: character.deliveryStyle,
     coachingStyle: character.coachingStyle,
-    content: level.content
-      ? { [languageId]: level.content }
-      : {},
+    content: level.content ?? {},
     imagePrompt: character.avatarPrompt,
     primaryLanguageId: character.primaryLanguageId ?? languageId,
     sourceLabel: character.sourceLabel,
@@ -486,7 +485,7 @@ Mapping (copy each scenario object's persona/voice/content/imagePrompt fields **
 | `waiter` | `everyday.ts` | `waiter` | everyday | roleplay |
 | `landlord` | `everyday.ts` | `landlord` | everyday | roleplay |
 
-Multi-language content: the old `Scenario.content` is `Partial<Record<LanguageId, ScenarioContent>>` but `VoiceLevel.content` is a single `ScenarioContent`. For built-ins whose per-language content is identical/empty (all except any with real translations — check each), take the `fr` entry. If a scenario has REAL differing per-language content, keep the fr version and note the loss in the commit message (the score prompt already localizes via `formatPersona`).
+Multi-language content: `VoiceLevel.content` keeps the same per-language shape as `Scenario.content` (`Partial<Record<LanguageId, ScenarioContent>>`) — copy each scenario's full content object verbatim, preserving all fr/en/es/ru translations. New characters authored in English use `content: { en: {...} }`.
 
 Shape template for each migrated character:
 
@@ -1261,7 +1260,12 @@ export function generatedPayloadToCharacter(
         goal: payload.goal,
         meterLabel: payload.meterLabel,
         winMessage: payload.winMessage,
-        content: { openingLine: payload.openingLine, starters: payload.starters },
+        content: {
+          [opts.languageId]: {
+            openingLine: payload.openingLine,
+            starters: payload.starters,
+          },
+        },
       },
     ],
   }

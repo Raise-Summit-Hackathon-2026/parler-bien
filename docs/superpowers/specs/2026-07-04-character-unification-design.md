@@ -87,7 +87,9 @@ type VoiceLevel = {
                            // roleplay (default): goal + meter
                            // coach: pronunciation drilling (teacher), no meter
                            // open: free conversation, no scoring (Siddhartha)
-  content?: ScenarioContent // opening line + starter sentences, as today
+  content?: Partial<Record<LanguageId, ScenarioContent>>
+                           // per-language opening line + starters — preserves
+                           // the en/es/ru translations built-ins carry today
 }
 
 type GestureLevel = {
