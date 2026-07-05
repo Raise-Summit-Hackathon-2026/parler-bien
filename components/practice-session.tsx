@@ -374,15 +374,27 @@ export function PracticeSession({
   const waveformActive = isRecording || isCharacterSpeaking
 
   const displayedPhrase = score?.transcript ?? targetPhrase
-  const activeStep = hasWon
-    ? "next"
-    : score
-      ? "feedback"
+  // Listen: character talking (opening line / phrase playback), nothing scored.
+  // Your turn: recording, or idle with a turn to take.
+  // Feedback: analyzing, or the scored reply still being spoken.
+  // Improve: score on screen, character done talking — review and retry.
+  // Next: goal achieved.
+  const activeStep: "listen" | "turn" | "feedback" | "improve" | "next" =
+    hasWon
+      ? "next"
       : isRecording
         ? "turn"
-        : conversationStarted || isCharacterSpeaking
-          ? "improve"
-          : "listen"
+        : isScoring
+          ? "feedback"
+          : score
+            ? isCharacterSpeaking
+              ? "feedback"
+              : "improve"
+            : isCharacterSpeaking
+              ? "listen"
+              : conversationStarted || targetPhrase
+                ? "turn"
+                : "listen"
 
   const selectedIndex = useMemo(() => {
     if (!score || !selectedWord) return -1
