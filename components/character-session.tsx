@@ -14,7 +14,6 @@ import {
 import { markScenarioCompleted } from "@/lib/completions"
 import {
   getCompletedLevelIds,
-  isLevelUnlocked,
   markLevelCompleted,
   suggestedLevelIndex,
   trackProgressSummary,
@@ -68,11 +67,12 @@ export function CharacterSession({ character, onBack, backLabel }: CharacterSess
 
   const handleSelectLevel = useCallback(
     (index: number) => {
-      if (!isLevelUnlocked(character, index, completedLevelIds)) return
+      const selected = character.levels[index]
+      if (!selected || !isLevelPlayable(selected)) return
       setLevelIndex(index)
       setPhase("play")
     },
-    [character, completedLevelIds],
+    [character],
   )
 
   const handleShellBack = useCallback(() => {
@@ -97,10 +97,7 @@ export function CharacterSession({ character, onBack, backLabel }: CharacterSess
     )
   }
 
-  if (
-    phase === "play" &&
-    (!level || !isLevelPlayable(level) || !isLevelUnlocked(character, levelIndex, completedLevelIds))
-  ) {
+  if (phase === "play" && (!level || !isLevelPlayable(level))) {
     return (
       <SessionShell onBack={handleShellBack} backLabel={backLabel}>
         <LevelPath

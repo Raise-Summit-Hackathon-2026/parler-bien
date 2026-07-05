@@ -99,10 +99,12 @@ function LevelNode({
   onSelect: () => void
 }) {
   const Icon = levelIcon(level)
-  const clickable = state === "completed" || state === "current" || state === "unlocked"
   const comingSoon = state === "coming-soon"
   const locked = state === "locked"
   const isCurrent = state === "current"
+  // Locked levels look disabled but remain clickable for demo skip-ahead.
+  const navigable =
+    state === "completed" || state === "current" || state === "unlocked" || locked
 
   const x = nodeX(index)
   const y = nodeY(index)
@@ -130,8 +132,8 @@ function LevelNode({
 
         <button
           type="button"
-          disabled={!clickable}
-          onClick={clickable ? onSelect : undefined}
+          disabled={comingSoon}
+          onClick={navigable ? onSelect : undefined}
           aria-label={level.title}
           title={
             comingSoon
@@ -143,8 +145,8 @@ function LevelNode({
           className={cn(
             "group relative flex size-16 items-center justify-center rounded-full transition-all duration-150",
             isCurrent && "lp-beat",
-            clickable && "cursor-pointer",
-            !clickable && "cursor-not-allowed",
+            navigable && !locked && "cursor-pointer",
+            (locked || comingSoon) && "cursor-not-allowed",
 
             state === "completed" &&
               "bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[0_5px_0_theme(colors.emerald.700)] active:translate-y-[4px] active:shadow-[0_1px_0_theme(colors.emerald.700)]",
