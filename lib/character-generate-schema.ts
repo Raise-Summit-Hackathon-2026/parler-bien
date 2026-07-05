@@ -64,6 +64,18 @@ const multilingualContentSchema = {
   additionalProperties: false,
 } as const
 
+function primaryLanguageContentSchema(languageId: LanguageId) {
+  return {
+    type: "object",
+    description: `Localized copy for the user's selected practice language (${languageId})`,
+    properties: {
+      [languageId]: languageContentSchema,
+    },
+    required: [languageId],
+    additionalProperties: false,
+  } as const
+}
+
 const localizedMetaSchema = {
   type: "object",
   properties: {
@@ -162,17 +174,6 @@ export const generatedCharacterJsonSchema = {
           description:
             "Character voice gender behavior. Prefer random unless the source clearly implies a specific gender. Use opposite-speaker only for coach/teacher-style agents.",
         },
-        voices: {
-          type: "object",
-          description:
-            "Optional Gemini voice overrides by resolved character gender. Choose distinct voices only when it helps the agent feel specific.",
-          properties: {
-            female: { type: "string" },
-            male: { type: "string" },
-            default: { type: "string" },
-          },
-          additionalProperties: false,
-        },
         tone: { type: "string" },
       },
       required: ["ageRange", "gender", "tone"],
@@ -215,7 +216,18 @@ export type GeneratedCharacterPayload = {
   levels: GeneratedLevelPayload[]
 }
 
-export function buildGeneratedCharacterSchema(levelCount: number) {
+export function buildGeneratedCharacterSchema(
+  levelCount: number,
+  primaryLanguageId: LanguageId,
+) {
+  const levelSchema = {
+    ...generatedLevelJsonSchema,
+    properties: {
+      ...generatedLevelJsonSchema.properties,
+      content: primaryLanguageContentSchema(primaryLanguageId),
+    },
+  } as const
+
   return {
     type: "object",
     properties: {
@@ -225,12 +237,65 @@ export function buildGeneratedCharacterSchema(levelCount: number) {
         description: "Ordered practice steps on the learning track, easier to harder",
         minItems: levelCount,
         maxItems: levelCount,
-        items: generatedLevelJsonSchema,
+        items: levelSchema,
       },
     },
     required: generatedCharacterJsonSchema.required,
     additionalProperties: false,
   } as const
+}
+
+export function buildTranslationSchema(
+  levelCount: number,
+  targetLanguageIds: LanguageId[],
+) {
+  const translatedContentSchema = {
+    type: "object",
+    properties: Object.fromEntries(
+      targetLanguageIds.map((id) => [id, languageContentSchema]),
+    ),
+    required: [...targetLanguageIds],
+    additionalProperties: false,
+  } as const
+
+  return {
+    type: "object",
+    properties: {
+      levels: {
+        type: "array",
+        description: "Translated level content in the same order as the source track",
+        minItems: levelCount,
+        maxItems: levelCount,
+        items: {
+          type: "object",
+          properties: {
+            content: translatedContentSchema,
+          },
+          required: ["content"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["levels"],
+    additionalProperties: false,
+  } as const
+}
+
+export type GeneratedTranslationPayload = {
+  levels: Array<{
+    content: Partial<Record<LanguageId, GeneratedLevelLocalizedContent>>
+  }>
+}
+
+export function mergeTranslatedLevels(
+  payload: GeneratedCharacterPayload,
+  translation: GeneratedTranslationPayload,
+) {
+  payload.levels.forEach((level, index) => {
+    const translated = translation.levels[index]?.content
+    if (!translated) return
+    level.content = { ...level.content, ...translated }
+  })
 }
 
 function isGeneratedVoiceMap(value: unknown) {
@@ -273,6 +338,7 @@ function isLocalizedMeta(value: unknown): value is GeneratedLocalizedMeta {
 
 export function validateGeneratedLevelPayload(
   parsed: unknown,
+  options?: { primaryLanguageId?: LanguageId },
 ): parsed is GeneratedLevelPayload {
   if (!parsed || typeof parsed !== "object") return false
   const level = parsed as GeneratedLevelPayload
@@ -290,7 +356,11 @@ export function validateGeneratedLevelPayload(
     return false
   }
 
-  return LANGUAGE_IDS.every((languageId) =>
+  const languageIds = options?.primaryLanguageId
+    ? [options.primaryLanguageId]
+    : LANGUAGE_IDS
+
+  return languageIds.every((languageId) =>
     isLanguageContent(level.content[languageId]),
   )
 }
@@ -298,6 +368,7 @@ export function validateGeneratedLevelPayload(
 export function validateGeneratedCharacterPayload(
   parsed: unknown,
   levelCount?: number,
+  options?: { primaryLanguageId?: LanguageId },
 ): parsed is GeneratedCharacterPayload {
   if (!parsed || typeof parsed !== "object") return false
   const payload = parsed as GeneratedCharacterPayload
@@ -326,7 +397,9 @@ export function validateGeneratedCharacterPayload(
     return false
   }
 
-  return payload.levels.every(validateGeneratedLevelPayload)
+  return payload.levels.every((level) =>
+    validateGeneratedLevelPayload(level, options),
+  )
 }
 
 export function levelIdForIndex(index: number): string {

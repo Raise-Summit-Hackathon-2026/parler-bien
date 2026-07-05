@@ -7,8 +7,11 @@ import {
 } from "@/lib/content-safety"
 import {
   buildGeneratedCharacterSchema,
+  buildTranslationSchema,
+  mergeTranslatedLevels,
   validateGeneratedCharacterPayload,
   type GeneratedCharacterPayload,
+  type GeneratedTranslationPayload,
 } from "@/lib/character-generate-schema"
 import {
   formatLiveAvatarCatalogForPrompt,
@@ -19,6 +22,7 @@ import {
   getRegion,
   isLanguageId,
   isRegionId,
+  LANGUAGE_IDS,
   LANGUAGES,
 } from "@/lib/languages"
 import { requireCurrentUser, getSupabaseClientWithToken } from "@/lib/supabase"
@@ -75,8 +79,8 @@ The scenario must:
 - Set voice.gender to "random" unless the source clearly implies a specific character gender; use "opposite-speaker" only for coach/teacher-style agents
 - Optionally set voice.voices with distinct Gemini voices for this agent. Valid examples include Charon, Kore, Fenrir, Puck, Aoede, Callirrhoe, Iapetus, Algieba, Rasalgethi, Laomedeia, Vindemiatrix, and Sulafat.
 - Provide i18n with the character name and tagline translated into each practice language: ${languageList}
-- Each level's content must include title, subtitle, winMessage, openingLine, and starters localized for every practice language — all fully translated into the matching language, no mixing
-- openingLine.text and starters[].text must be written in the matching language; hints stay short English glosses
+- Each level's content must include title, subtitle, winMessage, openingLine, and starters in ${languageName} only (other languages are translated in a follow-up step)
+- openingLine.text and starters[].text must be written in ${languageName}; hints stay short English glosses
 - The user's preferred language at generation time is ${languageName} (${regionLabel}, ${city}) — use it as inspiration for tone and scenario fit
 - Be appropriate for language practice (no explicit content)
 - Feel specific and fun, inspired by the user's source material when provided
@@ -85,10 +89,18 @@ LIVE AVATAR — pick liveAvatarId from this catalog (match gender, profession, a
 ${formatLiveAvatarCatalogForPrompt()}`
 }
 
-function parseGenerated(content: string, levelCount: number): GeneratedCharacterPayload {
+function parseGenerated(
+  content: string,
+  levelCount: number,
+  primaryLanguageId: string,
+): GeneratedCharacterPayload {
   const parsed = JSON.parse(content) as GeneratedCharacterPayload
 
-  if (!validateGeneratedCharacterPayload(parsed, levelCount)) {
+  if (
+    !validateGeneratedCharacterPayload(parsed, levelCount, {
+      primaryLanguageId: primaryLanguageId as typeof LANGUAGE_IDS[number],
+    })
+  ) {
     throw new Error("Invalid generated character shape")
   }
 
@@ -98,6 +110,84 @@ function parseGenerated(content: string, levelCount: number): GeneratedCharacter
   )
 
   return parsed
+}
+
+async function translateGeneratedLevels(
+  apiKey: string,
+  payload: GeneratedCharacterPayload,
+  primaryLanguageId: string,
+  levelCount: number,
+): Promise<GeneratedCharacterPayload> {
+  const targetLanguageIds = LANGUAGE_IDS.filter((id) => id !== primaryLanguageId)
+  if (targetLanguageIds.length === 0) return payload
+
+  const sourceLanguage = getLanguage(primaryLanguageId as typeof LANGUAGE_IDS[number])
+  const targetNames = targetLanguageIds
+    .map((id) => getLanguage(id).name)
+    .join(", ")
+
+  const sourceLevels = payload.levels.map((level) => ({
+    title: level.title,
+    subtitle: level.subtitle,
+    goal: level.goal,
+    content: level.content[primaryLanguageId as typeof LANGUAGE_IDS[number]],
+  }))
+
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer":
+        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      "X-Title": "Parler Bien",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        {
+          role: "user",
+          content: `Translate this language-learning track's level content from ${sourceLanguage.name} into ${targetNames}.
+
+Rules:
+- Return one entry per level, in the same order as the source
+- For each target language, translate title, subtitle, winMessage, openingLine.text, and starters[].text fully into that language
+- Keep hints as short English glosses
+- Preserve scenario meaning and difficulty
+
+Source levels:
+${JSON.stringify(sourceLevels, null, 2)}`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "translated_levels",
+          strict: true,
+          schema: buildTranslationSchema(levelCount, targetLanguageIds),
+        },
+      },
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("Character translate error:", errorText)
+    throw new Error("Failed to translate generated character")
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>
+  }
+
+  const content = data.choices?.[0]?.message?.content
+  if (!content) {
+    throw new Error("Empty translation response from model")
+  }
+
+  const translation = JSON.parse(content) as GeneratedTranslationPayload
+  mergeTranslatedLevels(payload, translation)
+  return payload
 }
 
 export async function POST(request: Request) {
@@ -298,7 +388,7 @@ export async function POST(request: Request) {
           json_schema: {
             name: "generated_character",
             strict: true,
-            schema: buildGeneratedCharacterSchema(levelCount),
+            schema: buildGeneratedCharacterSchema(levelCount, languageId),
           },
         },
       }),
@@ -325,7 +415,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const payload = parseGenerated(content, levelCount)
+    const payload = parseGenerated(content, levelCount, languageId)
+    await translateGeneratedLevels(apiKey, payload, languageId, levelCount)
+
+    if (!validateGeneratedCharacterPayload(payload, levelCount)) {
+      throw new Error("Invalid generated character shape after translation")
+    }
 
     const userSource =
       sourceType === "pdf"
