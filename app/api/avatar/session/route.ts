@@ -28,16 +28,18 @@ export async function POST(request: Request) {
   try {
     const avatarId = resolveSessionAvatarId(body)
 
-    const { sessionId, sessionToken, sandbox } = await createLiveAvatarSessionToken({
-      avatarId,
-      language,
-    })
+    const { sessionId, sessionToken, sandbox, maxSessionDuration } =
+      await createLiveAvatarSessionToken({
+        avatarId,
+        language,
+      })
 
     return NextResponse.json({
       sessionId,
       sessionToken,
       avatarId,
       sandbox,
+      maxSessionDuration,
     })
   } catch (error) {
     const message =

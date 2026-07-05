@@ -7,8 +7,22 @@ export const DEFAULT_LIVE_AVATAR_ID = "65f9e3c9-d48b-4118-b73a-4ae2e3cbb8f0"
 /** Only avatar supported in LiveAvatar sandbox mode (Wayne) */
 export const SANDBOX_AVATAR_ID = "dd73ea75-1218-4ef3-92ce-606d5f7fbc0a"
 
-/** Max continuous LiveAvatar stream per session (seconds). */
-export const LIVE_AVATAR_MAX_SESSION_SECONDS = 60
+/** Default max session duration requested from LiveAvatar (seconds). */
+const LIVE_AVATAR_DEFAULT_MAX_SESSION_SECONDS = 60
+
+/** @deprecated Use getLiveAvatarMaxSessionSeconds(). Kept for client fallback. */
+export const LIVE_AVATAR_MAX_SESSION_SECONDS = LIVE_AVATAR_DEFAULT_MAX_SESSION_SECONDS
+
+/** Seconds to request per LiveAvatar session. Override with LIVE_AVATAR_MAX_SESSION_SECONDS. */
+export function getLiveAvatarMaxSessionSeconds(): number {
+  const raw = process.env.LIVE_AVATAR_MAX_SESSION_SECONDS
+  if (raw) {
+    const parsed = Number.parseInt(raw, 10)
+    if (Number.isFinite(parsed) && parsed > 0) return parsed
+  }
+
+  return LIVE_AVATAR_DEFAULT_MAX_SESSION_SECONDS
+}
 
 export type LiveAvatarCatalogEntry = {
   id: string

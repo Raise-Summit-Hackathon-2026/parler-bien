@@ -9,7 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { LanguageId } from "@/lib/languages"
-import { LIVE_AVATAR_MAX_SESSION_SECONDS, isLiveAvatarSandbox } from "@/lib/liveavatar"
+import { LIVE_AVATAR_MAX_SESSION_SECONDS } from "@/lib/liveavatar"
 import { authenticatedFetch } from "@/lib/supabase"
 
 export type LiveAvatarStatus =
@@ -63,19 +63,11 @@ export function useLiveAvatar({
   const videoElementRef = useRef<HTMLVideoElement | null>(null)
   const streamReadyRef = useRef(false)
   const speakResolveRef = useRef<(() => void) | null>(null)
-  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const maxSessionSecondsRef = useRef(LIVE_AVATAR_MAX_SESSION_SECONDS)
+  const [autoRestartKey, setAutoRestartKey] = useState(0)
 
   const clearSessionTimers = useCallback(() => {
-    if (expiryTimerRef.current) {
-      clearTimeout(expiryTimerRef.current)
-      expiryTimerRef.current = null
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current)
-      countdownRef.current = null
-    }
     if (keepAliveRef.current) {
       clearInterval(keepAliveRef.current)
       keepAliveRef.current = null
@@ -105,31 +97,25 @@ export function useLiveAvatar({
 
   const expireSession = useCallback(async () => {
     await cleanupSession()
+
+    if (enabled) {
+      setStatus("connecting")
+      setAutoRestartKey((key) => key + 1)
+      return
+    }
+
     setRemainingSeconds(0)
     setStatus("expired")
-  }, [cleanupSession])
+  }, [cleanupSession, enabled])
 
   const startSessionTimer = useCallback(() => {
     clearSessionTimers()
-    const startedAt = Date.now()
-    setRemainingSeconds(LIVE_AVATAR_MAX_SESSION_SECONDS)
+    setRemainingSeconds(null)
 
-    countdownRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-      const left = Math.max(0, LIVE_AVATAR_MAX_SESSION_SECONDS - elapsed)
-      setRemainingSeconds(left)
-    }, 1000)
-
-    expiryTimerRef.current = setTimeout(() => {
-      void expireSession()
-    }, LIVE_AVATAR_MAX_SESSION_SECONDS * 1000)
-
-    if (!isLiveAvatarSandbox()) {
-      keepAliveRef.current = setInterval(() => {
-        void sessionRef.current?.keepAlive().catch(() => {})
-      }, 45_000)
-    }
-  }, [clearSessionTimers, expireSession])
+    keepAliveRef.current = setInterval(() => {
+      void sessionRef.current?.keepAlive().catch(() => {})
+    }, 45_000)
+  }, [clearSessionTimers])
 
   const attachVideo = useCallback((element: HTMLVideoElement | null) => {
     videoElementRef.current = element
@@ -237,6 +223,14 @@ export function useLiveAvatar({
         const data = (await response.json()) as {
           sessionToken: string
           avatarId?: string
+          maxSessionDuration?: number
+        }
+
+        if (
+          typeof data.maxSessionDuration === "number" &&
+          data.maxSessionDuration > 0
+        ) {
+          maxSessionSecondsRef.current = data.maxSessionDuration
         }
 
         const session = new LiveAvatarSession(data.sessionToken, {
@@ -329,6 +323,7 @@ export function useLiveAvatar({
     avatarId,
     languageId,
     restartKey,
+    autoRestartKey,
     stop,
     startSessionTimer,
     expireSession,

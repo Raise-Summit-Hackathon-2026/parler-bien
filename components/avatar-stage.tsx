@@ -45,6 +45,7 @@ export function AvatarStage({
   overlay = true,
 }: AvatarStageProps) {
   const sandbox = isLiveAvatarSandbox()
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
@@ -61,25 +62,29 @@ export function AvatarStage({
   useEffect(() => {
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!showLiveVideo || !video || !canvas) return
+    const container = containerRef.current
+    if (!showLiveVideo || !video || !canvas || !container) return
 
-    return setupChromaKey(video, canvas, DEFAULT_CHROMA_KEY_OPTIONS)
+    return setupChromaKey(video, canvas, container, DEFAULT_CHROMA_KEY_OPTIONS)
   }, [showLiveVideo])
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         "relative overflow-hidden rounded-2xl bg-muted",
-        className,
+        showLiveVideo ? "h-72 w-full shrink-0 rounded-none bg-neutral-950" : className,
       )}
     >
-      <ScenarioScene
-        scenarioId={scenarioId}
-        imagePrompt={imagePrompt}
-        className="absolute inset-0 size-full rounded-none"
-        overlay={false}
-        fit="cover"
-      />
+      {!showLiveVideo && (
+        <ScenarioScene
+          scenarioId={scenarioId}
+          imagePrompt={imagePrompt}
+          className="absolute inset-0 size-full rounded-none"
+          overlay={false}
+          fit="cover"
+        />
+      )}
 
       {showConnecting && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/35 backdrop-blur-[1px]">
@@ -101,7 +106,7 @@ export function AvatarStage({
       <canvas
         ref={canvasRef}
         className={cn(
-          "pointer-events-none absolute inset-0 z-10 size-full object-contain object-bottom transition-opacity duration-500",
+          "pointer-events-none absolute inset-0 z-10 size-full transition-opacity duration-300",
           showLiveVideo ? "opacity-100" : "opacity-0",
         )}
       />
@@ -162,7 +167,7 @@ export function AvatarStage({
         )}
       </div>
 
-      {overlay && (
+      {overlay && !showLiveVideo && (
         <div className="pointer-events-none absolute inset-0 z-20 bg-linear-to-t from-black/50 via-black/10 to-transparent" />
       )}
     </div>

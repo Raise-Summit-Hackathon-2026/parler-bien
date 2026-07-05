@@ -76,21 +76,80 @@ export function applyChromaKey(
   ctx.putImageData(imageData, 0, 0)
 }
 
+let workCanvas: HTMLCanvasElement | null = null
+
+function getWorkCanvas() {
+  if (!workCanvas) {
+    workCanvas = document.createElement("canvas")
+  }
+  return workCanvas
+}
+
 export function setupChromaKey(
   sourceVideo: HTMLVideoElement,
   targetCanvas: HTMLCanvasElement,
+  container: HTMLElement,
   options: ChromaKeyOptions,
 ): () => void {
   let animationFrameId: number | null = null
+  const work = getWorkCanvas()
 
   const render = () => {
-    applyChromaKey(sourceVideo, targetCanvas, options)
+    if (sourceVideo.readyState < 2) {
+      animationFrameId = requestAnimationFrame(render)
+      return
+    }
+
+    applyChromaKey(sourceVideo, work, options)
+
+    const ctx = targetCanvas.getContext("2d", { alpha: true })
+    if (!ctx) {
+      animationFrameId = requestAnimationFrame(render)
+      return
+    }
+
+    const displayWidth = container.clientWidth
+    const displayHeight = container.clientHeight
+    if (displayWidth === 0 || displayHeight === 0) {
+      animationFrameId = requestAnimationFrame(render)
+      return
+    }
+
+    const dpr = window.devicePixelRatio || 1
+    const canvasWidth = Math.round(displayWidth * dpr)
+    const canvasHeight = Math.round(displayHeight * dpr)
+
+    if (
+      targetCanvas.width !== canvasWidth ||
+      targetCanvas.height !== canvasHeight
+    ) {
+      targetCanvas.width = canvasWidth
+      targetCanvas.height = canvasHeight
+      targetCanvas.style.width = `${displayWidth}px`
+      targetCanvas.style.height = `${displayHeight}px`
+    }
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, displayWidth, displayHeight)
+
+    const scale = displayHeight / work.height
+    const drawWidth = work.width * scale
+    const drawHeight = displayHeight
+    const drawX = (displayWidth - drawWidth) / 2
+
+    ctx.drawImage(work, drawX, 0, drawWidth, drawHeight)
     animationFrameId = requestAnimationFrame(render)
   }
 
   render()
 
+  const observer = new ResizeObserver(() => {
+    // Dimensions are read each frame from container.clientWidth/Height.
+  })
+  observer.observe(container)
+
   return () => {
+    observer.disconnect()
     if (animationFrameId !== null) {
       cancelAnimationFrame(animationFrameId)
     }
