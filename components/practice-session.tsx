@@ -530,7 +530,7 @@ export function PracticeSession({
             {(isRoleplayMode || isOpenMode) && history.length > 0 && (
               <ConversationLog
                 history={history}
-                characterName={character.name}
+                characterName={scenario.characterName ?? character.name}
                 onPlayCharacter={handlePlayCharacterTurn}
                 disabled={isRecording || isScoring || isCharacterSpeaking}
                 endRef={chatEndRef}

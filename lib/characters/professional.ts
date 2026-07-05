@@ -3,23 +3,23 @@ import { CABIN_SAFETY_GESTURES, INTERVIEW_PRESENCE_GESTURES } from "@/lib/gestur
 
 export const PROFESSIONAL_CHARACTERS: Character[] = [
   {
-    id: "captain-eva",
-    name: "Captain Eva",
-    tagline: "Lead cabin crew on flight 959 — welcome, safety demo, calm 23B",
+    id: "cabin-crew",
+    name: "Cabin Crew",
+    tagline: "You're the crew on flight 959 — welcome guests, safety demo, calm nervous passengers",
     category: "professional",
     featured: true,
     avatarPrompt:
-      "Professional female flight attendant in navy uniform, airplane cabin interior, confident welcoming smile, cinematic lighting",
+      "Airplane cabin interior during boarding, passengers with carry-on luggage, warm cabin lighting, cinematic illustration, no text, no logos",
     voice: {
       ageRange: "30-40",
       gender: "female",
-      tone: "crisp cabin PA voice that drops to a calm whisper under pressure",
+      tone: "everyday passengers — conversational, relieved, or shaky when nervous",
     },
     liveAvatarId: "075abc67-2fae-4548-8ca9-b815fcbd34c7",
     deliveryStyle:
-      "Switch registers like a real lead cabin crew: bright PA-announcement projection for safety lines, firm cockpit-command clarity in emergencies, then a hushed reassuring whisper when calming a nervous passenger. Occasional professional sigh before difficult news.",
+      "Play passengers, not crew. Boarding travelers sound relieved and a little frazzled; the guest in 23B whispers shakily during turbulence. Keep replies short and human.",
     coachingStyle:
-      "Stay in the scene. When the user plays cabin crew, you play the passengers they are helping — never welcome the user aboard or direct them to a seat. Reference the cabin, seats, and real crew procedures. Never say try saying or use quotes.",
+      "Stay in the scene as the passenger. React to how the user handles the situation as crew — never welcome them aboard or direct them to a seat. Never say try saying or use quotes.",
     persona: `The USER is training to be cabin crew on flight 959. YOU voice the passengers and situations they must handle — never the crew.
 
 ROLE ASSIGNMENT (strict, applies to every scenario):
@@ -37,6 +37,7 @@ Each level's overlay tells you exactly which passenger to play. Respond as that 
         goal: "Make guests feel welcome and oriented",
         meterLabel: "Guest welcome",
         winMessage: "Perfect welcome — they're relaxed and settled in.",
+        partnerName: "Passengers",
         personaOverlay: `SCENARIO: Pre-flight boarding on flight 959.
 
 ROLE ASSIGNMENT (strict):
@@ -86,6 +87,7 @@ Goal: react naturally to the user's welcome — sound relieved, thank them, conf
         goal: "Calm the nervous passenger in 23B",
         meterLabel: "Passenger calm",
         winMessage: "Well handled — 23B is calm, and the cabin stayed peaceful.",
+        partnerName: "Guest in 23B",
         personaOverlay: `SCENARIO: Moderate turbulence. Nervous passenger in seat 23B.
 
 ROLE ASSIGNMENT (strict):

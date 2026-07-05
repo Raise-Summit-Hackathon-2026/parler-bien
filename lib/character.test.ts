@@ -119,14 +119,14 @@ describe("scenarioToCharacter", () => {
 
 describe("character gender", () => {
   test("stableCharacterGender is deterministic for the same seed", () => {
-    expect(stableCharacterGender("captain-eva:1")).toBe(stableCharacterGender("captain-eva:1"))
+    expect(stableCharacterGender("cabin-crew:1")).toBe(stableCharacterGender("cabin-crew:1"))
     expect(stableCharacterGender("vendor:0")).not.toBe(stableCharacterGender("vendor:1"))
   })
 
-  test("infers female gender for Captain Eva", () => {
-    const eva = getBuiltInCharacter("captain-eva")
-    const scenario = characterLevelScenario(eva, 0, "en")
-    expect(resolveCharacterGender(scenario, undefined, "captain-eva:0")).toBe("female")
+  test("infers female gender for cabin crew passenger voice", () => {
+    const crew = getBuiltInCharacter("cabin-crew")
+    const scenario = characterLevelScenario(crew, 0, "en")
+    expect(resolveCharacterGender(scenario, undefined, "cabin-crew:0")).toBe("female")
   })
 
   test("avatar and voice gender use the same seed in resolveCharacterGender", () => {
@@ -187,13 +187,13 @@ describe("built-in characters", () => {
     expect(isBuiltInCharacterId("nope")).toBe(false)
   })
 
-  test("captain-eva is featured with 3 playable and 2 locked levels", () => {
-    const eva = getBuiltInCharacter("captain-eva")
-    expect(eva.featured).toBe(true)
-    expect(eva.category).toBe("professional")
-    expect(playableLevels(eva).map((l) => l.kind)).toEqual(["voice", "gesture", "voice"])
-    expect(eva.levels).toHaveLength(5)
-    expect(eva.levels.filter((l) => !isLevelPlayable(l))).toHaveLength(2)
+  test("cabin-crew is featured with 3 playable and 2 locked levels", () => {
+    const crew = getBuiltInCharacter("cabin-crew")
+    expect(crew.featured).toBe(true)
+    expect(crew.category).toBe("professional")
+    expect(playableLevels(crew).map((l) => l.kind)).toEqual(["voice", "gesture", "voice"])
+    expect(crew.levels).toHaveLength(5)
+    expect(crew.levels.filter((l) => !isLevelPlayable(l))).toHaveLength(2)
   })
 
   test("every built-in character has at least 3 playable levels and locked teasers", () => {

@@ -60,6 +60,8 @@ export type VoiceLevel = LevelMeta & {
   winMessage?: string
   /** Appended to Character.persona for this level */
   personaOverlay?: string
+  /** Label for AI replies in chat when the user plays the lead role (e.g. "Passengers"). */
+  partnerName?: string
   /** Per-language opening line + starters, same shape Scenario carries */
   content?: Partial<Record<LanguageId, ScenarioContent>>
 }
@@ -102,7 +104,7 @@ export function nextPlayableLevelIndex(
 }
 
 export type Character = {
-  /** Built-in slug (e.g. "captain-eva") or DB row uuid */
+  /** Built-in slug (e.g. "cabin-crew") or DB row uuid */
   id: string
   name: string
   tagline: string
@@ -139,7 +141,7 @@ export function characterLevelScenario(
     id: `custom:${character.id}-${level.id}`,
     title: level.title,
     tagline: level.subtitle,
-    characterName: character.name,
+    characterName: level.partnerName ?? character.name,
     goal: level.goal ?? null,
     meterLabel: level.meterLabel ?? null,
     winMessage: level.winMessage ?? null,
