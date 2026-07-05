@@ -50,23 +50,24 @@ function CharacterCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "group flex h-full flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-sm transition-all",
-        "hover:border-foreground/20 hover:shadow-md",
+        "group flex h-full flex-col overflow-hidden rounded-3xl border bg-card/90 text-left shadow-sm ring-1 ring-border/50 transition-all",
+        "hover:-translate-y-0.5 hover:border-lime-600/30 hover:shadow-xl",
+        "dark:border-white/10 dark:bg-white/3 dark:ring-white/5 dark:hover:border-lime-300/40",
       )}
     >
       <div className="relative shrink-0">
         <ScenarioScene
           scenarioId={isBuiltIn ? character.id : undefined}
           imagePrompt={!isBuiltIn ? character.avatarPrompt : undefined}
-          className="aspect-[5/3] w-full"
+          className="aspect-5/3 w-full rounded-none"
         />
         {badge && (
-          <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm">
+          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm">
             {badge}
           </span>
         )}
         {completed && (
-          <span className="absolute top-1.5 right-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm">
+          <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm">
             <Check className="size-3" />
             Done
           </span>
@@ -86,16 +87,16 @@ function CharacterCard({
                 onDelete()
               }
             }}
-            className="absolute bottom-1.5 left-1.5 inline-flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70"
+            className="absolute bottom-2 left-2 inline-flex size-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70"
             aria-label="Delete character"
           >
             <Trash2 className="size-3" />
           </span>
         )}
       </div>
-      <div className="flex min-h-[3.75rem] flex-col justify-center gap-0.5 p-2.5 sm:p-3">
+      <div className="flex min-h-18 flex-col justify-center gap-1 p-3 sm:p-4">
         <p className="line-clamp-1 text-sm font-semibold leading-tight">{character.name}</p>
-        <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+        <p className="line-clamp-2 text-xs leading-snug text-muted-foreground dark:text-white/50">
           {character.tagline}
         </p>
       </div>
@@ -136,16 +137,17 @@ export function CharacterGrid({
             type="button"
             onClick={() => setShowBuilder(true)}
             className={cn(
-              "flex h-full min-h-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-muted/20 p-3 text-center transition-all",
-              "hover:border-foreground/30 hover:bg-muted/40",
+              "flex h-full min-h-40 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed bg-muted/20 p-4 text-center transition-all",
+              "hover:border-lime-600/40 hover:bg-lime-600/5",
+              "dark:border-white/15 dark:bg-white/3 dark:hover:border-lime-300/40 dark:hover:bg-lime-300/5",
             )}
           >
-            <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="inline-flex size-11 items-center justify-center rounded-full bg-lime-600/10 text-lime-700 dark:bg-lime-300/10 dark:text-lime-300">
               <Plus className="size-5" />
             </span>
             <div>
               <p className="text-sm font-semibold">Create your own</p>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground dark:text-white/50">
                 From a prompt, PDF, or course upload
               </p>
             </div>

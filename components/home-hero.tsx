@@ -1,14 +1,6 @@
 "use client"
 
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  CheckCircle2,
-  Mic,
-  Sparkles,
-  Target,
-  Trophy,
-} from "lucide-react"
+import { ArrowRight, BriefcaseBusiness, Mic, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 import { ScenarioScene } from "@/components/scenario-scene"
@@ -41,7 +33,7 @@ export function HomeHero() {
         aria-hidden
       />
 
-      <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:py-20">
+      <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-6 py-4 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:py-4">
         <div className="space-y-8">
           <div className="space-y-5">
             <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-lime-700 uppercase dark:text-lime-300">
@@ -50,13 +42,14 @@ export function HomeHero() {
             </span>
 
             <div className="space-y-3">
-              <h1 className="max-w-3xl text-4xl leading-[0.98] font-semibold tracking-tight text-balance sm:text-6xl">
+              <h1 className="max-w-2xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-4xl">
                 Practice real conversations.
                 <span className="block text-lime-700 dark:text-lime-300">
                   Speak with confidence.
                 </span>
               </h1>
-              <p className="max-w-xl text-base leading-7 text-muted-foreground sm:text-lg dark:text-white/65">
+
+              <p className="max-w-xl text-sm leading-6 text-muted-foreground sm:text-base dark:text-white/65">
                 Role-play real life scenarios with AI characters. Get instant
                 feedback, improve faster, and speak naturally.
               </p>
@@ -79,27 +72,6 @@ export function HomeHero() {
               Explore workspaces
             </Link>
           </div>
-
-          <div className="grid max-w-2xl grid-cols-2 gap-3 pt-2 sm:grid-cols-4">
-            {[
-              ["AI feedback", "Get coached instantly", CheckCircle2],
-              ["Real scenarios", "Life and work situations", Trophy],
-              ["Speak naturally", "Voice-powered practice", Mic],
-              ["Track progress", "See how you improve", Target],
-            ].map(([title, text, Icon]) => (
-              <div key={title as string} className="flex items-start gap-2">
-                <span className="mt-0.5 inline-flex size-7 items-center justify-center rounded-lg border border-lime-600/20 bg-lime-600/10 text-lime-700 dark:border-lime-300/20 dark:bg-lime-300/10 dark:text-lime-300">
-                  <Icon className="size-3.5" />
-                </span>
-                <span>
-                  <span className="block text-xs font-semibold">{title as string}</span>
-                  <span className="block text-[11px] text-muted-foreground dark:text-white/45">
-                    {text as string}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
 
         {heroCharacter && (
@@ -112,7 +84,9 @@ export function HomeHero() {
               />
               <div className="absolute top-8 right-8 hidden w-52 space-y-3 rounded-2xl border border-white/10 bg-black/60 p-3 text-sm shadow-xl backdrop-blur md:block">
                 <div className="rounded-xl bg-lime-300/15 p-3">
-                  <p className="text-[11px] font-medium text-lime-200">Go ahead, start the conversation.</p>
+                  <p className="text-[11px] font-medium text-lime-200">
+                    Go ahead, start the conversation.
+                  </p>
                 </div>
                 <div className="ml-auto max-w-36 rounded-xl bg-white/10 p-3 text-white/90">
                   <p>I’d like to book a table for two.</p>
@@ -132,7 +106,6 @@ export function HomeHero() {
           </div>
         )}
       </div>
-
     </section>
   )
 }
@@ -145,9 +118,21 @@ export function WorkspacesCta() {
           <h2 className="text-xl font-semibold">How it works</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {[
-              ["1", "Choose a scenario", "Pick a real life situation you want to practice."],
-              ["2", "Role-play and speak", "Talk with the AI character in a realistic setting."],
-              ["3", "Get feedback", "Receive personalized tips to improve your speaking."],
+              [
+                "1",
+                "Choose a scenario",
+                "Pick a real life situation you want to practice.",
+              ],
+              [
+                "2",
+                "Role-play and speak",
+                "Talk with the AI character in a realistic setting.",
+              ],
+              [
+                "3",
+                "Get feedback",
+                "Receive personalized tips to improve your speaking.",
+              ],
             ].map(([step, title, text]) => (
               <div key={step} className="flex gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-lime-600/25 bg-lime-600/10 text-sm font-semibold text-lime-700 dark:border-lime-300/30 dark:bg-lime-300/10 dark:text-lime-300">

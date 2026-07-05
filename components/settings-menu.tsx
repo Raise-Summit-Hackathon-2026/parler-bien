@@ -32,7 +32,7 @@ export function SettingsMenu() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex size-9 items-center justify-center rounded-md border bg-card text-foreground transition-colors hover:bg-muted/60"
+        className="inline-flex size-9 items-center justify-center rounded-xl border bg-card text-foreground transition-colors hover:bg-muted/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
         aria-label="Settings"
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -41,7 +41,7 @@ export function SettingsMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(92vw,18rem)] overflow-hidden rounded-xl border bg-popover p-4 shadow-lg">
+        <div className="absolute right-0 z-50 mt-2 w-[min(92vw,18rem)] overflow-hidden rounded-2xl border bg-popover p-4 shadow-2xl dark:border-white/10 dark:bg-[#16181d] dark:text-white">
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -56,8 +56,8 @@ export function SettingsMenu() {
                     className={cn(
                       "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                       languageId === item.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80",
+                        ? "bg-lime-600 text-white dark:bg-lime-300 dark:text-black"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white",
                     )}
                   >
                     {item.name}
@@ -79,8 +79,8 @@ export function SettingsMenu() {
                     className={cn(
                       "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
                       regionId === item.id
-                        ? "border-foreground bg-muted font-medium"
-                        : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/40",
+                        ? "border-lime-600/40 bg-lime-600/10 font-medium text-lime-800 dark:border-lime-300/40 dark:bg-lime-300/10 dark:text-lime-200"
+                        : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/40 dark:border-white/10 dark:text-white/50 dark:hover:border-white/25 dark:hover:bg-white/5 dark:hover:text-white",
                     )}
                   >
                     <span>{item.label} · {item.city}</span>

@@ -177,16 +177,16 @@ export function CharacterBuilder({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border bg-card shadow-xl">
-        <div className="flex items-start justify-between gap-4 border-b p-6">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border bg-card shadow-2xl shadow-black/20 ring-1 ring-border/50 dark:border-white/10 dark:bg-[#16181d] dark:text-white dark:ring-white/5">
+        <div className="flex items-start justify-between gap-4 border-b p-6 dark:border-white/10">
           <div className="space-y-1">
-            <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            <p className="text-xs font-semibold tracking-[0.2em] text-lime-700 uppercase dark:text-lime-300">
               Custom character
             </p>
             <h2 className="text-xl font-semibold tracking-tight">
               Create your own practice
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground dark:text-white/55">
               {workspaceContext
                 ? `For workspace “${workspaceContext.name}” — from a prompt, course notes, or PDF upload.`
                 : "From a prompt, course notes, or PDF upload."}
@@ -203,15 +203,15 @@ export function CharacterBuilder({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
-          <div className="flex gap-2 rounded-xl bg-muted p-1">
+          <div className="flex gap-2 rounded-xl bg-muted p-1 dark:bg-white/5">
             <button
               type="button"
               onClick={() => setMode("prompt")}
               className={cn(
                 "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 mode === "prompt"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-background text-foreground shadow-sm dark:bg-lime-300 dark:text-black"
+                  : "text-muted-foreground hover:text-foreground dark:text-white/50 dark:hover:text-white",
               )}
             >
               <Sparkles className="size-4" />
@@ -223,8 +223,8 @@ export function CharacterBuilder({
               className={cn(
                 "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 mode === "upload"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-background text-foreground shadow-sm dark:bg-lime-300 dark:text-black"
+                  : "text-muted-foreground hover:text-foreground dark:text-white/50 dark:hover:text-white",
               )}
             >
               <Upload className="size-4" />
@@ -243,7 +243,7 @@ export function CharacterBuilder({
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="e.g. I'm at a pharmacy trying to explain my symptoms and get the right medicine. The pharmacist is busy but helpful."
                 rows={6}
-                className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:border-white/10 dark:bg-white/5"
               />
             </div>
           ) : (
@@ -258,7 +258,7 @@ export function CharacterBuilder({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center gap-3 rounded-2xl border border-dashed bg-muted/30 px-6 py-10 text-center transition-colors hover:bg-muted/60"
+                className="flex w-full flex-col items-center gap-3 rounded-2xl border border-dashed bg-muted/30 px-6 py-10 text-center transition-colors hover:border-lime-600/40 hover:bg-lime-600/5 dark:border-white/15 dark:bg-white/3 dark:hover:border-lime-300/40 dark:hover:bg-lime-300/5"
               >
                 <FileText className="size-8 text-muted-foreground" />
                 <div>
@@ -267,7 +267,7 @@ export function CharacterBuilder({
                       ? uploadedFile.name
                       : "Upload PDF or text file"}
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground dark:text-white/50">
                     Course PDFs, lesson notes, .txt, or .md — up to 4 MB
                   </p>
                 </div>
@@ -283,13 +283,13 @@ export function CharacterBuilder({
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Focus on hotel check-in vocabulary from chapter 3..."
                   rows={3}
-                  className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="w-full resize-none rounded-2xl border bg-background px-4 py-3 text-sm ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:border-white/10 dark:bg-white/5"
                 />
               </div>
             </div>
           )}
 
-          <div className="space-y-3 rounded-2xl border bg-muted/20 px-4 py-4">
+          <div className="space-y-3 rounded-2xl border bg-muted/20 px-4 py-4 dark:border-white/10 dark:bg-white/3">
             <div className="flex items-center justify-between gap-3">
               <label htmlFor="level-count" className="text-sm font-medium">
                 Practice steps
@@ -310,7 +310,7 @@ export function CharacterBuilder({
               }}
               disabled={isGenerating}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground dark:text-white/50">
               Each step becomes a node on the practice track, progressing from
               easier to harder
               {workspaceContext ? " in this workspace" : ""}.
@@ -326,7 +326,7 @@ export function CharacterBuilder({
           )}
         </div>
 
-        <div className="flex gap-3 border-t p-6">
+        <div className="flex gap-3 border-t p-6 dark:border-white/10">
           <Button
             variant="outline"
             className="flex-1"
@@ -336,7 +336,7 @@ export function CharacterBuilder({
             Cancel
           </Button>
           <Button
-            className="flex-1"
+            className="flex-1 bg-lime-600 text-white hover:bg-lime-700 dark:bg-lime-300 dark:text-black dark:hover:bg-lime-200"
             onClick={() => void handleGenerate()}
             disabled={isGenerating}
           >

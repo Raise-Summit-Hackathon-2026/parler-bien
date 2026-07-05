@@ -2,6 +2,7 @@
 
 import { type FormEvent, type ReactNode, useEffect, useState } from "react"
 
+import { CinematicPageShell } from "@/components/cinematic-page-shell"
 import { Button } from "@/components/ui/button"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
@@ -76,18 +77,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-svh items-center justify-center px-6">
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
+      <CinematicPageShell contentClassName="items-center justify-center">
+        <p className="text-sm text-muted-foreground dark:text-white/55">Loading...</p>
+      </CinematicPageShell>
     )
   }
 
   if (!user) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-muted/30 px-6 py-10">
-        <section className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-sm">
+      <CinematicPageShell contentClassName="items-center justify-center">
+        <section className="w-full max-w-sm rounded-3xl border bg-card/95 p-6 shadow-2xl shadow-black/10 ring-1 ring-border/50 dark:border-white/10 dark:bg-white/3 dark:shadow-black/50 dark:ring-white/5">
           <div className="space-y-2">
-            <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            <p className="text-xs font-semibold tracking-[0.2em] text-lime-700 uppercase dark:text-lime-300">
               Parler Bien
             </p>
             <h1 className="text-2xl font-semibold tracking-tight">
@@ -99,7 +100,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <label className="block space-y-2 text-sm font-medium">
               <span>Email</span>
               <input
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:border-white/10 dark:bg-white/5"
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -111,7 +112,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <label className="block space-y-2 text-sm font-medium">
               <span>Password</span>
               <input
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:border-white/10 dark:bg-white/5"
                 type="password"
                 autoComplete={
                   mode === "login" ? "current-password" : "new-password"
@@ -135,7 +136,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             )}
 
             <Button
-              className="w-full"
+              className="w-full bg-lime-600 text-white hover:bg-lime-700 dark:bg-lime-300 dark:text-black dark:hover:bg-lime-200"
               size="lg"
               type="submit"
               disabled={submitting}
@@ -163,7 +164,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               : "I already have an account"}
           </Button>
         </section>
-      </main>
+      </CinematicPageShell>
     )
   }
 
