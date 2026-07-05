@@ -1,7 +1,7 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { Bot, Loader2, Mic, Play, RotateCcw, Square } from "lucide-react"
+import { Bot, Loader2, Mic, Play, RotateCcw, ShieldAlert, Square } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 
 import { AvatarStage } from "@/components/avatar-stage"
@@ -208,6 +208,7 @@ export function PracticeSession({
     goalAchieved,
     busy,
     error,
+    moderationWarning,
     submitAudio,
     reset,
     isScoring,
@@ -468,6 +469,20 @@ export function PracticeSession({
                   {formatRecordingDuration(recordingDurationMs)}
                 </p>
               )}
+            </div>
+          )}
+
+          {moderationWarning && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2.5">
+              <ShieldAlert className="size-4 shrink-0 text-[#76b900]" aria-hidden />
+              <div className="text-xs leading-snug">
+                <p className="font-medium text-destructive">{moderationWarning}</p>
+                <p className="text-muted-foreground">
+                  Flagged by{" "}
+                  <span className="font-medium text-foreground/90">NVIDIA Nemotron</span>{" "}
+                  content safety.
+                </p>
+              </div>
             </div>
           )}
 

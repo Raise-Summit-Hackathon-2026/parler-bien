@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSpeaker, type AvatarAudioSink } from "@/hooks/use-speaker"
 import { getRegion, type LanguageId, type RegionId } from "@/lib/languages"
 import { resolveMeterUpdate } from "@/lib/meter"
+import { readScoreStream } from "@/lib/score-stream"
 import { authenticatedFetch } from "@/lib/supabase"
 import {
   getScenarioContent,
@@ -51,6 +52,8 @@ export type UseConversationResult = {
   goalAchieved: boolean
   busy: boolean
   error: string | null
+  /** Set when Nemotron flags the last turn's content; null otherwise. */
+  moderationWarning: string | null
   submitAudio: (audio: RecordedAudio | null) => Promise<void>
   playReply: () => Promise<void>
   reset: () => void
@@ -94,6 +97,9 @@ export function useConversation({
   } = useSpeaker({ avatarSink })
 
   const openingPlayed = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const [history, setHistory] = useState<ConversationTurn[]>([])
   const [meter, setMeter] = useState(() =>
@@ -106,6 +112,9 @@ export function useConversation({
   const [score, setScore] = useState<PronunciationScore | null>(null)
   const [selectedWord, setSelectedWord] = useState<WordScore | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
+  const [moderationWarning, setModerationWarning] = useState<string | null>(
+    null,
+  )
 
   const randomScenarioGender = useMemo(
     () => randomCharacterGender(),
@@ -158,6 +167,7 @@ export function useConversation({
   const submitAudio = useCallback(
     async (audio: RecordedAudio | null) => {
       setRequestError(null)
+      setModerationWarning(null)
       setIsScoring(true)
 
       if (!audio) {
@@ -166,10 +176,43 @@ export function useConversation({
         return
       }
 
+      // Defensive: kill any prior in-flight stream before starting a new one.
+      abortRef.current?.abort()
+      const ac = new AbortController()
+      abortRef.current = ac
+
+      // Guards double-speak/double-append between the early reply event and
+      // the score-event fallback. Closure-local — no re-render staleness.
+      let replyHandled = false
+      let scoreReceived = false
+      let streamError: string | null = null
+
+      const handleReply = (
+        transcript: string,
+        reply: CharacterReply,
+        speaker: SpeakerProfile,
+      ) => {
+        if (replyHandled) return
+        replyHandled = true
+        setTargetPhrase(transcript)
+        setLastSpeaker(speaker)
+        if (isRoleplayMode) {
+          setHistory((prev) => [
+            ...prev,
+            { role: "user", text: transcript },
+            { role: "character", text: reply.text },
+          ])
+          speakLine(replySpeechText(reply), "character", speaker)
+        } else {
+          speakLine(replySpeechText(reply), "coach", speaker)
+        }
+      }
+
       try {
         const response = await authenticatedFetch("/api/score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: ac.signal,
           body: JSON.stringify({
             audioBase64: audio.base64,
             audioFormat: audio.format,
@@ -188,32 +231,58 @@ export function useConversation({
           const data = (await response.json()) as { error?: string }
           throw new Error(data.error ?? "Scoring failed")
         }
+        if (!response.body) throw new Error("Scoring failed")
 
-        const result = (await response.json()) as PronunciationScore
-        setScore(result)
-        setTargetPhrase(result.transcript)
-        setLastSpeaker(result.speaker)
-        setSelectedWord(result.words.find((w) => w.score < 80) ?? result.words[0])
+        await readScoreStream(response.body, (event) => {
+          if (event.type === "reply") {
+            handleReply(event.transcript, event.reply, event.speaker)
+          } else if (event.type === "score") {
+            scoreReceived = true
+            const result = event.score
+            setScore(result)
+            setSelectedWord(
+              result.words.find((w) => w.score < 80) ?? result.words[0],
+            )
+            if (isRoleplayMode) {
+              const nextMeter = resolveMeterUpdate(meter, result)
+              setMeter(nextMeter)
+              setGoalAchieved(
+                result.goal_achieved || nextMeter >= GOAL_WIN_METER,
+              )
+            }
+            // Fallback: if the reply event never arrived, speak + append now
+            // (no-op when replyHandled is already true).
+            handleReply(result.transcript, result.reply, result.speaker)
+            // Unlock the mic here — a trailing moderation verdict must never
+            // delay it (isCharacterSpeaking still gates during playback).
+            if (abortRef.current === ac) setIsScoring(false)
+          } else if (event.type === "moderation") {
+            if (!event.responseSafe) {
+              // Cut unsafe generated speech mid-playback.
+              stopSpeaking()
+              interruptAvatar?.()
+              setModerationWarning("That reply didn't pass our safety check.")
+            } else if (!event.userSafe) {
+              setModerationWarning(
+                "That kind of language isn't okay here — keep it respectful and try again.",
+              )
+            }
+          } else if (event.type === "error") {
+            streamError = event.error
+          }
+        })
 
-        if (isRoleplayMode) {
-          const nextMeter = resolveMeterUpdate(meter, result)
-          setMeter(nextMeter)
-          setGoalAchieved(result.goal_achieved || nextMeter >= GOAL_WIN_METER)
-          setHistory((prev) => [
-            ...prev,
-            { role: "user", text: result.transcript },
-            { role: "character", text: result.reply.text },
-          ])
-          speakLine(replySpeechText(result.reply), "character", result.speaker)
-        } else {
-          speakLine(replySpeechText(result.reply), "coach", result.speaker)
-        }
+        if (streamError) throw new Error(streamError)
+        if (!scoreReceived) throw new Error("Scoring ended unexpectedly")
       } catch (err) {
+        // Reset/unmount/new-submit aborts are intentional — stay silent.
+        if (ac.signal.aborted) return
         setRequestError(
           err instanceof Error ? err.message : "Something went wrong",
         )
       } finally {
-        setIsScoring(false)
+        // Don't clobber the isScoring flag of a newer submitAudio call.
+        if (abortRef.current === ac) setIsScoring(false)
       }
     },
     [
@@ -226,6 +295,8 @@ export function useConversation({
       meter,
       isRoleplayMode,
       speakLine,
+      stopSpeaking,
+      interruptAvatar,
     ],
   )
 
@@ -239,11 +310,13 @@ export function useConversation({
   }, [score, isOpenMode, speakLine])
 
   const clearScore = useCallback(() => {
+    abortRef.current?.abort()
     stopSpeaking()
     interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
+    setModerationWarning(null)
   }, [stopSpeaking, interruptAvatar])
 
   const selectWord = useCallback(
@@ -256,23 +329,27 @@ export function useConversation({
 
   const pickPhrase = useCallback(
     (text: string) => {
+      abortRef.current?.abort()
       stopSpeaking()
       interruptAvatar?.()
       setTargetPhrase(text)
       setScore(null)
       setSelectedWord(null)
       setRequestError(null)
+      setModerationWarning(null)
       speakLine(text, "phrase")
     },
     [stopSpeaking, interruptAvatar, speakLine],
   )
 
   const reset = useCallback(() => {
+    abortRef.current?.abort()
     stopSpeaking()
     interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
+    setModerationWarning(null)
     setMeter(isRoleplayMode && hasGoal ? ROLEPLAY_START_METER : 0)
     setGoalAchieved(false)
     setLastSpeaker(null)
@@ -302,6 +379,7 @@ export function useConversation({
     goalAchieved,
     busy: isScoring || isSpeaking,
     error: requestError,
+    moderationWarning,
     submitAudio,
     playReply,
     reset,

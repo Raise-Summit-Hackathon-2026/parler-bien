@@ -17,6 +17,22 @@ export type ModerationOutcome =
     }
   | { status: "error"; message: string }
 
+type ModerationCompletion = {
+  choices?: Array<{
+    message?: { content?: string | null; reasoning?: string | null }
+  }>
+}
+
+/**
+ * Nemotron 3.5 content safety is a reasoning model: when it runs out of
+ * tokens mid-reasoning, `content` is null but the verdict often already
+ * appears in `reasoning` — fall back to it.
+ */
+function extractModerationText(data: ModerationCompletion) {
+  const message = data.choices?.[0]?.message
+  return message?.content?.trim() || message?.reasoning?.trim() || null
+}
+
 function parseModerationResponse(text: string) {
   const normalized = text.toLowerCase()
 
@@ -91,7 +107,7 @@ ${trimmedGenerated || "(empty)"}`
             { role: "user", content: prompt },
           ],
           temperature: 0.01,
-          max_tokens: 256,
+          max_tokens: 512,
         }),
       })
 
@@ -101,11 +117,9 @@ ${trimmedGenerated || "(empty)"}`
         return { status: "error", message: errorText }
       }
 
-      const data = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>
-      }
+      const data = (await response.json()) as ModerationCompletion
 
-      const content = data.choices?.[0]?.message?.content?.trim()
+      const content = extractModerationText(data)
       if (!content) {
         if (attempt === 0) continue
         return { status: "error", message: "Empty moderation response" }
@@ -131,6 +145,77 @@ ${trimmedGenerated || "(empty)"}`
       status: "error",
       message: error instanceof Error ? error.message : "Unknown error",
     }
+  }
+}
+
+export type LiveModerationResult = {
+  userSafe: boolean
+  responseSafe: boolean
+} | null
+
+/**
+ * Moderate one live practice turn (user utterance + generated reply).
+ * Designed to run concurrently with score generation: single attempt,
+ * hard 4s timeout, and fail-open (null) on any error — a safety check
+ * must never break or slow the practice loop.
+ */
+export async function moderateLiveTurn(
+  apiKey: string,
+  input: { userText: string; replyText: string; languageName: string },
+): Promise<LiveModerationResult> {
+  const userText = input.userText.trim()
+  const replyText = input.replyText.trim()
+  if (!userText && !replyText) return { userSafe: true, responseSafe: true }
+
+  const prompt = `This is one turn of a live language-learning roleplay conversation in ${input.languageName}. Review whether the user's utterance and the character's reply are appropriate.
+
+Only flag severe harm: hate speech, harassment, explicit sexual content, violence, self-harm, illegal instructions, or content involving minors. Normal roleplay friction — haggling, refusals, in-character rudeness, mistakes — is fine.
+
+User said:
+${userText || "(empty)"}
+
+Character replied:
+${replyText || "(empty)"}`
+
+  try {
+    const response = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      signal: AbortSignal.timeout(4000),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        "X-Title": "Parler Bien",
+      },
+      body: JSON.stringify({
+        model: CONTENT_SAFETY_MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a content safety moderator for a language-learning app. Classify the user utterance and the character reply.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.01,
+        max_tokens: 512,
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn("Live moderation error:", await response.text())
+      return null
+    }
+
+    const data = (await response.json()) as ModerationCompletion
+    const content = extractModerationText(data)
+    if (!content) return null
+
+    return parseModerationResponse(content)
+  } catch (error) {
+    console.warn("Live moderation request failed:", error)
+    return null
   }
 }
 

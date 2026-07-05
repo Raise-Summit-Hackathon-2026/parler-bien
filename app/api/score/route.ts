@@ -10,42 +10,18 @@ import {
 } from "@/lib/languages"
 import { buildCharacterPrompt } from "@/lib/prompts"
 import { resolveScenario, type Scenario } from "@/lib/character"
+import { moderateLiveTurn } from "@/lib/content-safety"
 import { pronunciationScoreJsonSchema } from "@/lib/score-schema"
+import { createScoreNdjsonStream } from "@/lib/score-stream"
 import { requireCurrentUser } from "@/lib/supabase"
-import type {
-  ConversationTurn,
-  PronunciationScore,
-} from "@/lib/types"
+import type { ConversationTurn } from "@/lib/types"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "google/gemini-3.5-flash"
+const UPSTREAM_TIMEOUT_MS = 90_000
 
-function parseScore(content: string): PronunciationScore {
-  const parsed = JSON.parse(content) as PronunciationScore
-
-  if (
-    typeof parsed.overall_score !== "number" ||
-    typeof parsed.coaching !== "string" ||
-    typeof parsed.transcript !== "string" ||
-    !parsed.reply ||
-    typeof parsed.reply.text !== "string" ||
-    typeof parsed.reply.tts_text !== "string" ||
-    typeof parsed.reply.hint !== "string" ||
-    typeof parsed.meter !== "number" ||
-    typeof parsed.goal_achieved !== "boolean" ||
-    !Array.isArray(parsed.words) ||
-    !Array.isArray(parsed.next_sentences) ||
-    !parsed.speaker ||
-    typeof parsed.speaker.accent !== "string" ||
-    typeof parsed.speaker.age_range !== "string" ||
-    typeof parsed.speaker.gender !== "string" ||
-    typeof parsed.speaker.notes !== "string"
-  ) {
-    throw new Error("Invalid score response shape")
-  }
-
-  return parsed
-}
+// Long streams on serverless deploys.
+export const maxDuration = 60
 
 export async function POST(request: Request) {
   const auth = await requireCurrentUser(request)
@@ -153,8 +129,15 @@ export async function POST(request: Request) {
   })
 
   try {
+    const upstreamAbort = new AbortController()
+    const timeout = setTimeout(
+      () => upstreamAbort.abort(),
+      UPSTREAM_TIMEOUT_MS,
+    )
+
     const response = await fetch(OPENROUTER_URL, {
       method: "POST",
+      signal: upstreamAbort.signal,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -164,6 +147,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: MODEL,
+        stream: true,
         messages: [
           {
             role: "user",
@@ -193,8 +177,9 @@ export async function POST(request: Request) {
       }),
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
+    if (!response.ok || !response.body) {
+      clearTimeout(timeout)
+      const errorText = await response.text().catch(() => "")
       console.error("OpenRouter error:", errorText)
       return NextResponse.json(
         { error: "Failed to score pronunciation" },
@@ -202,21 +187,28 @@ export async function POST(request: Request) {
       )
     }
 
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>
-    }
+    // From here on the status is committed to 200; failures go in-band
+    // as {"type":"error"} NDJSON lines.
+    const stream = createScoreNdjsonStream(response.body, {
+      onClose: () => {
+        clearTimeout(timeout)
+        upstreamAbort.abort()
+      },
+      moderate: (turn) =>
+        moderateLiveTurn(apiKey, {
+          userText: turn.transcript,
+          replyText: turn.replyText,
+          languageName: languageDef.name,
+        }),
+    })
 
-    const content = data.choices?.[0]?.message?.content
-    if (!content) {
-      return NextResponse.json(
-        { error: "Empty response from model" },
-        { status: 502 }
-      )
-    }
-
-    const score = parseScore(content)
-
-    return NextResponse.json(score)
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Accel-Buffering": "no",
+      },
+    })
   } catch (error) {
     console.error("Score route error:", error)
     return NextResponse.json(

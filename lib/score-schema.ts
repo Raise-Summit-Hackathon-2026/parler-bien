@@ -1,3 +1,12 @@
+import type {
+  CharacterReply,
+  PronunciationScore,
+  SpeakerProfile,
+} from "@/lib/types"
+
+// Property order is an ordering hint for the model: conversational fields
+// (reply, speaker) come early so the stream can emit them before the heavy
+// arrays (words, next_sentences). Extraction never depends on this order.
 export const pronunciationScoreJsonSchema = {
   type: "object",
   properties: {
@@ -32,6 +41,21 @@ export const pronunciationScoreJsonSchema = {
         hint: { type: "string", description: "Short English gloss" },
       },
       required: ["text", "tts_text", "hint"],
+      additionalProperties: false,
+    },
+    speaker: {
+      type: "object",
+      description: "Voice metadata inferred from the recording",
+      properties: {
+        accent: { type: "string" },
+        age_range: { type: "string" },
+        gender: {
+          type: "string",
+          enum: ["male", "female", "unsure"],
+        },
+        notes: { type: "string" },
+      },
+      required: ["accent", "age_range", "gender", "notes"],
       additionalProperties: false,
     },
     meter: {
@@ -71,32 +95,58 @@ export const pronunciationScoreJsonSchema = {
         additionalProperties: false,
       },
     },
-    speaker: {
-      type: "object",
-      description: "Voice metadata inferred from the recording",
-      properties: {
-        accent: { type: "string" },
-        age_range: { type: "string" },
-        gender: {
-          type: "string",
-          enum: ["male", "female", "unsure"],
-        },
-        notes: { type: "string" },
-      },
-      required: ["accent", "age_range", "gender", "notes"],
-      additionalProperties: false,
-    },
   },
   required: [
     "overall_score",
     "coaching",
     "transcript",
     "reply",
+    "speaker",
     "meter",
     "goal_achieved",
     "words",
     "next_sentences",
-    "speaker",
   ],
   additionalProperties: false,
 } as const
+
+export function isCharacterReply(value: unknown): value is CharacterReply {
+  if (!value || typeof value !== "object") return false
+  const reply = value as Record<string, unknown>
+  return (
+    typeof reply.text === "string" &&
+    typeof reply.tts_text === "string" &&
+    typeof reply.hint === "string"
+  )
+}
+
+export function isSpeakerProfile(value: unknown): value is SpeakerProfile {
+  if (!value || typeof value !== "object") return false
+  const speaker = value as Record<string, unknown>
+  return (
+    typeof speaker.accent === "string" &&
+    typeof speaker.age_range === "string" &&
+    typeof speaker.gender === "string" &&
+    typeof speaker.notes === "string"
+  )
+}
+
+export function parseScore(content: string): PronunciationScore {
+  const parsed = JSON.parse(content) as PronunciationScore
+
+  if (
+    typeof parsed.overall_score !== "number" ||
+    typeof parsed.coaching !== "string" ||
+    typeof parsed.transcript !== "string" ||
+    !isCharacterReply(parsed.reply) ||
+    typeof parsed.meter !== "number" ||
+    typeof parsed.goal_achieved !== "boolean" ||
+    !Array.isArray(parsed.words) ||
+    !Array.isArray(parsed.next_sentences) ||
+    !isSpeakerProfile(parsed.speaker)
+  ) {
+    throw new Error("Invalid score response shape")
+  }
+
+  return parsed
+}
