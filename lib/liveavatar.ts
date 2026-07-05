@@ -8,10 +8,11 @@ export const DEFAULT_LIVE_AVATAR_ID = "65f9e3c9-d48b-4118-b73a-4ae2e3cbb8f0"
 export const SANDBOX_AVATAR_ID = "dd73ea75-1218-4ef3-92ce-606d5f7fbc0a"
 
 /**
- * Provider-level safety cap per session (seconds). Not surfaced in the UI —
- * idle pausing (below) is what actually bounds credit usage.
+ * Provider-level safety cap per session (seconds). 300 is the maximum
+ * LiveAvatar allows. Not surfaced in the UI — idle pausing (below) is what
+ * actually bounds credit usage; hitting this cap just pauses + re-wakes.
  */
-export const LIVE_AVATAR_MAX_SESSION_SECONDS = 600
+export const LIVE_AVATAR_MAX_SESSION_SECONDS = 300
 
 /** Pause the avatar session after this much idle time (no speech). */
 export const LIVE_AVATAR_IDLE_PAUSE_SECONDS = 45
