@@ -1,15 +1,27 @@
 export type ChromaKeyOptions = {
-  minHue: number
-  maxHue: number
-  minSaturation: number
-  threshold: number
+  /**
+   * green−blue difference (0–255) at/below which a pixel is treated as pure
+   * foreground and kept fully opaque.
+   */
+  keyLow: number
+  /**
+   * green−blue difference at/above which a pixel is treated as background and
+   * made fully transparent. Between keyLow and keyHigh alpha ramps smoothly.
+   */
+  keyHigh: number
+  /** 0–1: how strongly to neutralise residual green/yellow spill. */
+  despill: number
 }
 
+// Keying on (green − blue) instead of a green-only hue test is what makes this
+// robust to lighting: a warm-lit green screen drifts toward yellow-green (red
+// rises to ~green), which defeats a "green must beat red" test, but blue stays
+// low in BOTH green and yellow-green — while skin, hair, and clothing keep blue
+// much closer to green, so they survive the key.
 export const DEFAULT_CHROMA_KEY_OPTIONS: ChromaKeyOptions = {
-  minHue: 60,
-  maxHue: 180,
-  minSaturation: 0.1,
-  threshold: 1.0,
+  keyLow: 55,
+  keyHigh: 125,
+  despill: 1,
 }
 
 export function applyChromaKey(
@@ -22,55 +34,49 @@ export function applyChromaKey(
     alpha: true,
   })
 
-  if (!ctx || sourceVideo.readyState < 2) return
+  const width = sourceVideo.videoWidth
+  const height = sourceVideo.videoHeight
 
-  targetCanvas.width = sourceVideo.videoWidth
-  targetCanvas.height = sourceVideo.videoHeight
+  // Guard against the first frames, where the stream reports 0×0 and drawing
+  // would blank the canvas — a common source of the "sometimes bad" flashes.
+  if (!ctx || sourceVideo.readyState < 2 || width === 0 || height === 0) return
 
-  ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height)
-  ctx.drawImage(sourceVideo, 0, 0, targetCanvas.width, targetCanvas.height)
+  targetCanvas.width = width
+  targetCanvas.height = height
 
-  const imageData = ctx.getImageData(0, 0, targetCanvas.width, targetCanvas.height)
+  ctx.clearRect(0, 0, width, height)
+  ctx.drawImage(sourceVideo, 0, 0, width, height)
+
+  const imageData = ctx.getImageData(0, 0, width, height)
   const data = imageData.data
+
+  const { keyLow, keyHigh, despill } = options
+  const range = keyHigh - keyLow || 1
 
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i] as number
     const g = data[i + 1] as number
     const b = data[i + 2] as number
 
-    const max = Math.max(r, g, b)
-    const min = Math.min(r, g, b)
-    const delta = max - min
+    const diff = g - b
 
-    let h = 0
-    if (delta === 0) {
-      h = 0
-    } else if (max === r) {
-      h = ((g - b) / delta) % 6
-    } else if (max === g) {
-      h = (b - r) / delta + 2
-    } else {
-      h = (r - g) / delta + 4
+    if (diff <= keyLow) {
+      // Foreground. Gently suppress any pure-green spill (green above BOTH red
+      // and blue); yellow-tinted skin has red ≥ green, so it stays untouched.
+      const spill = g - Math.max(r, b)
+      if (spill > 0) data[i + 1] = g - spill * despill * 0.5
+      continue
     }
-    h = Math.round(h * 60)
-    if (h < 0) h += 360
 
-    const s = max === 0 ? 0 : delta / max
-    const v = max / 255
-
-    const isGreen =
-      h >= options.minHue &&
-      h <= options.maxHue &&
-      s > options.minSaturation &&
-      v > 0.15 &&
-      g > r * options.threshold &&
-      g > b * options.threshold
-
-    if (isGreen) {
-      const greenness = (g - Math.max(r, b)) / (g || 1)
-      const alphaValue = Math.max(0, 1 - greenness * 4)
-      data[i + 3] = alphaValue < 0.2 ? 0 : Math.round(alphaValue * 255)
+    if (diff >= keyHigh) {
+      data[i + 3] = 0
+      continue
     }
+
+    // Fringe: ramp alpha and pull green toward blue to kill the coloured halo.
+    const t = (diff - keyLow) / range
+    data[i + 3] = Math.round((1 - t) * 255)
+    data[i + 1] = Math.round(g - (g - b) * t * despill)
   }
 
   ctx.putImageData(imageData, 0, 0)

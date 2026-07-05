@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "bun test lib/tts.test.ts lib/score-stream.test.ts",
+    "test": "bun test lib/tts.test.ts lib/score-stream.test.ts lib/chroma-key.test.ts",
     "eval:tts": "bun scripts/tts.eval.ts",
     "generate:training-pdfs": "bun scripts/generate-training-pdfs.ts",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
