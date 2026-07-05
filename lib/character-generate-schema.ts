@@ -5,18 +5,81 @@ import {
   validateGeneratedLiveAvatarId,
 } from "@/lib/liveavatar"
 
+const openingLineSchema = {
+  type: "object",
+  properties: {
+    text: { type: "string", description: "Character's first line in the target language" },
+    hint: { type: "string", description: "Short English gloss" },
+  },
+  required: ["text", "hint"],
+  additionalProperties: false,
+} as const
+
+const startersSchema = {
+  type: "array",
+  description: "Exactly 3 example sentences the user could say to start or continue",
+  minItems: 3,
+  maxItems: 3,
+  items: {
+    type: "object",
+    properties: {
+      text: { type: "string" },
+      hint: { type: "string" },
+    },
+    required: ["text", "hint"],
+    additionalProperties: false,
+  },
+} as const
+
+export const generatedLevelJsonSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "Short level title shown on the track" },
+    subtitle: { type: "string", description: "One-line hook for this practice step" },
+    goal: { type: "string", description: "What the user must achieve to win this level" },
+    meterLabel: { type: "string", description: "Legacy field; UI always shows Progress" },
+    winMessage: { type: "string", description: "Celebration message when goal is achieved" },
+    personaOverlay: {
+      type: "string",
+      description:
+        "Scene-specific instructions appended to the base persona for this level. Include progress rules (0-100), goal_achieved at progress 100, and meter behavior.",
+    },
+    openingLine: openingLineSchema,
+    starters: startersSchema,
+  },
+  required: [
+    "title",
+    "subtitle",
+    "goal",
+    "meterLabel",
+    "winMessage",
+    "personaOverlay",
+    "openingLine",
+    "starters",
+  ],
+  additionalProperties: false,
+} as const
+
+export type GeneratedLevelPayload = {
+  title: string
+  subtitle: string
+  goal: string
+  meterLabel: string
+  winMessage: string
+  personaOverlay: string
+  openingLine: { text: string; hint: string }
+  starters: Array<{ text: string; hint: string }>
+}
+
 export const generatedCharacterJsonSchema = {
   type: "object",
   properties: {
-    title: { type: "string", description: "Short scenario title, e.g. The Hotel Clerk" },
-    tagline: { type: "string", description: "One-line hook for the scenario card" },
-    goal: { type: "string", description: "What the user must achieve to win" },
-    meterLabel: { type: "string", description: "Legacy field; UI always shows Progress" },
-    winMessage: { type: "string", description: "Celebration message when goal is achieved" },
+    title: { type: "string", description: "Character name, e.g. The Hotel Clerk" },
+    tagline: { type: "string", description: "One-line hook for the character card" },
     persona: {
       type: "string",
       description:
-        "Full character instructions including {characterGender} placeholder, age range, progress rules (0-100, win at 100), goal_achieved at 100, and pronunciation scoring. Match the style of existing roleplay scenarios.",
+        "Base character instructions including {characterGender} placeholder, age range, short spoken lines only, and instruction to score pronunciation. Level-specific meter rules go in each level's personaOverlay.",
     },
     voice: {
       type: "object",
@@ -44,28 +107,6 @@ export const generatedCharacterJsonSchema = {
       required: ["ageRange", "gender", "tone"],
       additionalProperties: false,
     },
-    openingLine: {
-      type: "object",
-      properties: {
-        text: { type: "string", description: "Character's first line in the target language" },
-        hint: { type: "string", description: "Short English gloss" },
-      },
-      required: ["text", "hint"],
-      additionalProperties: false,
-    },
-    starters: {
-      type: "array",
-      description: "Exactly 3 example sentences the user could say to start or continue",
-      items: {
-        type: "object",
-        properties: {
-          text: { type: "string" },
-          hint: { type: "string" },
-        },
-        required: ["text", "hint"],
-        additionalProperties: false,
-      },
-    },
     imagePrompt: {
       type: "string",
       description:
@@ -77,29 +118,19 @@ export const generatedCharacterJsonSchema = {
       description:
         "Pick the LiveAvatar id that best matches the character persona (gender, profession, vibe).",
     },
+    levels: {
+      type: "array",
+      description: "Ordered practice steps on the learning track, easier to harder",
+      items: generatedLevelJsonSchema,
+    },
   },
-  required: [
-    "title",
-    "tagline",
-    "goal",
-    "meterLabel",
-    "winMessage",
-    "persona",
-    "voice",
-    "openingLine",
-    "starters",
-    "imagePrompt",
-    "liveAvatarId",
-  ],
+  required: ["title", "tagline", "persona", "voice", "imagePrompt", "liveAvatarId", "levels"],
   additionalProperties: false,
 } as const
 
 export type GeneratedCharacterPayload = {
   title: string
   tagline: string
-  goal: string
-  meterLabel: string
-  winMessage: string
   persona: string
   voice: {
     ageRange: string
@@ -107,31 +138,25 @@ export type GeneratedCharacterPayload = {
     voices?: { female?: string; male?: string; default?: string }
     tone: string
   }
-  openingLine: { text: string; hint: string }
-  starters: Array<{ text: string; hint: string }>
   imagePrompt: string
   liveAvatarId: string
+  levels: GeneratedLevelPayload[]
 }
 
-const characterObjectSchema = {
-  type: "object",
-  properties: generatedCharacterJsonSchema.properties,
-  required: generatedCharacterJsonSchema.required,
-  additionalProperties: false,
-} as const
-
-export function buildGeneratedCharactersBatchSchema(count: number) {
+export function buildGeneratedCharacterSchema(levelCount: number) {
   return {
     type: "object",
     properties: {
-      characters: {
+      ...generatedCharacterJsonSchema.properties,
+      levels: {
         type: "array",
-        minItems: count,
-        maxItems: count,
-        items: characterObjectSchema,
+        description: "Ordered practice steps on the learning track, easier to harder",
+        minItems: levelCount,
+        maxItems: levelCount,
+        items: generatedLevelJsonSchema,
       },
     },
-    required: ["characters"],
+    required: generatedCharacterJsonSchema.required,
     additionalProperties: false,
   } as const
 }
@@ -146,32 +171,67 @@ function isGeneratedVoiceMap(value: unknown) {
   )
 }
 
+function isStarter(value: unknown): value is { text: string; hint: string } {
+  if (!value || typeof value !== "object") return false
+  const starter = value as { text?: unknown; hint?: unknown }
+  return typeof starter.text === "string" && typeof starter.hint === "string"
+}
+
+export function validateGeneratedLevelPayload(
+  parsed: unknown,
+): parsed is GeneratedLevelPayload {
+  if (!parsed || typeof parsed !== "object") return false
+  const level = parsed as GeneratedLevelPayload
+
+  return (
+    typeof level.title === "string" &&
+    typeof level.subtitle === "string" &&
+    typeof level.goal === "string" &&
+    typeof level.meterLabel === "string" &&
+    typeof level.winMessage === "string" &&
+    typeof level.personaOverlay === "string" &&
+    !!level.openingLine &&
+    typeof level.openingLine.text === "string" &&
+    typeof level.openingLine.hint === "string" &&
+    Array.isArray(level.starters) &&
+    level.starters.length >= 3 &&
+    level.starters.every(isStarter)
+  )
+}
+
 export function validateGeneratedCharacterPayload(
   parsed: unknown,
+  levelCount?: number,
 ): parsed is GeneratedCharacterPayload {
   if (!parsed || typeof parsed !== "object") return false
   const payload = parsed as GeneratedCharacterPayload
 
-  return (
-    typeof payload.title === "string" &&
-    typeof payload.tagline === "string" &&
-    typeof payload.goal === "string" &&
-    typeof payload.meterLabel === "string" &&
-    typeof payload.winMessage === "string" &&
-    typeof payload.persona === "string" &&
-    !!payload.voice &&
-    typeof payload.voice.ageRange === "string" &&
-    ["male", "female", "random", "opposite-speaker"].includes(payload.voice.gender) &&
-    (payload.voice.voices === undefined || isGeneratedVoiceMap(payload.voice.voices)) &&
-    typeof payload.voice.tone === "string" &&
-    !!payload.openingLine &&
-    typeof payload.openingLine.text === "string" &&
-    typeof payload.openingLine.hint === "string" &&
-    Array.isArray(payload.starters) &&
-    payload.starters.length >= 3 &&
-    typeof payload.imagePrompt === "string" &&
-    typeof payload.liveAvatarId === "string"
-  )
+  if (
+    typeof payload.title !== "string" ||
+    typeof payload.tagline !== "string" ||
+    typeof payload.persona !== "string" ||
+    !payload.voice ||
+    typeof payload.voice.ageRange !== "string" ||
+    !["male", "female", "random", "opposite-speaker"].includes(payload.voice.gender) ||
+    (payload.voice.voices !== undefined && !isGeneratedVoiceMap(payload.voice.voices)) ||
+    typeof payload.voice.tone !== "string" ||
+    typeof payload.imagePrompt !== "string" ||
+    typeof payload.liveAvatarId !== "string" ||
+    !Array.isArray(payload.levels) ||
+    payload.levels.length === 0
+  ) {
+    return false
+  }
+
+  if (levelCount !== undefined && payload.levels.length !== levelCount) {
+    return false
+  }
+
+  return payload.levels.every(validateGeneratedLevelPayload)
+}
+
+export function levelIdForIndex(index: number): string {
+  return index === 0 ? "main" : `level-${index + 1}`
 }
 
 export function generatedPayloadToCharacter(
@@ -192,22 +252,22 @@ export function generatedPayloadToCharacter(
     persona: payload.persona,
     primaryLanguageId: opts.languageId,
     sourceLabel: opts.sourceLabel,
-    levels: [
-      {
-        kind: "voice",
-        id: "main",
-        title: payload.title,
-        subtitle: payload.tagline,
-        goal: payload.goal,
-        meterLabel: payload.meterLabel,
-        winMessage: payload.winMessage,
-        content: {
-          [opts.languageId]: {
-            openingLine: payload.openingLine,
-            starters: payload.starters,
-          },
+    levels: payload.levels.map((level, index) => ({
+      kind: "voice" as const,
+      id: levelIdForIndex(index),
+      title: level.title,
+      subtitle: level.subtitle,
+      mode: "roleplay" as const,
+      goal: level.goal,
+      meterLabel: level.meterLabel,
+      winMessage: level.winMessage,
+      personaOverlay: level.personaOverlay,
+      content: {
+        [opts.languageId]: {
+          openingLine: level.openingLine,
+          starters: level.starters,
         },
       },
-    ],
+    })),
   }
 }

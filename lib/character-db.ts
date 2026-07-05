@@ -215,3 +215,13 @@ export async function getWorkspace(
   if (error) throw error
   return (data as WorkspaceRow | null) ?? null
 }
+
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const supabase = getSupabaseBrowserClient()
+  const { error } = await supabase
+    .from("user_workspaces")
+    .delete()
+    .eq("id", workspaceId)
+
+  if (error) throw error
+}

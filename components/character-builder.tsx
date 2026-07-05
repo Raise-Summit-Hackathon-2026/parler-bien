@@ -70,7 +70,7 @@ export function CharacterBuilder({
   const [prompt, setPrompt] = useState("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState("")
-  const [characterCount, setCharacterCount] = useState(1)
+  const [levelCount, setLevelCount] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -120,7 +120,7 @@ export function CharacterBuilder({
           fileName,
           sourceLabel,
           workspaceId,
-          characterCount,
+          levelCount,
         }),
       })
 
@@ -291,27 +291,28 @@ export function CharacterBuilder({
 
           <div className="space-y-3 rounded-2xl border bg-muted/20 px-4 py-4">
             <div className="flex items-center justify-between gap-3">
-              <label htmlFor="character-count" className="text-sm font-medium">
-                Characters to generate
+              <label htmlFor="level-count" className="text-sm font-medium">
+                Practice steps
               </label>
               <span className="text-sm font-semibold tabular-nums">
-                {characterCount} {characterCount === 1 ? "character" : "characters"}
+                {levelCount} {levelCount === 1 ? "step" : "steps"}
               </span>
             </div>
             <Slider
-              id="character-count"
+              id="level-count"
               min={1}
               max={10}
               step={1}
-              value={[characterCount]}
+              value={[levelCount]}
               onValueChange={(value) => {
                 const next = Array.isArray(value) ? value[0] : value
-                setCharacterCount(next ?? 1)
+                setLevelCount(next ?? 1)
               }}
               disabled={isGenerating}
             />
             <p className="text-xs text-muted-foreground">
-              Each generated character becomes its own practice partner
+              Each step becomes a node on the practice track, progressing from
+              easier to harder
               {workspaceContext ? " in this workspace" : ""}.
             </p>
           </div>
@@ -347,7 +348,7 @@ export function CharacterBuilder({
             ) : (
               <>
                 <Sparkles />
-                Generate {characterCount === 1 ? "character" : `${characterCount} characters`}
+                Generate character
               </>
             )}
           </Button>

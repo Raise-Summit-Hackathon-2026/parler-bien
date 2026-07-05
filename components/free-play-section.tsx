@@ -25,20 +25,26 @@ export function FreePlaySection() {
   const play = (id: string) => router.push(`/play/${encodeURIComponent(id)}`)
 
   return (
-    <section id="free-play" className="border-t">
+    <section
+      id="free-play"
+      className="border-t bg-background text-foreground dark:bg-[#05070a] dark:text-white"
+    >
       <div className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-10 space-y-3">
-          <h2 className="text-2xl font-semibold tracking-tight">Free play</h2>
-          <p className="text-muted-foreground">
-            Every card is an AI character built with the same engine you can use
-            below. Language and accent live in settings (top right).
+          <h2 className="text-2xl font-semibold tracking-tight">All scenarios</h2>
+          <p className="max-w-2xl text-muted-foreground dark:text-white/55">
+            Pick an AI character, step into their scene, and role-play the
+            conversation out loud. Language and accent live in settings (top
+            right).
           </p>
         </div>
 
         {CATEGORIES.map((category) => (
           <div key={category.id} className="mb-10">
             <h3 className="text-lg font-semibold tracking-tight">{category.label}</h3>
-            <p className="mb-4 text-sm text-muted-foreground">{category.tagline}</p>
+            <p className="mb-4 text-sm text-muted-foreground dark:text-white/50">
+              {category.tagline}
+            </p>
             <CharacterGrid
               characters={builtInCharactersByCategory(category.id)}
               completedIds={completed}
@@ -50,8 +56,9 @@ export function FreePlaySection() {
 
         <div className="mb-10">
           <h3 className="text-lg font-semibold tracking-tight">Yours</h3>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Characters you created — from a prompt, PDF, or course upload.
+          <p className="mb-4 text-sm text-muted-foreground dark:text-white/50">
+            Role-playing characters you created from a prompt, PDF, or course
+            upload.
           </p>
           <CharacterGrid
             characters={yours}

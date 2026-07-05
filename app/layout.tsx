@@ -1,12 +1,12 @@
 import { Geist, Geist_Mono } from "next/font/google"
 import Script from "next/script"
 
-import "./globals.css"
 import { LanguageProvider } from "@/components/language-provider"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
+import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -43,7 +43,12 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        geist.variable
+      )}
     >
       <body className="flex min-h-svh flex-col">
         <Script id="theme-init" strategy="beforeInteractive">

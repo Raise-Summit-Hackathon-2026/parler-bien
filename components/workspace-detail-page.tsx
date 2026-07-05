@@ -6,6 +6,7 @@ import {
   Link2,
   Loader2,
   MailPlus,
+  Trash2,
   Users,
 } from "lucide-react"
 import Link from "next/link"
@@ -18,12 +19,14 @@ import { rowToCharacter } from "@/lib/character-compat"
 import {
   createShareLink,
   deleteCharacter,
+  deleteWorkspace,
   getActiveShareLink,
   getWorkspace,
   inviteWorkspaceMember,
   listWorkspaceMembers,
   listWorkspaceCharacters,
 } from "@/lib/character-db"
+import { getSupabaseBrowserClient } from "@/lib/supabase"
 import type {
   CharacterRow,
   WorkspaceMemberWithEmail,
@@ -44,10 +47,18 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
   const [membersOpen, setMembersOpen] = useState(false)
   const [busy, setBusy] = useState(true)
   const [inviteBusy, setInviteBusy] = useState(false)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
   const [error, setError] = useState("")
   const [status, setStatus] = useState("")
 
   const load = useCallback(async () => {
+    const supabase = getSupabaseBrowserClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     const [ws, chars, token, roster] = await Promise.all([
       getWorkspace(workspaceId),
       listWorkspaceCharacters(workspaceId),
@@ -58,6 +69,7 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
     setCharacters(chars)
     setShareToken(token)
     setMembers(roster)
+    setIsOwner(!!user && !!ws && user.id === ws.owner_id)
   }, [workspaceId])
 
   useEffect(() => {
@@ -118,6 +130,24 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
     setCharacters((current) => current.filter((c) => c.id !== characterId))
   }
 
+  async function handleDeleteWorkspace() {
+    setDeleteBusy(true)
+    setError("")
+    setStatus("")
+
+    try {
+      await deleteWorkspace(workspaceId)
+      router.push("/workspaces")
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete workspace",
+      )
+      setConfirmDelete(false)
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
   if (busy && !workspace) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
@@ -161,11 +191,58 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
                 "Add characters for your team to practice together."}
             </p>
           </div>
-          <Button variant="outline" onClick={() => void handleShare()}>
-            <Link2 />
-            Copy invite link
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void handleShare()}>
+              <Link2 />
+              Copy invite link
+            </Button>
+            {isOwner && !confirmDelete && (
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  setConfirmDelete(true)
+                  setError("")
+                  setStatus("")
+                }}
+              >
+                <Trash2 />
+                Delete workspace
+              </Button>
+            )}
+          </div>
         </div>
+
+        {isOwner && confirmDelete && (
+          <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+            <h2 className="font-semibold text-destructive">Delete workspace?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This permanently deletes &ldquo;{workspace.name}&rdquo;, all shared
+              characters, members, and invite links. This cannot be undone.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                variant="destructive"
+                disabled={deleteBusy}
+                onClick={() => void handleDeleteWorkspace()}
+              >
+                {deleteBusy ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Trash2 />
+                )}
+                Delete permanently
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={deleteBusy}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </section>
+        )}
 
         {(error || status) && (
           <p

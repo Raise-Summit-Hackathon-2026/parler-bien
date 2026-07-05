@@ -1,28 +1,36 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { Bot, Loader2, MessageCircle, Mic, Play, RotateCcw, Send, Square } from "lucide-react"
+import {
+  Bot,
+  Loader2,
+  MessageCircle,
+  Mic,
+  Play,
+  RotateCcw,
+  Send,
+  Square,
+} from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 
 import { AvatarStage } from "@/components/avatar-stage"
-import { LevelStrip } from "@/components/level-strip"
 import { useLanguage } from "@/components/language-provider"
-import { SessionShell } from "@/components/session-shell"
+import { LevelStrip } from "@/components/level-strip"
 import {
   ExampleSuggestionCard,
   MeterBar,
   WordChip,
   scoreColor,
 } from "@/components/session-hud"
-import { PROGRESS_LABEL } from "@/lib/meter"
-import { Waveform } from "@/components/waveform"
+import { SessionShell } from "@/components/session-shell"
 import { Button } from "@/components/ui/button"
+import { Waveform } from "@/components/waveform"
 import { useAudioRecorder } from "@/hooks/use-audio-recorder"
 import { useConversation } from "@/hooks/use-conversation"
 import { useLiveAvatar } from "@/hooks/use-live-avatar"
 import {
-  characterLevelScenario,
   categoryScoresPronunciation,
+  characterLevelScenario,
   getScenarioContent,
   getScenarioFallbackLanguageId,
   resolveCharacterGender,
@@ -31,11 +39,12 @@ import {
 import { isBuiltInCharacterId } from "@/lib/characters/index"
 import { markScenarioCompleted } from "@/lib/completions"
 import { markLevelCompleted } from "@/lib/level-progress"
+import { resolveLiveAvatarIdForPractice } from "@/lib/liveavatar"
 import {
   getLiveAvatarEnabledPreference,
   setLiveAvatarEnabledPreference,
 } from "@/lib/liveavatar-prefs"
-import { resolveLiveAvatarIdForPractice } from "@/lib/liveavatar"
+import { PROGRESS_LABEL } from "@/lib/meter"
 import { pickRandomSentences } from "@/lib/sentences"
 import type { ConversationTurn, SentenceSuggestion } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -56,11 +65,13 @@ export type PracticeSessionProps = {
 
 function ConversationLog({
   history,
+  characterName,
   onPlayCharacter,
   disabled,
   endRef,
 }: {
   history: ConversationTurn[]
+  characterName: string
   onPlayCharacter: (text: string) => void
   disabled: boolean
   endRef: RefObject<HTMLDivElement | null>
@@ -103,7 +114,9 @@ function ConversationLog({
               <div
                 className={cn(
                   "mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase",
-                  isUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                  isUser
+                    ? "text-primary-foreground/70"
+                    : "text-muted-foreground"
                 )}
               >
                 {isUser ? (
@@ -111,7 +124,7 @@ function ConversationLog({
                 ) : (
                   <Bot className="size-3" />
                 )}
-                {isUser ? "You" : "Role"}
+                {isUser ? "You" : characterName}
               </div>
               <p>{turn.text}</p>
             </div>
@@ -131,6 +144,67 @@ function formatRecordingDuration(durationMs: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
+function SessionProgressRail({
+  activeStep,
+}: {
+  activeStep: "listen" | "turn" | "feedback" | "improve" | "next"
+}) {
+  const steps = [
+    { id: "listen", label: "Listen" },
+    { id: "turn", label: "Your turn" },
+    { id: "feedback", label: "Feedback" },
+    { id: "improve", label: "Improve" },
+    { id: "next", label: "Next" },
+  ] as const
+  const activeIndex = steps.findIndex((step) => step.id === activeStep)
+
+  return (
+    <div className="border-y bg-muted/40 px-5 py-3 dark:border-white/10 dark:bg-[#111318]/95">
+      <div className="relative mx-auto grid max-w-3xl grid-cols-5 gap-2">
+        <div className="absolute top-2.5 right-[10%] left-[10%] h-px bg-border dark:bg-white/15" />
+        <div
+          className="absolute top-2.5 left-[10%] h-px bg-lime-300/80 transition-all duration-500"
+          style={{
+            width:
+              activeIndex <= 0
+                ? "0%"
+                : `${Math.min(80, (activeIndex / (steps.length - 1)) * 80)}%`,
+          }}
+        />
+        {steps.map((step, index) => {
+          const active = index === activeIndex
+          const complete = index < activeIndex
+
+          return (
+            <div key={step.id} className="relative flex flex-col items-center gap-2">
+              <span
+                className={cn(
+                  "z-10 size-5 rounded-full border transition-colors",
+                  active
+                    ? "border-lime-600 bg-lime-600 shadow-[0_0_18px_rgba(101,163,13,0.25)] dark:border-lime-200 dark:bg-lime-300 dark:shadow-[0_0_18px_rgba(190,242,100,0.45)]"
+                    : complete
+                      ? "border-lime-600/70 bg-lime-600/70 dark:border-lime-300/70 dark:bg-lime-300/70"
+                      : "border-border bg-muted dark:border-white/20 dark:bg-[#2a2d33]"
+                )}
+              />
+              <span
+                className={cn(
+                  "text-[10px] font-medium",
+                  active || complete
+                    ? "text-foreground dark:text-white"
+                    : "text-muted-foreground dark:text-white/45"
+                )}
+              >
+                {step.label}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function PracticeSession({
   character,
   levelIndex,
@@ -144,13 +218,13 @@ export function PracticeSession({
 
   const scenario = useMemo(
     () => characterLevelScenario(character, levelIndex, languageId),
-    [character, levelIndex, languageId],
+    [character, levelIndex, languageId]
   )
   // The language actually practiced: falls back to the scenario's own language
   // when it has no content for the globally selected one.
   const practiceLanguageId = useMemo(
     () => getScenarioFallbackLanguageId(scenario, languageId),
-    [scenario, languageId],
+    [scenario, languageId]
   )
 
   useEffect(() => {
@@ -171,19 +245,21 @@ export function PracticeSession({
 
   const scenarioContent = getScenarioContent(scenario, practiceLanguageId)
 
-  const [avatarEnabled, setAvatarEnabled] = useState(getLiveAvatarEnabledPreference)
+  const [avatarEnabled, setAvatarEnabled] = useState(
+    getLiveAvatarEnabledPreference
+  )
   const [avatarRestartKey, setAvatarRestartKey] = useState(0)
 
   const genderSeed = `${character.id}:${levelIndex}`
 
   const baseCharacterGender = useMemo(
     () => resolveCharacterGender(scenario, undefined, genderSeed),
-    [scenario, genderSeed],
+    [scenario, genderSeed]
   )
 
   const liveAvatarId = useMemo(
     () => resolveLiveAvatarIdForPractice(scenario, baseCharacterGender),
-    [scenario, baseCharacterGender],
+    [scenario, baseCharacterGender]
   )
 
   const {
@@ -204,10 +280,8 @@ export function PracticeSession({
 
   const avatarSink = useMemo(
     () =>
-      avatarEnabled && liveAvatarReady
-        ? { isReady: true, speakText }
-        : null,
-    [avatarEnabled, liveAvatarReady, speakText],
+      avatarEnabled && liveAvatarReady ? { isReady: true, speakText } : null,
+    [avatarEnabled, liveAvatarReady, speakText]
   )
 
   const {
@@ -258,7 +332,7 @@ export function PracticeSession({
       isCoachMode
         ? pickRandomSentences(EXAMPLE_COUNT, practiceLanguageId)
         : scenarioContent.starters,
-    [isCoachMode, practiceLanguageId, scenarioContent.starters],
+    [isCoachMode, practiceLanguageId, scenarioContent.starters]
   )
 
   useEffect(() => {
@@ -288,7 +362,7 @@ export function PracticeSession({
     fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 })
     fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 })
     fire(0.1, { spread: 120, startVelocity: 45 })
-  }, [hasWon, character.id])
+  }, [hasWon, character.id, character.levels, levelIndex])
 
   const displayError = recorderError ?? error ?? liveAvatarError
   const isCharacterSpeaking = isSpeaking || liveAvatarSpeaking
@@ -298,6 +372,15 @@ export function PracticeSession({
   const waveformActive = isRecording || isCharacterSpeaking
 
   const displayedPhrase = score?.transcript ?? targetPhrase
+  const activeStep = hasWon
+    ? "next"
+    : score
+      ? "feedback"
+      : isRecording
+        ? "turn"
+        : conversationStarted || isCharacterSpeaking
+          ? "improve"
+          : "listen"
 
   const selectedIndex = useMemo(() => {
     if (!score || !selectedWord) return -1
@@ -306,7 +389,7 @@ export function PracticeSession({
 
   useEffect(() => {
     if (!pendingRecord || isCharacterSpeaking) return
-    setPendingRecord(false)
+    queueMicrotask(() => setPendingRecord(false))
     beginLiveTurn()
     void startRecording()
   }, [pendingRecord, isCharacterSpeaking, beginLiveTurn, startRecording])
@@ -363,7 +446,8 @@ export function PracticeSession({
       : []
 
   const exampleSuggestion = isCoachMode ? (suggestionList[0] ?? null) : null
-  const liveHint = isLiveConversation && suggestionList[0] ? suggestionList[0] : null
+  const liveHint =
+    isLiveConversation && suggestionList[0] ? suggestionList[0] : null
   const builtInCharacter = isBuiltInCharacterId(character.id)
 
   function handleToggleAvatar(next: boolean) {
@@ -376,24 +460,31 @@ export function PracticeSession({
 
   return (
     <SessionShell onBack={onBack} backLabel={backLabel}>
-      <div className="shrink-0 space-y-1 py-1.5">
+      <div className="shrink-0 space-y-1 pb-4 pt-1 text-center">
         {showLevelStrip && levelTotal > 1 ? (
           <LevelStrip levels={character.levels} levelIndex={levelIndex} />
         ) : !showLevelStrip && levelTotal > 1 ? (
-          <div className="space-y-0.5 text-center">
-            <p className="text-xs font-medium text-muted-foreground">
+          <div className="space-y-1 text-center">
+            <p className="text-xs font-medium text-lime-700 dark:text-lime-300/85">
               Level {levelIndex + 1} · {character.levels[levelIndex]?.title}
             </p>
           </div>
         ) : (
-          <div className="space-y-0.5 text-center">
-            <h1 className="text-lg font-semibold leading-tight">{scenario.title}</h1>
+          <div className="space-y-1 text-center">
+            <h1 className="text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
+              {scenario.title}
+            </h1>
           </div>
         )}
-        <p className="line-clamp-2 text-center text-xs text-muted-foreground">
+        {levelTotal > 1 && (
+            <h1 className="text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
+            {scenario.title}
+          </h1>
+        )}
+        <p className="mx-auto line-clamp-2 max-w-2xl text-sm text-muted-foreground dark:text-white/60">
           {hasWon
             ? scenario.winMessage
-            : score?.coaching ??
+            : (score?.coaching ??
               (isLiveConversation
                 ? conversationStarted
                   ? isRecording
@@ -404,11 +495,11 @@ export function PracticeSession({
                   ? "Tap the mic when ready"
                   : isOpenMode
                     ? "Share what comes to mind"
-                    : scenario.tagline)}
+                    : scenario.tagline))}
         </p>
       </div>
 
-      <div className="flex shrink-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="mx-auto flex w-full max-w-3xl shrink-0 flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl shadow-black/10 ring-1 ring-border/50 dark:border-white/10 dark:bg-[#16181d]/95 dark:text-white dark:shadow-black/50 dark:ring-white/5">
         <AvatarStage
           status={liveAvatarStatus}
           attachVideo={attachVideo}
@@ -418,19 +509,28 @@ export function PracticeSession({
           onRestart={() => setAvatarRestartKey((key) => key + 1)}
           scenarioId={builtInCharacter ? character.id : undefined}
           imagePrompt={builtInCharacter ? undefined : character.avatarPrompt}
-          className="aspect-[2/1] max-h-44 w-full shrink-0 rounded-none"
+          className="aspect-3/1 max-h-56 w-full shrink-0 rounded-none"
           overlay
         />
 
-        <div className="flex flex-col p-3.5 sm:p-5">
-          <div className="space-y-1.5">
+        <SessionProgressRail activeStep={activeStep} />
+
+        <div className="flex flex-col p-4 sm:p-5">
+          <div className="space-y-3">
             {showMeter && scenario.goal && !hasWon && (
-              <MeterBar meter={meter} label={PROGRESS_LABEL} goal={scenario.goal} />
+              <div className="rounded-xl border bg-muted/30 p-3 dark:border-white/10 dark:bg-white/3">
+                <MeterBar
+                  meter={meter}
+                  label={PROGRESS_LABEL}
+                  goal={scenario.goal}
+                />
+              </div>
             )}
 
             {(isRoleplayMode || isOpenMode) && history.length > 0 && (
               <ConversationLog
                 history={history}
+                characterName={character.name}
                 onPlayCharacter={handlePlayCharacterTurn}
                 disabled={isRecording || isScoring || isCharacterSpeaking}
                 endRef={chatEndRef}
@@ -438,7 +538,7 @@ export function PracticeSession({
             )}
 
             {hasWon && scenario.winMessage && (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-center">
                 <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                   {scenario.winMessage}
                 </p>
@@ -447,7 +547,12 @@ export function PracticeSession({
                     {continueLabel ?? "Continue"}
                   </Button>
                 ) : (
-                  <Button className="mt-2" size="sm" variant="outline" onClick={reset}>
+                  <Button
+                    className="mt-2"
+                    size="sm"
+                    variant="outline"
+                    onClick={reset}
+                  >
                     <RotateCcw />
                     Play again
                   </Button>
@@ -456,23 +561,43 @@ export function PracticeSession({
             )}
 
             {isCoachMode && displayedPhrase && (
-              <div className="flex items-center justify-center gap-2 text-center">
-                <p className="truncate text-base font-medium">{displayedPhrase}</p>
+              <div className="rounded-xl border border-lime-600/20 bg-lime-600/5 p-4 shadow-inner shadow-black/5 dark:border-lime-300/20 dark:bg-white/3 dark:shadow-black/20">
+                <p className="text-[10px] font-semibold tracking-[0.16em] text-lime-700 uppercase dark:text-lime-300/80">
+                  Try saying
+                </p>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-semibold">
+                      {displayedPhrase}
+                    </p>
+                    {targetPhrase && (
+                      <p className="mt-1 text-sm text-muted-foreground dark:text-white/50">
+                        {scenarioContent.openingLine?.hint}
+                      </p>
+                    )}
+                  </div>
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => speakLine(displayedPhrase, "phrase")}
                   disabled={isRecording || isScoring}
                   aria-label="Hear phrase"
+                  className="shrink-0 hover:bg-muted dark:text-white dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <Play className="size-4 fill-current" />
                 </Button>
+                </div>
               </div>
             )}
 
             {score && !hasWon && showPronunciation && (
               <div className="flex items-center justify-center gap-3">
-                <p className={cn("text-2xl font-semibold tabular-nums", scoreColor(score.overall_score))}>
+                <p
+                  className={cn(
+                    "text-2xl font-semibold tabular-nums",
+                    scoreColor(score.overall_score)
+                  )}
+                >
                   {Math.round(score.overall_score)}
                 </p>
                 {showWordBreakdown && score.words.length > 0 && (
@@ -491,31 +616,37 @@ export function PracticeSession({
             )}
           </div>
 
-          <div className="shrink-0 space-y-1.5 border-t border-border/60 pt-2">
-            <Waveform analyser={waveformAnalyser} active={waveformActive} className="h-10 shrink-0" />
+          <div className="shrink-0 space-y-3 pt-4">
+            <Waveform
+              analyser={waveformAnalyser}
+              active={waveformActive}
+              className="mx-auto h-12 shrink-0"
+            />
 
             {!hasWon && exampleSuggestion && (
               <ExampleSuggestionCard
                 sentence={exampleSuggestion}
-                onSelect={() => pickPhrase(exampleSuggestion.text, { speak: true })}
+                onSelect={() =>
+                  pickPhrase(exampleSuggestion.text, { speak: true })
+                }
               />
             )}
 
             {!hasWon && liveHint && (
-              <p className="rounded-lg bg-muted/40 px-2.5 py-2 text-center text-xs text-muted-foreground">
-                <span className="font-medium text-foreground/80">Ideas: </span>
+              <p className="rounded-lg border bg-muted/30 px-2.5 py-2 text-center text-xs text-muted-foreground dark:border-white/10 dark:bg-white/4 dark:text-white/55">
+                <span className="font-medium text-foreground/80 dark:text-white/80">Ideas: </span>
                 {liveHint.text}
               </p>
             )}
 
             {!hasWon && (
-              <div className="flex shrink-0 flex-col items-center gap-1">
+              <div className="flex shrink-0 flex-col items-center gap-2">
                 {isLiveConversation ? (
                   <Button
                     size="lg"
                     className={cn(
-                      "h-11 min-w-[11rem] rounded-full px-6 shadow-md transition-transform",
-                      isRecording && "bg-destructive hover:bg-destructive/90",
+                      "h-14 min-w-48 rounded-full px-7 shadow-[0_0_28px_rgba(190,242,100,0.22)] transition-transform",
+                      isRecording && "bg-destructive hover:bg-destructive/90"
                     )}
                     onClick={handleLiveConversationPress}
                     disabled={isBusy && !isRecording}
@@ -547,12 +678,15 @@ export function PracticeSession({
                     <Button
                       size="icon-lg"
                       className={cn(
-                        "size-12 rounded-full shadow-md transition-transform",
-                        isRecording && "scale-105 bg-destructive hover:bg-destructive/90",
+                        "size-16 rounded-full shadow-[0_0_32px_rgba(190,242,100,0.26)] transition-transform",
+                        isRecording &&
+                          "scale-105 bg-destructive hover:bg-destructive/90"
                       )}
                       onClick={handleCoachMicPress}
                       disabled={isBusy}
-                      aria-label={isRecording ? "Stop recording" : "Start recording"}
+                      aria-label={
+                        isRecording ? "Stop recording" : "Start recording"
+                      }
                     >
                       {isScoring ? (
                         <Loader2 className="size-5 animate-spin" />
@@ -563,12 +697,16 @@ export function PracticeSession({
                       )}
                     </Button>
                     <p className="text-[11px] text-muted-foreground">
-                      {isScoring ? "Analyzing…" : isRecording ? "Tap to stop" : "Tap to speak"}
+                      {isScoring
+                        ? "Analyzing…"
+                        : isRecording
+                          ? "Tap to stop"
+                          : "Tap to speak"}
                     </p>
                   </>
                 )}
                 {isLiveConversation && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground dark:text-white/45">
                     {isScoring
                       ? "Analyzing…"
                       : isRecording
@@ -579,7 +717,7 @@ export function PracticeSession({
                   </p>
                 )}
                 {isRecording && (
-                  <p className="text-[10px] tabular-nums text-muted-foreground/70">
+                  <p className="text-[10px] text-muted-foreground/80 tabular-nums dark:text-white/40">
                     {formatRecordingDuration(recordingDurationMs)}
                   </p>
                 )}
@@ -587,17 +725,25 @@ export function PracticeSession({
             )}
 
             {displayError && (
-              <p className="text-center text-xs text-destructive">{displayError}</p>
+              <p className="text-center text-xs text-destructive">
+                {displayError}
+              </p>
             )}
 
             {score && !hasWon && showPronunciation && (
-              <Button variant="ghost" size="xs" className="mx-auto" onClick={clearScore}>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="mx-auto"
+                onClick={clearScore}
+              >
                 <RotateCcw className="size-3" />
                 Try again
               </Button>
             )}
           </div>
         </div>
+
       </div>
     </SessionShell>
   )
