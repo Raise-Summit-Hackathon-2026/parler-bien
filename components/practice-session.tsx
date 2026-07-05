@@ -2,17 +2,25 @@
 
 import confetti from "canvas-confetti"
 import {
+  AudioLines,
   Bot,
   Loader2,
-  MessageCircle,
   Mic,
   Play,
   RotateCcw,
   Send,
   ShieldAlert,
   Square,
+  Video,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react"
 
 import { AvatarStage } from "@/components/avatar-stage"
 import { useLanguage } from "@/components/language-provider"
@@ -334,6 +342,9 @@ export function PracticeSession({
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const [pendingRecord, setPendingRecord] = useState(false)
+  // Set while an avatar-mode session is connecting before the opening line —
+  // gates the first line on avatar readiness so it never plays via TTS first.
+  const [pendingStart, setPendingStart] = useState(false)
 
   const examples = useMemo<SentenceSuggestion[]>(
     () =>
@@ -414,6 +425,48 @@ export function PracticeSession({
     void startRecording()
   }, [pendingRecord, isCharacterSpeaking, beginLiveTurn, startRecording])
 
+  // Play the opening line and hand the turn to the user. In avatar mode this
+  // runs only once the session is ready, so the first line uses the avatar
+  // (not a TTS fallback that the avatar then "takes over" on turn two).
+  const startLiveConversation = useCallback(() => {
+    beginLiveTurn()
+    startConversation()
+    if (scenarioContent.openingLine) {
+      setPendingRecord(true)
+    } else {
+      void startRecording()
+    }
+  }, [beginLiveTurn, startConversation, scenarioContent.openingLine, startRecording])
+
+  // Fire the deferred avatar-mode start once the session is ready, or fall
+  // back to voice if it errors or hangs — never leave the user on a spinner.
+  useEffect(() => {
+    if (!pendingStart) return
+    const proceed = () => {
+      setPendingStart(false)
+      startLiveConversation()
+    }
+    if (liveAvatarStatus === "ready" || liveAvatarStatus === "error") {
+      queueMicrotask(proceed)
+      return
+    }
+    // Safety net: don't leave the user on a spinner if connecting hangs.
+    const timer = setTimeout(proceed, 8000)
+    return () => clearTimeout(timer)
+  }, [pendingStart, liveAvatarStatus, startLiveConversation])
+
+  function handleChooseMode(mode: "avatar" | "voice") {
+    const wantAvatar = mode === "avatar"
+    setAvatarEnabled(wantAvatar)
+    setLiveAvatarEnabledPreference(wantAvatar)
+    if (wantAvatar && liveAvatarStatus !== "ready") {
+      // Wait for the session to connect before the opening line plays.
+      setPendingStart(true)
+      return
+    }
+    startLiveConversation()
+  }
+
   async function handleLiveConversationPress() {
     if (hasWon) return
     if (isBusy && !isRecording) return
@@ -424,18 +477,6 @@ export function PracticeSession({
       const audio = await stopRecording()
       await submitAudio(audio)
       setPendingRecord(true)
-      return
-    }
-
-    beginLiveTurn()
-
-    if (!conversationStarted) {
-      startConversation()
-      if (scenarioContent.openingLine) {
-        setPendingRecord(true)
-      } else {
-        await startRecording()
-      }
       return
     }
 
@@ -514,7 +555,9 @@ export function PracticeSession({
                   ? isRecording
                     ? "Listening…"
                     : "Tap to reply"
-                  : "Press start when you're ready to speak"
+                  : pendingStart
+                    ? "Connecting your avatar…"
+                    : "How would you like to practice?"
                 : targetPhrase
                   ? "Tap the mic when ready"
                   : isOpenMode
@@ -665,37 +708,77 @@ export function PracticeSession({
             {!hasWon && (
               <div className="flex shrink-0 flex-col items-center gap-2">
                 {isLiveConversation ? (
-                  <Button
-                    size="lg"
-                    className={cn(
-                      "h-14 min-w-48 rounded-full px-7 shadow-[0_0_28px_rgba(190,242,100,0.22)] transition-transform",
-                      isRecording && "bg-destructive hover:bg-destructive/90"
-                    )}
-                    onClick={handleLiveConversationPress}
-                    disabled={isBusy && !isRecording}
-                  >
-                    {isScoring ? (
+                  !conversationStarted ? (
+                    pendingStart ? (
                       <>
-                        <Loader2 className="size-4 animate-spin" />
-                        Analyzing…
-                      </>
-                    ) : isRecording ? (
-                      <>
-                        <Send className="size-4" />
-                        Send reply
-                      </>
-                    ) : !conversationStarted ? (
-                      <>
-                        <MessageCircle className="size-4" />
-                        Start conversation
+                        <Button
+                          size="lg"
+                          disabled
+                          className="h-14 min-w-48 rounded-full px-7"
+                        >
+                          <Loader2 className="size-4 animate-spin" />
+                          Connecting avatar…
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingStart(false)
+                            handleChooseMode("voice")
+                          }}
+                          className="text-[11px] text-muted-foreground underline underline-offset-2 dark:text-white/50"
+                        >
+                          Start with voice instead
+                        </button>
                       </>
                     ) : (
-                      <>
-                        <Mic className="size-4" />
-                        Reply
-                      </>
-                    )}
-                  </Button>
+                      <div className="flex flex-wrap items-center justify-center gap-2.5">
+                        <Button
+                          size="lg"
+                          className="h-14 rounded-full px-6 shadow-[0_0_28px_rgba(190,242,100,0.22)]"
+                          onClick={() => handleChooseMode("avatar")}
+                        >
+                          <Video className="size-4" />
+                          Video avatar
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="secondary"
+                          className="h-14 rounded-full px-6"
+                          onClick={() => handleChooseMode("voice")}
+                        >
+                          <AudioLines className="size-4" />
+                          Voice only
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    <Button
+                      size="lg"
+                      className={cn(
+                        "h-14 min-w-48 rounded-full px-7 shadow-[0_0_28px_rgba(190,242,100,0.22)] transition-transform",
+                        isRecording && "bg-destructive hover:bg-destructive/90"
+                      )}
+                      onClick={handleLiveConversationPress}
+                      disabled={isBusy && !isRecording}
+                    >
+                      {isScoring ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          Analyzing…
+                        </>
+                      ) : isRecording ? (
+                        <>
+                          <Send className="size-4" />
+                          Send reply
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="size-4" />
+                          Reply
+                        </>
+                      )}
+                    </Button>
+                  )
                 ) : (
                   <>
                     <Button
@@ -735,7 +818,9 @@ export function PracticeSession({
                       : isRecording
                         ? "Tap when you're done speaking"
                         : !conversationStarted
-                          ? "Character speaks first, then you"
+                          ? pendingStart
+                            ? "Getting the avatar ready — it speaks first"
+                            : "Video shows a face; voice is audio only. The character speaks first."
                           : "Speak naturally — no script"}
                   </p>
                 )}

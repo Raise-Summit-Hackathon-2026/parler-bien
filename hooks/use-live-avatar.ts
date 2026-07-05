@@ -223,7 +223,7 @@ export function useLiveAvatar({
         }
       })
     },
-    [status],
+    [status, markActivity],
   )
 
   useEffect(() => {
