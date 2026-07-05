@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Link2,
   Loader2,
+  LogOut,
   MailPlus,
   Plus,
   Sparkles,
@@ -28,6 +29,7 @@ import {
   getActiveShareLink,
   getWorkspace,
   inviteWorkspaceMember,
+  leaveWorkspace,
   listWorkspaceMembers,
   listWorkspaceCharacters,
 } from "@/lib/character-db"
@@ -53,7 +55,9 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
   const [busy, setBusy] = useState(true)
   const [inviteBusy, setInviteBusy] = useState(false)
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const [leaveBusy, setLeaveBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmLeave, setConfirmLeave] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [error, setError] = useState("")
   const [status, setStatus] = useState("")
@@ -153,6 +157,24 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
     }
   }
 
+  async function handleLeaveWorkspace() {
+    setLeaveBusy(true)
+    setError("")
+    setStatus("")
+
+    try {
+      await leaveWorkspace(workspaceId)
+      router.push("/workspaces")
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to leave workspace",
+      )
+      setConfirmLeave(false)
+    } finally {
+      setLeaveBusy(false)
+    }
+  }
+
   if (busy && !workspace) {
     return (
       <CinematicPageShell contentClassName="min-h-[60vh] items-center justify-center">
@@ -210,12 +232,28 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
                 className="text-destructive hover:text-destructive"
                 onClick={() => {
                   setConfirmDelete(true)
+                  setConfirmLeave(false)
                   setError("")
                   setStatus("")
                 }}
               >
                 <Trash2 />
                 Delete workspace
+              </Button>
+            )}
+            {!isOwner && !confirmLeave && (
+              <Button
+                variant="outline"
+                className="rounded-xl dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                onClick={() => {
+                  setConfirmLeave(true)
+                  setConfirmDelete(false)
+                  setError("")
+                  setStatus("")
+                }}
+              >
+                <LogOut />
+                Leave workspace
               </Button>
             )}
           </div>
@@ -301,6 +339,37 @@ export function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
                 variant="ghost"
                 disabled={deleteBusy}
                 onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {!isOwner && confirmLeave && (
+          <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+            <h2 className="font-semibold text-destructive">Leave workspace?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              You will lose access to &ldquo;{workspace.name}&rdquo; and its
+              shared characters. You can rejoin if someone invites you again.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                variant="destructive"
+                disabled={leaveBusy}
+                onClick={() => void handleLeaveWorkspace()}
+              >
+                {leaveBusy ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <LogOut />
+                )}
+                Leave workspace
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={leaveBusy}
+                onClick={() => setConfirmLeave(false)}
               >
                 Cancel
               </Button>

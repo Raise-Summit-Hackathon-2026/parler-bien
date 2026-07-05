@@ -20,7 +20,6 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-6 px-6">
         <Link href="/" className="text-sm font-semibold tracking-tight">
           Parler Bien
-          <span className="ml-1 text-lime-600 dark:text-lime-300">↗</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -38,7 +37,7 @@ export function SiteHeader() {
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-lime-600/10 text-lime-700 dark:bg-lime-300/10 dark:text-lime-300"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white",
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
                 )}
               >
                 {link.label}
