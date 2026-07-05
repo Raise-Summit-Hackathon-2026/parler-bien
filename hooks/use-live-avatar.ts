@@ -62,7 +62,9 @@ export function useLiveAvatar({
   const sessionIdRef = useRef<number | null>(null)
   const videoElementRef = useRef<HTMLVideoElement | null>(null)
   const streamReadyRef = useRef(false)
-  const speakResolveRef = useRef<(() => void) | null>(null)
+  // Resolves the pending speakText promise. `spoke: false` tells useSpeaker
+  // the avatar did NOT deliver the line, so it falls back to TTS.
+  const speakResolveRef = useRef<((spoke: boolean) => void) | null>(null)
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -82,21 +84,30 @@ export function useLiveAvatar({
     }
   }, [])
 
-  const cleanupSession = useCallback(async () => {
-    clearSessionTimers()
-    const localId = sessionIdRef.current
-    if (localId !== null && activeSession?.id === localId) {
-      await stopActiveSession()
-    }
+  /**
+   * @param fallbackToTts true when the session died unexpectedly (expiry,
+   * disconnect, credits) — resolves the pending speak with `spoke: false`
+   * so useSpeaker re-delivers the line via TTS instead of cutting it off.
+   * Deliberate stops (toggle off, unmount, tab hidden) stay silent.
+   */
+  const cleanupSession = useCallback(
+    async (fallbackToTts = false) => {
+      clearSessionTimers()
+      const localId = sessionIdRef.current
+      if (localId !== null && activeSession?.id === localId) {
+        await stopActiveSession()
+      }
 
-    sessionRef.current = null
-    sessionIdRef.current = null
-    streamReadyRef.current = false
-    speakResolveRef.current?.()
-    speakResolveRef.current = null
-    setIsSpeaking(false)
-    setRemainingSeconds(null)
-  }, [clearSessionTimers])
+      sessionRef.current = null
+      sessionIdRef.current = null
+      streamReadyRef.current = false
+      speakResolveRef.current?.(!fallbackToTts)
+      speakResolveRef.current = null
+      setIsSpeaking(false)
+      setRemainingSeconds(null)
+    },
+    [clearSessionTimers],
+  )
 
   const stop = useCallback(async () => {
     await cleanupSession()
@@ -104,7 +115,7 @@ export function useLiveAvatar({
   }, [cleanupSession])
 
   const expireSession = useCallback(async () => {
-    await cleanupSession()
+    await cleanupSession(true)
     setRemainingSeconds(0)
     setStatus("expired")
   }, [cleanupSession])
@@ -144,7 +155,8 @@ export function useLiveAvatar({
 
   const interrupt = useCallback(() => {
     sessionRef.current?.interrupt()
-    speakResolveRef.current?.()
+    // Deliberate interrupt: resolve as spoken so the line is not re-read.
+    speakResolveRef.current?.(true)
     speakResolveRef.current = null
     setIsSpeaking(false)
   }, [])
@@ -177,11 +189,11 @@ export function useLiveAvatar({
           resolve(true)
         }
 
-        speakResolveRef.current = () => {
+        speakResolveRef.current = (spoke: boolean) => {
           session.off(AgentEventsEnum.AVATAR_SPEAK_STARTED, onSpeakStarted)
           session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onSpeakEnded)
           setIsSpeaking(false)
-          resolve(true)
+          resolve(spoke)
         }
 
         session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, onSpeakStarted)
@@ -264,7 +276,7 @@ export function useLiveAvatar({
             return
           }
 
-          void cleanupSession()
+          void cleanupSession(true)
 
           if (reason === "NO_CREDITS") {
             setError("LiveAvatar credits exhausted")
@@ -275,7 +287,7 @@ export function useLiveAvatar({
 
         session.on(SessionEvent.SESSION_DISCONNECTED, () => {
           if (cancelled || sessionIdRef.current !== localSessionId) return
-          void cleanupSession()
+          void cleanupSession(true)
           setStatus("error")
         })
 
