@@ -142,6 +142,14 @@ describe("character gender", () => {
     expect(scenario.category).toBe("professional")
   })
 
+  test("characterLevelScenario uses partnerName for AI chat label", () => {
+    const crew = getBuiltInCharacter("cabin-crew")
+    const welcome = characterLevelScenario(crew, 0, "en")
+    const calm = characterLevelScenario(crew, 2, "en")
+    expect(welcome.characterName).toBe("Passengers")
+    expect(calm.characterName).toBe("Guest in 23B")
+  })
+
   test("categoryScoresPronunciation is true only for languages", () => {
     expect(categoryScoresPronunciation("languages")).toBe(true)
     expect(categoryScoresPronunciation("professional")).toBe(false)
