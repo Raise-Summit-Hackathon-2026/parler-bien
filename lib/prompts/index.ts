@@ -2,9 +2,12 @@ import type { Region } from "@/lib/languages"
 import type { Scenario } from "@/lib/character"
 import type { ConversationTurn } from "@/lib/types"
 
+import { categoryScoresPronunciation } from "@/lib/character"
+
 import { buildCoachPrompt } from "@/lib/prompts/coach"
 import { buildOpenPrompt } from "@/lib/prompts/open"
 import { buildRoleplayPrompt } from "@/lib/prompts/roleplay"
+import { buildSkillRoleplayPrompt } from "@/lib/prompts/skill-roleplay"
 
 export type PromptContext = {
   scenario: Scenario
@@ -23,6 +26,8 @@ export function buildCharacterPrompt(ctx: PromptContext): string {
     case "open":
       return buildOpenPrompt(ctx)
     default:
-      return buildRoleplayPrompt(ctx)
+      return categoryScoresPronunciation(ctx.scenario.category)
+        ? buildRoleplayPrompt(ctx)
+        : buildSkillRoleplayPrompt(ctx)
   }
 }

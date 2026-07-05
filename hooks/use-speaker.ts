@@ -96,6 +96,10 @@ export function useSpeaker(options?: UseSpeakerOptions) {
         if (spoke) return
       }
 
+      // Mark as speaking from the moment the line is requested, so callers
+      // can't start recording during the fetch/decode gap before audio plays.
+      setIsSpeaking(true)
+
       try {
         const response = await authenticatedFetch("/api/tts", {
           method: "POST",
@@ -113,7 +117,10 @@ export function useSpeaker(options?: UseSpeakerOptions) {
           }),
         })
 
-        if (!response.ok) return
+        if (!response.ok) {
+          if (playbackVersion === playbackId) setIsSpeaking(false)
+          return
+        }
 
         const arrayBuffer = await response.arrayBuffer()
         if (playbackVersion !== playbackId) return

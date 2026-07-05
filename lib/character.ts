@@ -5,7 +5,6 @@ import type { SentenceSuggestion, SpeakerProfile } from "@/lib/types"
 export type CharacterCategoryId =
   | "languages"
   | "professional"
-  | "coaching"
   | "sports"
   | "everyday"
 
@@ -27,11 +26,6 @@ export const CATEGORIES: CharacterCategory[] = [
     tagline: "Job skills, service under pressure, interviews.",
   },
   {
-    id: "coaching",
-    label: "Coaching & Reflection",
-    tagline: "Open conversations that help you think out loud.",
-  },
-  {
     id: "sports",
     label: "Sports",
     tagline: "Lead a team, rally a locker room, coach out loud.",
@@ -45,7 +39,16 @@ export const CATEGORIES: CharacterCategory[] = [
 
 export type VoiceLevelMode = "roleplay" | "coach" | "open"
 
-export type VoiceLevel = {
+export type LevelStatus = "available" | "locked" | "wip"
+
+type LevelMeta = {
+  /** Defaults to "available". Locked/wip levels are visible but not playable. */
+  status?: LevelStatus
+  /** Badge on locked levels, e.g. "Pro" or "Coming soon" */
+  lockLabel?: string
+}
+
+export type VoiceLevel = LevelMeta & {
   kind: "voice"
   id: string
   title: string
@@ -57,11 +60,13 @@ export type VoiceLevel = {
   winMessage?: string
   /** Appended to Character.persona for this level */
   personaOverlay?: string
+  /** Label for AI replies in chat when the user plays the lead role (e.g. "Passengers"). */
+  partnerName?: string
   /** Per-language opening line + starters, same shape Scenario carries */
   content?: Partial<Record<LanguageId, ScenarioContent>>
 }
 
-export type GestureLevel = {
+export type GestureLevel = LevelMeta & {
   kind: "gesture"
   id: string
   title: string
@@ -73,8 +78,33 @@ export type GestureLevel = {
 
 export type Level = VoiceLevel | GestureLevel
 
+export function isLevelPlayable(level: Level): boolean {
+  return (level.status ?? "available") === "available"
+}
+
+export function playableLevels(character: Character): Level[] {
+  return character.levels.filter(isLevelPlayable)
+}
+
+export function lastPlayableLevelIndex(character: Character): number {
+  for (let i = character.levels.length - 1; i >= 0; i--) {
+    if (isLevelPlayable(character.levels[i]!)) return i
+  }
+  return 0
+}
+
+export function nextPlayableLevelIndex(
+  character: Character,
+  currentIndex: number,
+): number | null {
+  for (let i = currentIndex + 1; i < character.levels.length; i++) {
+    if (isLevelPlayable(character.levels[i]!)) return i
+  }
+  return null
+}
+
 export type Character = {
-  /** Built-in slug (e.g. "captain-eva") or DB row uuid */
+  /** Built-in slug (e.g. "cabin-crew") or DB row uuid */
   id: string
   name: string
   tagline: string
@@ -99,8 +129,8 @@ export function characterLevelScenario(
   languageId: LanguageId,
 ): Scenario {
   const level = character.levels[levelIndex]
-  if (!level || level.kind !== "voice") {
-    throw new Error(`Level ${levelIndex} of ${character.id} is not a voice level`)
+  if (!level || !isLevelPlayable(level) || level.kind !== "voice") {
+    throw new Error(`Level ${levelIndex} of ${character.id} is not a playable voice level`)
   }
 
   const persona = level.personaOverlay
@@ -111,6 +141,7 @@ export function characterLevelScenario(
     id: `custom:${character.id}-${level.id}`,
     title: level.title,
     tagline: level.subtitle,
+    characterName: level.partnerName ?? character.name,
     goal: level.goal ?? null,
     meterLabel: level.meterLabel ?? null,
     winMessage: level.winMessage ?? null,
@@ -124,6 +155,7 @@ export function characterLevelScenario(
     liveAvatarId: character.liveAvatarId,
     primaryLanguageId: character.primaryLanguageId ?? languageId,
     sourceLabel: character.sourceLabel,
+    category: character.category,
   }
 }
 
@@ -162,11 +194,14 @@ export function scenarioToCharacter(
 }
 
 export function levelBadge(character: Character): string | null {
-  if (character.levels.length <= 1) return null
+  const available = playableLevels(character)
+  const lockedCount = character.levels.length - available.length
+  if (available.length <= 1 && lockedCount === 0) return null
   const kinds: string[] = []
-  if (character.levels.some((l) => l.kind === "voice")) kinds.push("Voice")
-  if (character.levels.some((l) => l.kind === "gesture")) kinds.push("Camera")
-  return `${character.levels.length} levels · ${kinds.join(" · ")}`
+  if (available.some((l) => l.kind === "voice")) kinds.push("Voice")
+  if (available.some((l) => l.kind === "gesture")) kinds.push("Camera")
+  const base = `${available.length} levels · ${kinds.join(" · ")}`
+  return lockedCount > 0 ? `${base} · +${lockedCount} soon` : base
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +223,8 @@ export type Scenario = {
   id: ScenarioId
   title: string
   tagline: string
+  /** Parent character display name — used for gender inference when voice.gender is random */
+  characterName?: string
   goal: string | null
   meterLabel: string | null
   winMessage: string | null
@@ -210,6 +247,8 @@ export type Scenario = {
   primaryLanguageId?: LanguageId
   createdAt?: number
   sourceLabel?: string
+  /** Drives pronunciation UI + prompts. Defaults to skill-focused when absent. */
+  category?: CharacterCategoryId
 }
 
 export type CharacterGender = "male" | "female"
@@ -218,24 +257,101 @@ export type CharacterVoiceMap = Partial<Record<CharacterGender, string>> & {
   default?: string
 }
 
+/** Pronunciation scores and word breakdown are shown only for language-learning tracks. */
+export function categoryScoresPronunciation(
+  category: CharacterCategoryId | undefined,
+): boolean {
+  return category === "languages"
+}
+
+/** Deterministic gender from a stable seed (character id + level). */
+export function stableCharacterGender(seed: string): CharacterGender {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    hash = (Math.imul(31, hash) + seed.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash) % 2 === 0 ? "female" : "male"
+}
+
+/** Infer fixed gender from character name, persona, or avatar prompt. */
+export function inferCharacterGenderFromHints(
+  characterName: string,
+  persona?: string,
+  avatarPrompt?: string,
+): CharacterGender | null {
+  const text = `${characterName} ${persona ?? ""} ${avatarPrompt ?? ""}`.toLowerCase()
+
+  if (
+    /\bcaptain eva\b|\beva\b|female flight|female attendant|stewardess|hostess|boulang[eè]re\b|madame\b|\bshe is\b|\bwoman\b|\bfemale\b/.test(
+      text,
+    )
+  ) {
+    return "female"
+  }
+
+  if (
+    /\bpedro\b|\bgraham\b|\bsilas\b|\bthaddeus\b|\bwayne\b|\bboulanger\b|\bhe is\b|\bman\b|\bmale\b/.test(
+      text,
+    )
+  ) {
+    return "male"
+  }
+
+  return null
+}
+
 export function resolveCharacterGender(
-  scenario: Pick<Scenario, "mode" | "voice">,
+  scenario: Pick<
+    Scenario,
+    "mode" | "voice" | "id" | "persona" | "imagePrompt" | "characterName"
+  >,
   speakerGender?: SpeakerProfile["gender"],
-  randomGender: CharacterGender = "female",
+  genderSeed?: string,
 ): CharacterGender {
   const mode =
     scenario.voice.gender ??
     (scenario.mode === "coach" ? "opposite-speaker" : "random")
 
   if (mode === "male" || mode === "female") return mode
-  if (mode === "random") return randomGender
-  if (speakerGender === "male") return "female"
-  if (speakerGender === "female") return "male"
-  return randomGender
+
+  if (mode === "opposite-speaker") {
+    if (speakerGender === "male") return "female"
+    if (speakerGender === "female") return "male"
+    return stableCharacterGender(`${genderSeed ?? scenario.id ?? "coach"}:opposite`)
+  }
+
+  const inferred = inferCharacterGenderFromHints(
+    scenario.characterName ?? "",
+    scenario.persona,
+    scenario.imagePrompt,
+  )
+  if (inferred) return inferred
+
+  return stableCharacterGender(genderSeed ?? scenario.id ?? "character")
 }
 
+/** @deprecated Use stableCharacterGender with a session seed instead. */
 export function randomCharacterGender(): CharacterGender {
-  return Math.random() < 0.5 ? "female" : "male"
+  return stableCharacterGender(`ephemeral:${Date.now()}`)
+}
+
+export function resolveCharacterGenderFromCharacter(
+  character: Pick<Character, "id" | "name" | "voice" | "persona" | "avatarPrompt">,
+  speakerGender?: SpeakerProfile["gender"],
+  genderSeed?: string,
+): CharacterGender {
+  return resolveCharacterGender(
+    {
+      mode: "roleplay",
+      voice: character.voice,
+      id: character.id,
+      persona: character.persona,
+      imagePrompt: character.avatarPrompt,
+      characterName: character.name,
+    },
+    speakerGender,
+    genderSeed ?? character.id,
+  )
 }
 
 export function resolveCharacterVoice(

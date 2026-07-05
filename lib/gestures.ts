@@ -103,3 +103,66 @@ export const CABIN_SAFETY_GESTURES: GestureStep[] = [
     instruction: "Hold both palms down in front of you at shoulder height.",
   },
 ]
+
+export const SERVICE_GESTURES: GestureStep[] = [
+  {
+    id: "menu",
+    kind: "palms_down",
+    title: "Present the menu",
+    instruction: "Hold both palms open at chest height — as if offering a menu.",
+  },
+  {
+    id: "table",
+    kind: "point_exit",
+    title: "Guide to the table",
+    instruction: "Point with one hand down the aisle toward the table.",
+  },
+  {
+    id: "napkin",
+    kind: "seatbelt",
+    title: "Fold the napkin",
+    instruction: "Cross both hands at waist level — show a crisp napkin fold.",
+  },
+]
+
+export const SPORTS_PEP_GESTURES: GestureStep[] = [
+  {
+    id: "huddle",
+    kind: "seatbelt",
+    title: "Call the huddle",
+    instruction: "Cross both arms at chest level — bring the team in tight.",
+  },
+  {
+    id: "tactics",
+    kind: "point_exit",
+    title: "Point to the pitch",
+    instruction: "Point firmly toward the field — where the second half starts.",
+  },
+  {
+    id: "calm",
+    kind: "palms_down",
+    title: "Hands down, breathe",
+    instruction: "Hold both palms down at shoulder height — steady the room.",
+  },
+]
+
+export const INTERVIEW_PRESENCE_GESTURES: GestureStep[] = [
+  {
+    id: "handshake",
+    kind: "seatbelt",
+    title: "Confident handshake",
+    instruction: "Cross both hands at waist level — a firm, brief handshake.",
+  },
+  {
+    id: "eye_contact",
+    kind: "point_exit",
+    title: "Direct eye contact",
+    instruction: "Point one finger toward your temple — engaged, attentive eye contact.",
+  },
+  {
+    id: "open_posture",
+    kind: "palms_down",
+    title: "Open posture",
+    instruction: "Hold both palms open at chest height — relaxed, open body language.",
+  },
+]

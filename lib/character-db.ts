@@ -215,3 +215,30 @@ export async function getWorkspace(
   if (error) throw error
   return (data as WorkspaceRow | null) ?? null
 }
+
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const supabase = getSupabaseBrowserClient()
+  const { error } = await supabase
+    .from("user_workspaces")
+    .delete()
+    .eq("id", workspaceId)
+
+  if (error) throw error
+}
+
+export async function leaveWorkspace(workspaceId: string): Promise<void> {
+  const supabase = getSupabaseBrowserClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("Sign in required")
+
+  const { error } = await supabase
+    .from("workspace_members")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", user.id)
+    .eq("role", "member")
+
+  if (error) throw error
+}

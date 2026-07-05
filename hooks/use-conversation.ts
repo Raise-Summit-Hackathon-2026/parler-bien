@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useSpeaker, type AvatarAudioSink } from "@/hooks/use-speaker"
 import { getRegion, type LanguageId, type RegionId } from "@/lib/languages"
@@ -9,7 +9,6 @@ import { readScoreStream } from "@/lib/score-stream"
 import { authenticatedFetch } from "@/lib/supabase"
 import {
   getScenarioContent,
-  randomCharacterGender,
   resolveCharacterGender,
   resolveCharacterVoice,
   type CharacterGender,
@@ -23,8 +22,7 @@ import type {
   WordScore,
 } from "@/lib/types"
 
-export const GOAL_WIN_METER = 90
-export const ROLEPLAY_START_METER = 18
+export const GOAL_WIN_METER = 100
 
 type RecordedAudio = {
   base64: string
@@ -43,6 +41,8 @@ export type UseConversationOptions = {
   regionId: RegionId
   avatarSink?: AvatarAudioSink | null
   interruptAvatar?: () => void
+  /** Stable seed so avatar + TTS pick the same gender for random characters */
+  genderSeed?: string
 }
 
 export type UseConversationResult = {
@@ -68,10 +68,15 @@ export type UseConversationResult = {
   stopSpeaking: () => void
   /** Select a word chip and hear it. */
   selectWord: (word: WordScore) => void
-  /** Pick a suggested phrase: set it as the target and hear it. */
-  pickPhrase: (text: string) => void
+  /** Pick a suggested phrase: set it as the target and optionally hear it. */
+  pickPhrase: (text: string, options?: { speak?: boolean }) => void
   /** Light reset ("Try again"): clear the current score without ending the session. */
   clearScore: () => void
+  /** Begin a free-form live turn (clears drill phrase + score). */
+  beginLiveTurn: () => void
+  /** Play opening line and mark conversation as started. */
+  startConversation: () => void
+  conversationStarted: boolean
 }
 
 export function useConversation({
@@ -80,11 +85,11 @@ export function useConversation({
   regionId,
   avatarSink,
   interruptAvatar,
+  genderSeed,
 }: UseConversationOptions): UseConversationResult {
   const mode = scenario.mode ?? "roleplay"
   const isRoleplayMode = mode === "roleplay"
   const isOpenMode = mode === "open"
-  const hasGoal = Boolean(scenario.goal)
 
   const region = getRegion(languageId, regionId)
   const scenarioContent = getScenarioContent(scenario, languageId)
@@ -96,15 +101,12 @@ export function useConversation({
     stop: stopSpeaking,
   } = useSpeaker({ avatarSink })
 
-  const openingPlayed = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const [history, setHistory] = useState<ConversationTurn[]>([])
-  const [meter, setMeter] = useState(() =>
-    isRoleplayMode && hasGoal ? ROLEPLAY_START_METER : 0,
-  )
+  const [meter, setMeter] = useState(0)
   const [goalAchieved, setGoalAchieved] = useState(false)
   const [targetPhrase, setTargetPhrase] = useState<string | null>(null)
   const [lastSpeaker, setLastSpeaker] = useState<SpeakerProfile | null>(null)
@@ -115,18 +117,14 @@ export function useConversation({
   const [moderationWarning, setModerationWarning] = useState<string | null>(
     null,
   )
+  const [conversationStarted, setConversationStarted] = useState(false)
 
-  const randomScenarioGender = useMemo(
-    () => randomCharacterGender(),
-    // Re-roll only when the scenario changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scenario.id],
-  )
+  const sessionGenderSeed = genderSeed ?? scenario.id
 
   const characterGender: CharacterGender = resolveCharacterGender(
     scenario,
     lastSpeaker?.gender ?? score?.speaker.gender,
-    randomScenarioGender,
+    sessionGenderSeed,
   )
 
   const speakLine = useCallback(
@@ -134,13 +132,10 @@ export function useConversation({
       const gender = resolveCharacterGender(
         scenario,
         speaker?.gender,
-        randomScenarioGender,
+        sessionGenderSeed,
       )
       const voice = resolveCharacterVoice(scenario, gender)
-      const ageRange =
-        scenario.id === "parisian" && speaker?.age_range
-          ? speaker.age_range
-          : scenario.voice.ageRange
+      const ageRange = scenario.voice.ageRange
       void speak(text, style, {
         gender,
         voice,
@@ -150,19 +145,25 @@ export function useConversation({
         deliveryStyle: scenario.deliveryStyle,
       })
     },
-    [scenario, randomScenarioGender, region.accent, speak],
+    [scenario, sessionGenderSeed, region.accent, speak],
   )
 
-  useEffect(() => {
-    if (!scenarioContent.openingLine || openingPlayed.current) return
+  const startConversation = useCallback(() => {
+    if (conversationStarted) return
 
-    openingPlayed.current = true
-    setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
-    speakLine(
-      scenarioContent.openingLine.text,
-      isOpenMode ? "coach" : "character",
-    )
-  }, [isOpenMode, scenarioContent.openingLine, speakLine])
+    setConversationStarted(true)
+    setTargetPhrase(null)
+    setScore(null)
+    setRequestError(null)
+
+    if (scenarioContent.openingLine) {
+      setHistory([{ role: "character", text: scenarioContent.openingLine.text }])
+      speakLine(
+        scenarioContent.openingLine.text,
+        isOpenMode ? "coach" : "character",
+      )
+    }
+  }, [conversationStarted, scenarioContent.openingLine, isOpenMode, speakLine])
 
   const submitAudio = useCallback(
     async (audio: RecordedAudio | null) => {
@@ -309,6 +310,17 @@ export function useConversation({
     )
   }, [score, isOpenMode, speakLine])
 
+  const beginLiveTurn = useCallback(() => {
+    abortRef.current?.abort()
+    stopSpeaking()
+    interruptAvatar?.()
+    setScore(null)
+    setSelectedWord(null)
+    setRequestError(null)
+    setModerationWarning(null)
+    setTargetPhrase(null)
+  }, [stopSpeaking, interruptAvatar])
+
   const clearScore = useCallback(() => {
     abortRef.current?.abort()
     stopSpeaking()
@@ -328,7 +340,7 @@ export function useConversation({
   )
 
   const pickPhrase = useCallback(
-    (text: string) => {
+    (text: string, options?: { speak?: boolean }) => {
       abortRef.current?.abort()
       stopSpeaking()
       interruptAvatar?.()
@@ -337,7 +349,9 @@ export function useConversation({
       setSelectedWord(null)
       setRequestError(null)
       setModerationWarning(null)
-      speakLine(text, "phrase")
+      if (options?.speak !== false) {
+        speakLine(text, "phrase")
+      }
     },
     [stopSpeaking, interruptAvatar, speakLine],
   )
@@ -350,26 +364,16 @@ export function useConversation({
     setSelectedWord(null)
     setRequestError(null)
     setModerationWarning(null)
-    setMeter(isRoleplayMode && hasGoal ? ROLEPLAY_START_METER : 0)
+    setMeter(0)
     setGoalAchieved(false)
     setLastSpeaker(null)
     setTargetPhrase(null)
+    setConversationStarted(false)
 
-    if (scenarioContent.openingLine) {
-      setHistory([
-        { role: "character", text: scenarioContent.openingLine.text },
-      ])
-      speakLine(scenarioContent.openingLine.text, "character")
-    } else {
-      setHistory([])
-    }
+    setHistory([])
   }, [
     stopSpeaking,
     interruptAvatar,
-    isRoleplayMode,
-    hasGoal,
-    scenarioContent.openingLine,
-    speakLine,
   ])
 
   return {
@@ -393,5 +397,8 @@ export function useConversation({
     selectWord,
     pickPhrase,
     clearScore,
+    beginLiveTurn,
+    startConversation,
+    conversationStarted,
   }
 }

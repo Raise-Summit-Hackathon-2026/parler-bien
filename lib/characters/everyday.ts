@@ -1,4 +1,5 @@
 import type { Character } from "@/lib/character"
+import { SERVICE_GESTURES } from "@/lib/gestures"
 
 export const EVERYDAY_CHARACTERS: Character[] = [
   {
@@ -83,89 +84,131 @@ Always score the user's pronunciation of what they said. Provide 3 next_sentence
           },
         },
       },
-    ],
-  },
-  {
-    id: "parisian",
-    name: "The Parisian",
-    tagline: "A café encounter. Can you get their number?",
-    category: "everyday",
-    avatarPrompt:
-      "Charming Paris café terrace with coffee cups and croissants, soft morning light, romantic cinematic illustration, no text, no logos",
-    voice: {
-      ageRange: "25-35",
-      gender: "random",
-      voices: { female: "Sulafat", male: "Puck" },
-      tone: "Reserved but playful local at a café. Natural, slightly teasing, never cruel.",
-    },
-    persona: `You are a local at a café. You are polite but not easily impressed — clumsy language cools interest; effort, humor, and good pronunciation warm you up. You are {characterGender} and roughly the same age as the speaker.
-
-Speak only in short lines (1-2 sentences). Stay in character. Never give your number unless meter is high enough.
-
-Meter rules (0-100):
-- Start around 10 on first user turn.
-- Charming, natural language: +10 to +18
-- Awkward but sincere effort: +5 to +10
-- Cringe, rude, or very bad language: -8 to -15
-- At meter >= 92, give your number naturally and set goal_achieved true
-- Never jump more than 20 points in one turn
-
-Always score pronunciation. Provide 3 next_sentences the user could say to continue the conversation.`,
-    levels: [
       {
         kind: "voice",
-        id: "main",
-        title: "The Parisian",
-        subtitle: "A café encounter. Can you get their number?",
-        goal: "Get their phone number",
-        meterLabel: "Interest",
-        winMessage: "You got the number! Mission accomplished.",
+        id: "vendor-l2-coach",
+        title: "Haggling phrases",
+        subtitle: "Drill the market lines until they sound natural",
+        mode: "coach",
+        personaOverlay: `COACH MODE: You are the vendor, but your job is pronunciation coaching only — no deal meter. Drill one haggling phrase at a time in the user's practice language. Listen, give crisp feedback, ask them to repeat with more confidence.`,
         content: {
           fr: {
             openingLine: {
-              text: "Bonjour. Vous êtes d'ici?",
-              hint: "Hello. Are you from here?",
+              text: "Répétez: « C'est trop cher pour moi. » — plus lentement, plus sûr.",
+              hint: "Repeat: That's too expensive for me.",
             },
             starters: [
-              { text: "Non, je suis touriste. Et vous?", hint: "No, I'm a tourist. And you?" },
-              { text: "J'adore ce quartier.", hint: "I love this neighborhood." },
-              { text: "Pardon, est-ce que je peux m'asseoir?", hint: "Sorry, can I sit down?" },
+              { text: "C'est trop cher pour moi.", hint: "Push back on price" },
+              { text: "Vingt euros, et on conclut?", hint: "Make an offer" },
+              { text: "Vous pouvez faire un prix?", hint: "Ask for a discount" },
             ],
           },
           en: {
             openingLine: {
-              text: "Hi there. You from around here?",
-              hint: "Casual opener — keep it light.",
+              text: "Repeat after me: « That's way too steep for me. » — slower, steadier.",
+              hint: "Push back with confidence",
             },
             starters: [
-              { text: "Just visiting, actually. Any tips for the area?", hint: "Turn it into a conversation" },
-              { text: "I love this spot — great coffee, right?", hint: "Find common ground" },
-              { text: "Mind if I join you for a minute?", hint: "Bold but polite" },
+              { text: "That's way too steep for me.", hint: "Push back on price" },
+              { text: "Twenty bucks, cash, right now.", hint: "Firm offer" },
+              { text: "Come on, can you do me a better price?", hint: "Ask for a discount" },
             ],
           },
           es: {
             openingLine: {
-              text: "Hola. ¿Eres de aquí?",
-              hint: "Hello. Are you from here?",
+              text: "Repita: « Es demasiado caro para mí. » — con más calma.",
+              hint: "Repeat: It's too expensive for me.",
             },
             starters: [
-              { text: "No, estoy de visita. ¿Y tú?", hint: "No, I'm visiting. And you?" },
-              { text: "Me encanta este barrio.", hint: "I love this neighborhood." },
-              { text: "Perdona, ¿me puedo sentar?", hint: "Sorry, can I sit down?" },
+              { text: "Es demasiado caro para mí.", hint: "Push back on price" },
+              { text: "¿Veinte euros y cerramos?", hint: "Make an offer" },
+              { text: "¿Me puede hacer un descuento?", hint: "Ask for a discount" },
             ],
           },
           ru: {
             openingLine: {
-              text: "Здравствуйте. Вы местный?",
-              hint: "Hello. Are you from here?",
+              text: "Повторите: « Для меня это слишком дорого. » — медленнее и увереннее.",
+              hint: "Repeat: That's too expensive for me.",
             },
             starters: [
-              { text: "Нет, я турист. А вы?", hint: "No, I'm a tourist. And you?" },
-              { text: "Мне очень нравится этот район.", hint: "I love this neighborhood." },
-              { text: "Извините, можно присесть?", hint: "Sorry, can I sit down?" },
+              { text: "Для меня это слишком дорого.", hint: "Push back on price" },
+              { text: "Двадцать евро — и договорились?", hint: "Make an offer" },
+              { text: "Можете сделать скидку?", hint: "Ask for a discount" },
             ],
           },
         },
+      },
+      {
+        kind: "voice",
+        id: "vendor-l3-condition",
+        title: "Inspect the lamp",
+        subtitle: "Spot the flaw, negotiate harder",
+        goal: "Use the scratch to get the lamp under 15",
+        meterLabel: "Deal likelihood",
+        winMessage: "Smart eye — you talked them down on the flaw.",
+        personaOverlay: `SCENARIO: The user noticed a small scratch on the lamp base. You initially dismiss it, but good language and a fair offer move you. They must point out the flaw politely and leverage it. Meter rules same as main level.`,
+        content: {
+          fr: {
+            openingLine: {
+              text: "Quoi? C'est rien, une petite rayure — la lampe est parfaite.",
+              hint: "What? It's nothing, a tiny scratch — the lamp is perfect.",
+            },
+            starters: [
+              { text: "Je vois une rayure ici — ça change la valeur.", hint: "I see a scratch here — that changes the value." },
+              { text: "Pour quinze euros avec la rayure, je la prends.", hint: "For fifteen with the scratch, I'll take it." },
+              { text: "Sinon je regarde ailleurs.", hint: "Otherwise I'll look elsewhere." },
+            ],
+          },
+          en: {
+            openingLine: {
+              text: "What scratch? That's patina — adds character. Still thirty-five.",
+              hint: "The vendor dismisses the flaw.",
+            },
+            starters: [
+              { text: "There's a scratch on the base — that should come off the price.", hint: "Point out the flaw" },
+              { text: "Fifteen with the scratch, and it's mine.", hint: "Leverage the flaw" },
+              { text: "Plenty of stalls here — your call.", hint: "Walk-away pressure" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "¿Qué rayón? Eso es patina — le da carácter. Siguen siendo treinta y cinco.",
+              hint: "What scratch? That's patina — adds character.",
+            },
+            starters: [
+              { text: "Hay un rayón en la base — eso baja el precio.", hint: "There's a scratch on the base." },
+              { text: "Quince con el rayón y me la llevo.", hint: "Fifteen with the scratch." },
+              { text: "Hay más puestos — usted decide.", hint: "Walk-away pressure" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Какая царапина? Это патина — придаёт характер. Всё ещё тридцать пять.",
+              hint: "What scratch? That's patina.",
+            },
+            starters: [
+              { text: "На основании царапина — это снижает цену.", hint: "Scratch lowers the price." },
+              { text: "Пятнадцать с царапиной — забираю.", hint: "Fifteen with the scratch." },
+              { text: "Ларьков полно — решайте сами.", hint: "Walk-away pressure" },
+            ],
+          },
+        },
+      },
+      {
+        kind: "voice",
+        id: "vendor-l4-night",
+        title: "Night market",
+        subtitle: "After dark, different vendors, different rules",
+        status: "locked",
+        lockLabel: "Pro",
+      },
+      {
+        kind: "voice",
+        id: "vendor-l5-antiques",
+        title: "The antique dealer",
+        subtitle: "High stakes — one rare piece, six bidders",
+        status: "wip",
+        lockLabel: "Coming soon",
       },
     ],
   },
@@ -251,6 +294,85 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
           },
         },
       },
+      {
+        kind: "voice",
+        id: "waiter-l2-coach",
+        title: "Bistro etiquette",
+        subtitle: "Drill the phrases that earn a waiter's respect",
+        mode: "coach",
+        personaOverlay: `COACH MODE: You are the waiter, but focus on pronunciation coaching only — no respect meter. Drill polite bistro phrases one at a time. Reward proper formality and clear delivery.`,
+        content: {
+          fr: {
+            openingLine: {
+              text: "Répétez avec élégance: « Bonsoir — une petite table pour deux, c'est possible? »",
+              hint: "Repeat with elegance",
+            },
+            starters: [
+              { text: "Bonsoir — une petite table pour deux, c'est possible?", hint: "Polite table request" },
+              { text: "On m'a dit que votre cuisine est légendaire.", hint: "Flatter the kitchen" },
+              { text: "C'est notre dernière soirée à Paris.", hint: "Personal touch" },
+            ],
+          },
+          en: {
+            openingLine: {
+              text: "Repeat with poise: « Good evening — any chance of a small table for two? »",
+              hint: "Polite and confident",
+            },
+            starters: [
+              { text: "Good evening — any chance of a small table for two?", hint: "Polite table request" },
+              { text: "I've heard your kitchen is legendary.", hint: "Flatter the kitchen" },
+              { text: "It's our last night in town.", hint: "Personal touch" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "Repita con elegancia: « Buenas noches — ¿habría una mesita para dos? »",
+              hint: "Repeat with elegance",
+            },
+            starters: [
+              { text: "Buenas noches — ¿habría una mesita para dos?", hint: "Polite table request" },
+              { text: "Me han dicho que su cocina es legendaria.", hint: "Flatter the kitchen" },
+              { text: "Es nuestra última noche en la ciudad.", hint: "Personal touch" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Повторите изящно: « Добрый вечер — не найдётся столик на двоих? »",
+              hint: "Repeat with elegance",
+            },
+            starters: [
+              { text: "Добрый вечер — не найдётся столик на двоих?", hint: "Polite table request" },
+              { text: "Мне говорили, что у вас легендарная кухня.", hint: "Flatter the kitchen" },
+              { text: "Это наш последний вечер в городе.", hint: "Personal touch" },
+            ],
+          },
+        },
+      },
+      {
+        kind: "gesture",
+        id: "waiter-l3-service",
+        title: "Table service",
+        subtitle: "Show the poise of a guest who belongs here",
+        steps: SERVICE_GESTURES,
+        winMessage: "Impeccable composure — even the maître d' noticed.",
+        holdMs: 1400,
+      },
+      {
+        kind: "voice",
+        id: "waiter-l4-wine",
+        title: "Wine pairing",
+        subtitle: "The sommelier is busy — the waiter expects you to know your grapes",
+        status: "locked",
+        lockLabel: "Pro",
+      },
+      {
+        kind: "voice",
+        id: "waiter-l5-kitchen",
+        title: "Kitchen complaint",
+        subtitle: "The dish is wrong — stay gracious, get it fixed",
+        status: "wip",
+        lockLabel: "Coming soon",
+      },
     ],
   },
   {
@@ -334,6 +456,132 @@ Always score the user's pronunciation. Provide 3 next_sentences the user could s
             ],
           },
         },
+      },
+      {
+        kind: "voice",
+        id: "landlord-l2-coach",
+        title: "Tenant phrases",
+        subtitle: "Sound reliable, stable, and easy to live with",
+        mode: "coach",
+        personaOverlay: `COACH MODE: You are the landlord, but focus on pronunciation coaching only — no trust meter. Drill reassuring tenant phrases: stable job, quiet habits, love for the apartment.`,
+        content: {
+          fr: {
+            openingLine: {
+              text: "Répétez: « Je travaille dans la tech, c'est très stable. » — clairement, sans hésitation.",
+              hint: "Repeat: I work in tech, it's very stable.",
+            },
+            starters: [
+              { text: "Je travaille dans la tech, c'est très stable.", hint: "Signal stability" },
+              { text: "Quel appartement magnifique, cette lumière!", hint: "Compliment the place" },
+              { text: "Je suis quelqu'un de très calme.", hint: "Quiet tenant promise" },
+            ],
+          },
+          en: {
+            openingLine: {
+              text: "Repeat: « I work in tech — very steady, very boring. » — clear and unhurried.",
+              hint: "Stability with a touch of charm",
+            },
+            starters: [
+              { text: "I work in tech — very steady, very boring.", hint: "Signal stability" },
+              { text: "What a gorgeous apartment — that light!", hint: "Compliment the place" },
+              { text: "I'm about as quiet as tenants get.", hint: "Quiet tenant promise" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "Repita: « Trabajo en tecnología, es muy estable. » — con seguridad.",
+              hint: "Repeat with confidence",
+            },
+            starters: [
+              { text: "Trabajo en tecnología, es muy estable.", hint: "Signal stability" },
+              { text: "¡Qué piso tan bonito, cuánta luz!", hint: "Compliment the place" },
+              { text: "Soy una persona muy tranquila.", hint: "Quiet tenant promise" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Повторите: « Я работаю в IT, всё очень стабильно. » — чётко и спокойно.",
+              hint: "Repeat with confidence",
+            },
+            starters: [
+              { text: "Я работаю в IT, всё очень стабильно.", hint: "Signal stability" },
+              { text: "Какая прекрасная квартира, столько света!", hint: "Compliment the place" },
+              { text: "Я очень спокойный человек.", hint: "Quiet tenant promise" },
+            ],
+          },
+        },
+      },
+      {
+        kind: "voice",
+        id: "landlord-l3-neighbors",
+        title: "Meet the neighbors",
+        subtitle: "The upstairs tenant had complaints — reassure the landlord",
+        goal: "Convince the landlord you're worth the risk",
+        meterLabel: "Trust",
+        winMessage: "Lease signed — the landlord chose you over ten others.",
+        personaOverlay: `SCENARIO: Another applicant mentioned noise concerns. The landlord is probing whether you'll be a problem neighbor. Reassure with specifics — quiet hours, no parties, respect for shared spaces. Same meter rules as main level.`,
+        content: {
+          fr: {
+            openingLine: {
+              text: "Le voisin du dessus s'inquiète du bruit. Vous recevez souvent des amis?",
+              hint: "The upstairs neighbor worries about noise. Do you often have friends over?",
+            },
+            starters: [
+              { text: "Je suis très calme — je rentre tard et je ne reçois presque jamais.", hint: "I'm very quiet — home late, rarely host." },
+              { text: "Je comprends, les murs sont fins. Je ferai attention.", hint: "I understand, thin walls. I'll be careful." },
+              { text: "Je cherche surtout un chez-moi stable, pas une fête.", hint: "I want a stable home, not a party pad." },
+            ],
+          },
+          en: {
+            openingLine: {
+              text: "The upstairs tenant mentioned noise worries. Do you have people over often?",
+              hint: "The landlord probes about noise.",
+            },
+            starters: [
+              { text: "I'm very quiet — home late, almost never host.", hint: "Reassure on noise" },
+              { text: "I get it, thin walls. I'll be mindful.", hint: "Show empathy" },
+              { text: "I'm looking for a stable home, not a party pad.", hint: "Signal intent" },
+            ],
+          },
+          es: {
+            openingLine: {
+              text: "El vecino de arriba se preocupa por el ruido. ¿Recibe mucha gente?",
+              hint: "Upstairs neighbor worries about noise.",
+            },
+            starters: [
+              { text: "Soy muy tranquilo — llego tarde y casi nunca recibo.", hint: "Reassure on noise" },
+              { text: "Entiendo, las paredes son finas. Tendré cuidado.", hint: "Show empathy" },
+              { text: "Busco un hogar estable, no fiestas.", hint: "Signal intent" },
+            ],
+          },
+          ru: {
+            openingLine: {
+              text: "Сосед сверху переживает из-за шума. У вас часто бывают гости?",
+              hint: "Upstairs neighbor worries about noise.",
+            },
+            starters: [
+              { text: "Я очень тихий — прихожу поздно, почти никого не принимаю.", hint: "Reassure on noise" },
+              { text: "Понимаю, стены тонкие. Буду внимателен.", hint: "Show empathy" },
+              { text: "Мне нужен спокойный дом, а не вечеринки.", hint: "Signal intent" },
+            ],
+          },
+        },
+      },
+      {
+        kind: "voice",
+        id: "landlord-l4-deposit",
+        title: "Deposit negotiation",
+        subtitle: "Everything's perfect — except the security deposit",
+        status: "locked",
+        lockLabel: "Pro",
+      },
+      {
+        kind: "voice",
+        id: "landlord-l5-movein",
+        title: "Move-in day",
+        subtitle: "Keys in hand — inspect every corner before signing",
+        status: "wip",
+        lockLabel: "Coming soon",
       },
     ],
   },

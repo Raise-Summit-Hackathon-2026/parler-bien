@@ -46,15 +46,23 @@ function parseModerationResponse(text: string) {
 }
 
 export function scenarioTextForModeration(payload: GeneratedCharacterPayload) {
-  return [
-    payload.title,
-    payload.tagline,
-    payload.goal,
-    payload.persona,
-    payload.openingLine.text,
-    ...payload.starters.map((starter) => starter.text),
-    payload.winMessage,
-  ]
+  const levelText = payload.levels
+    .map((level) =>
+      [
+        level.title,
+        level.subtitle,
+        level.goal,
+        level.personaOverlay,
+        level.openingLine.text,
+        ...level.starters.map((starter) => starter.text),
+        level.winMessage,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .join("\n\n---\n\n")
+
+  return [payload.title, payload.tagline, payload.persona, levelText]
     .filter(Boolean)
     .join("\n")
 }

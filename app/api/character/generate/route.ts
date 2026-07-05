@@ -4,11 +4,9 @@ import {
   generationBlockedMessage,
   moderateGeneratedContent,
   scenarioTextForModeration,
-  scenariosTextForModeration,
 } from "@/lib/content-safety"
 import {
-  buildGeneratedCharactersBatchSchema,
-  generatedCharacterJsonSchema,
+  buildGeneratedCharacterSchema,
   validateGeneratedCharacterPayload,
   type GeneratedCharacterPayload,
 } from "@/lib/character-generate-schema"
@@ -36,7 +34,7 @@ function buildInstructions(
   languageName: string,
   regionLabel: string,
   city: string,
-  characterCount: number,
+  levelCount: number,
   workspace?: { name: string; description: string | null },
 ) {
   const workspaceBlock = workspace
@@ -47,21 +45,28 @@ WORKSPACE CONTEXT — this character is for a shared team workspace. Stay specif
 - The scenario, roles, setting, and vocabulary must fit this workspace. Do not genericize.`
     : ""
 
-  const characterBlock =
-    characterCount > 1
+  const trackBlock =
+    levelCount > 1
       ? `
 
-Generate exactly ${characterCount} distinct practice characters. Each character must:
-- Cover a different situation, skill, or escalation step inspired by the source material
-- Have its own title, character angle, goal, and opening line
-- Progress logically when ordered (easier → harder) without repeating the same scene`
-      : ""
+Generate exactly one practice character with ${levelCount} ordered practice steps (levels) on a Duolingo-style learning track.
 
-  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).${workspaceBlock}${characterBlock}
+Character-level fields (title, tagline, persona, voice, imagePrompt, liveAvatarId) define the shared practice partner.
+
+Each level must:
+- Cover a different situation, skill, or escalation step inspired by the source material
+- Progress logically when ordered (easier → harder) without repeating the same scene
+- Have its own title, subtitle, goal, meterLabel, winMessage, personaOverlay, opening line, and starters
+- Use roleplay with a clear win condition tracked by a 0-100 meter`
+      : `
+
+Generate exactly one practice character with one practice step on the track.`
+
+  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).${workspaceBlock}${trackBlock}
 
 The scenario must:
-- Have a clear win condition tracked by a 0-100 meter
-- Include persona text with {characterGender} placeholder, character age, short spoken lines only, meter rules, goal_achieved at meter >= 90, and instruction to score pronunciation
+- Include base persona text with {characterGender} placeholder, character age, short spoken lines only, and instruction to score pronunciation
+- Put level-specific meter rules and scene instructions in each level's personaOverlay
 - Set voice.gender to "random" unless the source clearly implies a specific character gender; use "opposite-speaker" only for coach/teacher-style agents
 - Optionally set voice.voices with distinct Gemini voices for this agent. Valid examples include Charon, Kore, Fenrir, Puck, Aoede, Callirrhoe, Iapetus, Algieba, Rasalgethi, Laomedeia, Vindemiatrix, and Sulafat.
 - openingLine.text and all starters must be in ${languageName}
@@ -73,10 +78,10 @@ LIVE AVATAR — pick liveAvatarId from this catalog (match gender, profession, a
 ${formatLiveAvatarCatalogForPrompt()}`
 }
 
-function parseGenerated(content: string): GeneratedCharacterPayload {
+function parseGenerated(content: string, levelCount: number): GeneratedCharacterPayload {
   const parsed = JSON.parse(content) as GeneratedCharacterPayload
 
-  if (!validateGeneratedCharacterPayload(parsed)) {
+  if (!validateGeneratedCharacterPayload(parsed, levelCount)) {
     throw new Error("Invalid generated character shape")
   }
 
@@ -86,29 +91,6 @@ function parseGenerated(content: string): GeneratedCharacterPayload {
   )
 
   return parsed
-}
-
-function parseGeneratedBatch(
-  content: string,
-  characterCount: number,
-): GeneratedCharacterPayload[] {
-  const parsed = JSON.parse(content) as { characters?: unknown[] }
-
-  if (
-    !Array.isArray(parsed.characters) ||
-    parsed.characters.length !== characterCount ||
-    !parsed.characters.every(validateGeneratedCharacterPayload)
-  ) {
-    throw new Error("Invalid generated characters batch shape")
-  }
-
-  return parsed.characters.map((character) => {
-    character.liveAvatarId = validateGeneratedLiveAvatarId(
-      character.liveAvatarId,
-      character.voice.gender,
-    )
-    return character
-  })
 }
 
 export async function POST(request: Request) {
@@ -134,6 +116,7 @@ export async function POST(request: Request) {
     fileName?: string
     sourceLabel?: string
     workspaceId?: string
+    levelCount?: number
     characterCount?: number
   }
 
@@ -151,12 +134,20 @@ export async function POST(request: Request) {
     fileBase64,
     fileName,
     workspaceId,
+    levelCount: rawLevelCount,
     characterCount: rawCharacterCount,
   } = body
 
-  const characterCount = Math.min(
+  const levelCount = Math.min(
     10,
-    Math.max(1, Number.isFinite(rawCharacterCount) ? Math.round(rawCharacterCount!) : 1),
+    Math.max(
+      1,
+      Number.isFinite(rawLevelCount)
+        ? Math.round(rawLevelCount!)
+        : Number.isFinite(rawCharacterCount)
+          ? Math.round(rawCharacterCount!)
+          : 1,
+    ),
   )
 
   const authorization = request.headers.get("authorization")
@@ -247,7 +238,7 @@ export async function POST(request: Request) {
     language.name,
     region.label,
     region.city,
-    characterCount,
+    levelCount,
     workspaceContext ?? undefined,
   )
 
@@ -298,12 +289,9 @@ export async function POST(request: Request) {
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: characterCount > 1 ? "generated_characters" : "generated_character",
+            name: "generated_character",
             strict: true,
-            schema:
-              characterCount > 1
-                ? buildGeneratedCharactersBatchSchema(characterCount)
-                : generatedCharacterJsonSchema,
+            schema: buildGeneratedCharacterSchema(levelCount),
           },
         },
       }),
@@ -330,10 +318,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const payloads =
-      characterCount > 1
-        ? parseGeneratedBatch(content, characterCount)
-        : [parseGenerated(content)]
+    const payload = parseGenerated(content, levelCount)
 
     const userSource =
       sourceType === "pdf"
@@ -343,9 +328,7 @@ export async function POST(request: Request) {
     const moderation = await moderateGeneratedContent(
       apiKey,
       userSource,
-      characterCount > 1
-        ? scenariosTextForModeration(payloads)
-        : scenarioTextForModeration(payloads[0]),
+      scenarioTextForModeration(payload),
       { languageName: language.name },
     )
 
@@ -367,7 +350,7 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ characters: payloads })
+    return NextResponse.json({ characters: [payload] })
   } catch (error) {
     console.error("Character generate route error:", error)
     return NextResponse.json(
