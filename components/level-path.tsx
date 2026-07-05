@@ -3,7 +3,14 @@
 import { Camera, Check, Lock, Mic, Sparkles, Star, Trophy } from "lucide-react"
 import { useMemo } from "react"
 
-import type { Character, Level } from "@/lib/character"
+import { useLanguage } from "@/components/language-provider"
+import {
+  localizedCharacterMeta,
+  localizedLevelCopy,
+  type Character,
+  type Level,
+} from "@/lib/character"
+import type { LanguageId } from "@/lib/languages"
 import {
   getLevelPathState,
   trackProgressSummary,
@@ -89,16 +96,19 @@ function SparkleField() {
 
 function LevelNode({
   level,
+  languageId,
   state,
   index,
   onSelect,
 }: {
   level: Level
+  languageId: LanguageId
   state: LevelPathState
   index: number
   onSelect: () => void
 }) {
   const Icon = levelIcon(level)
+  const copy = localizedLevelCopy(level, languageId)
   const comingSoon = state === "coming-soon"
   const locked = state === "locked"
   const isCurrent = state === "current"
@@ -134,13 +144,13 @@ function LevelNode({
           type="button"
           disabled={comingSoon}
           onClick={navigable ? onSelect : undefined}
-          aria-label={level.title}
+          aria-label={copy.title}
           title={
             comingSoon
-              ? `${level.title} — ${level.lockLabel ?? "Coming soon"}`
+              ? `${copy.title} — ${level.lockLabel ?? "Coming soon"}`
               : locked
                 ? "Complete the previous level to unlock"
-                : level.title
+                : copy.title
           }
           className={cn(
             "group relative flex size-16 items-center justify-center rounded-full transition-all duration-150",
@@ -204,10 +214,10 @@ function LevelNode({
             (locked || comingSoon) && "text-muted-foreground/70",
           )}
         >
-          {level.title}
+          {copy.title}
         </p>
         <p className="line-clamp-1 text-[10px] text-muted-foreground">
-          {comingSoon ? (level.lockLabel ?? "Coming soon") : level.subtitle}
+          {comingSoon ? (level.lockLabel ?? "Coming soon") : copy.subtitle}
         </p>
       </div>
     </div>
@@ -267,6 +277,8 @@ export function LevelPath({
   onSelectLevel,
   className,
 }: LevelPathProps) {
+  const { languageId } = useLanguage()
+  const meta = localizedCharacterMeta(character, languageId)
   const { completed, total } = trackProgressSummary(character, completedLevelIds)
   const allDone = completed === total && total > 0
   const progressPct = total > 0 ? (completed / total) * 100 : 0
@@ -307,8 +319,8 @@ export function LevelPath({
   return (
     <div className={cn("space-y-3", className)}>
       <div className="space-y-1.5 text-center">
-        <h1 className="text-lg font-bold leading-tight">{character.name}</h1>
-        <p className="text-xs text-muted-foreground">{character.tagline}</p>
+        <h1 className="text-lg font-bold leading-tight">{meta.name}</h1>
+        <p className="text-xs text-muted-foreground">{meta.tagline}</p>
 
         <div className="mx-auto flex max-w-[240px] items-center gap-2 pt-1">
           <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-muted ring-1 ring-inset ring-border/60">
@@ -380,6 +392,7 @@ export function LevelPath({
           <LevelNode
             key={level.id}
             level={level}
+            languageId={languageId}
             state={states[index]!}
             index={index}
             onSelect={() => onSelectLevel(index)}

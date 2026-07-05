@@ -60,6 +60,8 @@ export const LANGUAGES: Language[] = [
   },
 ]
 
+export const LANGUAGE_IDS = LANGUAGES.map((language) => language.id)
+
 export const DEFAULT_LANGUAGE_ID: LanguageId = "en"
 export const DEFAULT_REGION_ID: RegionId = "en-US"
 

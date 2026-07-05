@@ -1,4 +1,5 @@
 import type { GeneratedCharacterPayload } from "@/lib/character-generate-schema"
+import { LANGUAGE_IDS } from "@/lib/languages"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const CONTENT_SAFETY_MODEL = "nvidia/nemotron-3.5-content-safety:free"
@@ -31,22 +32,44 @@ function parseModerationResponse(text: string) {
 
 export function scenarioTextForModeration(payload: GeneratedCharacterPayload) {
   const levelText = payload.levels
-    .map((level) =>
-      [
+    .map((level) => {
+      const localizedText = LANGUAGE_IDS.flatMap((languageId) => {
+        const slot = level.content[languageId]
+        if (!slot) return []
+        return [
+          slot.title,
+          slot.subtitle,
+          slot.winMessage,
+          slot.openingLine.text,
+          ...slot.starters.map((starter) => starter.text),
+        ]
+      })
+
+      return [
         level.title,
         level.subtitle,
         level.goal,
         level.personaOverlay,
-        level.openingLine.text,
-        ...level.starters.map((starter) => starter.text),
+        ...localizedText,
         level.winMessage,
       ]
         .filter(Boolean)
-        .join("\n"),
-    )
+        .join("\n")
+    })
     .join("\n\n---\n\n")
 
-  return [payload.title, payload.tagline, payload.persona, levelText]
+  const localizedMeta = LANGUAGE_IDS.flatMap((languageId) => {
+    const meta = payload.i18n?.[languageId]
+    return meta ? [meta.name, meta.tagline] : []
+  })
+
+  return [
+    payload.title,
+    payload.tagline,
+    ...localizedMeta,
+    payload.persona,
+    levelText,
+  ]
     .filter(Boolean)
     .join("\n")
 }

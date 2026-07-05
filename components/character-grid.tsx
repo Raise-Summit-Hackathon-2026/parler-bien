@@ -7,7 +7,8 @@ import { CharacterBuilder } from "@/components/character-builder"
 import { ScenarioScene } from "@/components/scenario-scene"
 import { useLanguage } from "@/components/language-provider"
 import type { Character } from "@/lib/character"
-import { levelBadge } from "@/lib/character"
+import { levelBadge, localizedCharacterMeta } from "@/lib/character"
+import type { LanguageId } from "@/lib/languages"
 import { isBuiltInCharacterId } from "@/lib/characters/index"
 import type { CharacterRow } from "@/lib/workspace-types"
 import { cn } from "@/lib/utils"
@@ -31,12 +32,14 @@ type CharacterGridProps = {
 
 function CharacterCard({
   character,
+  languageId,
   completed,
   deletable,
   onSelect,
   onDelete,
 }: {
   character: Character
+  languageId: LanguageId
   completed: boolean
   deletable?: boolean
   onSelect: () => void
@@ -44,6 +47,7 @@ function CharacterCard({
 }) {
   const isBuiltIn = isBuiltInCharacterId(character.id)
   const badge = levelBadge(character)
+  const meta = localizedCharacterMeta(character, languageId)
 
   return (
     <button
@@ -95,9 +99,9 @@ function CharacterCard({
         )}
       </div>
       <div className="flex min-h-18 flex-col justify-center gap-1 p-3 sm:p-4">
-        <p className="line-clamp-1 text-sm font-semibold leading-tight">{character.name}</p>
+        <p className="line-clamp-1 text-sm font-semibold leading-tight">{meta.name}</p>
         <p className="line-clamp-2 text-xs leading-snug text-muted-foreground dark:text-white/50">
-          {character.tagline}
+          {meta.tagline}
         </p>
       </div>
     </button>
@@ -125,6 +129,7 @@ export function CharacterGrid({
           <CharacterCard
             key={character.id}
             character={character}
+            languageId={languageId}
             completed={completedIds.includes(character.id)}
             deletable={deletableIds.includes(character.id)}
             onSelect={() => onSelect({ character, rowId: character.id })}

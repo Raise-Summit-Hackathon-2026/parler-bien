@@ -19,6 +19,7 @@ import {
   getRegion,
   isLanguageId,
   isRegionId,
+  LANGUAGES,
 } from "@/lib/languages"
 import { requireCurrentUser, getSupabaseClientWithToken } from "@/lib/supabase"
 
@@ -37,6 +38,8 @@ function buildInstructions(
   levelCount: number,
   workspace?: { name: string; description: string | null },
 ) {
+  const languageList = LANGUAGES.map((language) => language.name).join(", ")
+
   const workspaceBlock = workspace
     ? `
 
@@ -56,21 +59,25 @@ Character-level fields (title, tagline, persona, voice, imagePrompt, liveAvatarI
 Each level must:
 - Cover a different situation, skill, or escalation step inspired by the source material
 - Progress logically when ordered (easier → harder) without repeating the same scene
-- Have its own title, subtitle, goal, meterLabel, winMessage, personaOverlay, opening line, and starters
+- Have its own title, subtitle, goal, meterLabel, winMessage, personaOverlay, and multilingual content
 - Use roleplay with a clear win condition tracked by a 0-100 meter`
       : `
 
 Generate exactly one practice character with one practice step on the track.`
 
-  return `Create a language-learning roleplay scenario for practicing ${languageName} (${regionLabel}, ${city}).${workspaceBlock}${trackBlock}
+  return `Create a language-learning roleplay scenario for practicing spoken conversation.${workspaceBlock}${trackBlock}
 
 The scenario must:
 - Include base persona text with {characterGender} placeholder, character age, short spoken lines only, and instruction to score pronunciation
+- Keep persona and personaOverlay LANGUAGE-NEUTRAL: never name or instruct a specific practice language — the app injects the active language at runtime and the same character is played in ${languageList}
+- Write persona, personaOverlay, goal, and meterLabel in English (internal instructions)
 - Put level-specific meter rules and scene instructions in each level's personaOverlay
 - Set voice.gender to "random" unless the source clearly implies a specific character gender; use "opposite-speaker" only for coach/teacher-style agents
 - Optionally set voice.voices with distinct Gemini voices for this agent. Valid examples include Charon, Kore, Fenrir, Puck, Aoede, Callirrhoe, Iapetus, Algieba, Rasalgethi, Laomedeia, Vindemiatrix, and Sulafat.
-- openingLine.text and all starters must be in ${languageName}
-- hints are short English glosses
+- Provide i18n with the character name and tagline translated into each practice language: ${languageList}
+- Each level's content must include title, subtitle, winMessage, openingLine, and starters localized for every practice language — all fully translated into the matching language, no mixing
+- openingLine.text and starters[].text must be written in the matching language; hints stay short English glosses
+- The user's preferred language at generation time is ${languageName} (${regionLabel}, ${city}) — use it as inspiration for tone and scenario fit
 - Be appropriate for language practice (no explicit content)
 - Feel specific and fun, inspired by the user's source material when provided
 

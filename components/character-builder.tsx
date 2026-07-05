@@ -4,6 +4,7 @@ import { FileText, Loader2, Sparkles, Upload, X } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { ContentSafetyAttribution } from "@/components/content-safety-attribution"
+import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import {
@@ -65,6 +66,7 @@ export function CharacterBuilder({
   onCreated,
   onCancel,
 }: CharacterBuilderProps) {
+  const { hydrated } = useLanguage()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<BuilderMode>("prompt")
   const [prompt, setPrompt] = useState("")
@@ -338,7 +340,7 @@ export function CharacterBuilder({
           <Button
             className="flex-1 bg-lime-600 text-white hover:bg-lime-700 dark:bg-lime-300 dark:text-black dark:hover:bg-lime-200"
             onClick={() => void handleGenerate()}
-            disabled={isGenerating}
+            disabled={isGenerating || !hydrated}
           >
             {isGenerating ? (
               <>

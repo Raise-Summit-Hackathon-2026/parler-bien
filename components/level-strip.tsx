@@ -1,6 +1,9 @@
+"use client"
+
 import { Lock } from "lucide-react"
 
-import { isLevelPlayable, type Level } from "@/lib/character"
+import { useLanguage } from "@/components/language-provider"
+import { isLevelPlayable, localizedLevelCopy, type Level } from "@/lib/character"
 import { cn } from "@/lib/utils"
 
 type LevelStripProps = {
@@ -10,7 +13,11 @@ type LevelStripProps = {
 }
 
 export function LevelStrip({ levels, levelIndex, className }: LevelStripProps) {
+  const { languageId } = useLanguage()
   const current = levels[levelIndex]
+  const currentTitle = current
+    ? localizedLevelCopy(current, languageId).title
+    : undefined
   const playableCount = levels.filter(isLevelPlayable).length
   const playablePosition =
     levels.slice(0, levelIndex + 1).filter(isLevelPlayable).length
@@ -18,7 +25,7 @@ export function LevelStrip({ levels, levelIndex, className }: LevelStripProps) {
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{current?.title}</span>
+        <span className="font-medium text-foreground">{currentTitle}</span>
         <span className="tabular-nums">
           Level {playablePosition} / {playableCount}
         </span>
@@ -29,14 +36,15 @@ export function LevelStrip({ levels, levelIndex, className }: LevelStripProps) {
           const completed =
             !locked && index < levelIndex && isLevelPlayable(levels[index]!)
           const active = index === levelIndex && !locked
+          const title = localizedLevelCopy(level, languageId).title
 
           return (
             <span
               key={level.id}
               title={
                 locked
-                  ? `${level.title} — ${level.lockLabel ?? "Coming soon"}`
-                  : level.title
+                  ? `${title} — ${level.lockLabel ?? "Coming soon"}`
+                  : title
               }
               className={cn(
                 "relative h-1.5 flex-1 rounded-full transition-colors",
@@ -65,7 +73,7 @@ export function LevelStrip({ levels, levelIndex, className }: LevelStripProps) {
                 )}
               >
                 <Lock className="size-2.5 shrink-0 opacity-60" />
-                {level.title}
+                {localizedLevelCopy(level, languageId).title}
                 <span className="opacity-70">· {level.lockLabel ?? "Coming soon"}</span>
               </span>
             )

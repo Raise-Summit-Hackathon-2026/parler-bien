@@ -120,7 +120,38 @@ export type Character = {
   /** Set on AI-generated characters */
   primaryLanguageId?: LanguageId
   sourceLabel?: string
+  /** Per-language display name/tagline on generated characters */
+  i18n?: Partial<Record<LanguageId, LocalizedCharacterMeta>>
   levels: Level[]
+}
+
+export type LocalizedCharacterMeta = { name: string; tagline: string }
+
+/** Character card copy in the selected language, falling back to base fields. */
+export function localizedCharacterMeta(
+  character: Character,
+  languageId: LanguageId,
+): LocalizedCharacterMeta {
+  const meta = character.i18n?.[languageId]
+  return {
+    name: meta?.name ?? character.name,
+    tagline: meta?.tagline ?? character.tagline,
+  }
+}
+
+/** Level title/subtitle in the selected language, falling back to base fields. */
+export function localizedLevelCopy(
+  level: Level,
+  languageId: LanguageId,
+): { title: string; subtitle: string } {
+  if (level.kind !== "voice") {
+    return { title: level.title, subtitle: level.subtitle }
+  }
+  const content = level.content?.[languageId]
+  return {
+    title: content?.title ?? level.title,
+    subtitle: content?.subtitle ?? level.subtitle,
+  }
 }
 
 export function characterLevelScenario(
@@ -137,14 +168,19 @@ export function characterLevelScenario(
     ? `${character.persona}\n\n${level.personaOverlay}`
     : character.persona
 
+  const localized = level.content?.[languageId]
+
   return {
     id: `custom:${character.id}-${level.id}`,
-    title: level.title,
-    tagline: level.subtitle,
-    characterName: level.partnerName ?? character.name,
+    title: localized?.title ?? level.title,
+    tagline: localized?.subtitle ?? level.subtitle,
+    characterName:
+      level.partnerName ??
+      character.i18n?.[languageId]?.name ??
+      character.name,
     goal: level.goal ?? null,
     meterLabel: level.meterLabel ?? null,
-    winMessage: level.winMessage ?? null,
+    winMessage: localized?.winMessage ?? level.winMessage ?? null,
     persona,
     voice: character.voice,
     mode: level.mode ?? "roleplay",
@@ -217,6 +253,10 @@ export type ScenarioId = string
 export type ScenarioContent = {
   openingLine: SentenceSuggestion | null
   starters: SentenceSuggestion[]
+  /** Localized display copy on generated tracks; falls back to the level's base fields */
+  title?: string
+  subtitle?: string
+  winMessage?: string
 }
 
 export type Scenario = {

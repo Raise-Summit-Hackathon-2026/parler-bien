@@ -32,7 +32,6 @@ import {
   categoryScoresPronunciation,
   characterLevelScenario,
   getScenarioContent,
-  getScenarioFallbackLanguageId,
   resolveCharacterGender,
   type Character,
 } from "@/lib/character"
@@ -214,24 +213,12 @@ export function PracticeSession({
   continueLabel,
   showLevelStrip = true,
 }: PracticeSessionProps) {
-  const { languageId, regionId, setLanguageId } = useLanguage()
+  const { languageId, regionId } = useLanguage()
 
   const scenario = useMemo(
     () => characterLevelScenario(character, levelIndex, languageId),
     [character, levelIndex, languageId]
   )
-  // The language actually practiced: falls back to the scenario's own language
-  // when it has no content for the globally selected one.
-  const practiceLanguageId = useMemo(
-    () => getScenarioFallbackLanguageId(scenario, languageId),
-    [scenario, languageId]
-  )
-
-  useEffect(() => {
-    if (practiceLanguageId !== languageId) {
-      setLanguageId(practiceLanguageId)
-    }
-  }, [languageId, practiceLanguageId, setLanguageId])
   const levelTotal = character.levels.length
   const isOpenMode = scenario.mode === "open"
   const isCoachMode = scenario.mode === "coach"
@@ -243,7 +230,7 @@ export function PracticeSession({
   const showMeter = isRoleplayMode && Boolean(scenario.goal)
   const showWordBreakdown = scoresPronunciation && isCoachMode
 
-  const scenarioContent = getScenarioContent(scenario, practiceLanguageId)
+  const scenarioContent = getScenarioContent(scenario, languageId)
 
   const [avatarEnabled, setAvatarEnabled] = useState(
     getLiveAvatarEnabledPreference
@@ -273,7 +260,7 @@ export function PracticeSession({
     interrupt: interruptAvatar,
   } = useLiveAvatar({
     avatarId: liveAvatarId,
-    languageId: practiceLanguageId,
+    languageId: languageId,
     enabled: avatarEnabled,
     restartKey: avatarRestartKey,
   })
@@ -308,7 +295,7 @@ export function PracticeSession({
     conversationStarted,
   } = useConversation({
     scenario,
-    languageId: practiceLanguageId,
+    languageId: languageId,
     regionId,
     avatarSink,
     interruptAvatar,
@@ -330,10 +317,15 @@ export function PracticeSession({
   const examples = useMemo<SentenceSuggestion[]>(
     () =>
       isCoachMode
-        ? pickRandomSentences(EXAMPLE_COUNT, practiceLanguageId)
+        ? pickRandomSentences(EXAMPLE_COUNT, languageId)
         : scenarioContent.starters,
-    [isCoachMode, practiceLanguageId, scenarioContent.starters]
+    [isCoachMode, languageId, scenarioContent.starters]
   )
+
+  useEffect(() => {
+    reset()
+    setAvatarRestartKey((key) => key + 1)
+  }, [languageId, regionId, reset])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ block: "end" })
