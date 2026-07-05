@@ -1,11 +1,13 @@
 import type { PronunciationScore } from "@/lib/types"
 
-/** Minimum pronunciation clarity before meter can rise */
+export const PROGRESS_LABEL = "Progress"
+
+/** Minimum pronunciation clarity before progress can rise */
 export const METER_QUALITY_THRESHOLD = 55
 
 /**
- * Only advance goal meter when the user's attempt was intelligible and on-topic.
- * Poor attempts hold or slightly decrease progress.
+ * Progress starts at 0 and reaches 100 when the goal is won.
+ * Weak attempts reset to 0; strong on-topic attempts add progress.
  */
 export function resolveMeterUpdate(
   currentMeter: number,
@@ -14,16 +16,16 @@ export function resolveMeterUpdate(
   const proposed = result.meter
 
   if (result.overall_score < METER_QUALITY_THRESHOLD) {
-    return Math.max(0, currentMeter - 8)
+    return 0
   }
 
   if (proposed <= currentMeter) {
-    return proposed
+    return Math.max(0, proposed)
   }
 
   const delta = proposed - currentMeter
   const maxBump =
-    result.overall_score >= 80 ? 18 : result.overall_score >= 65 ? 12 : 6
+    result.overall_score >= 80 ? 15 : result.overall_score >= 65 ? 10 : 5
 
   return Math.min(100, currentMeter + Math.min(delta, maxBump))
 }

@@ -1,4 +1,5 @@
 import type { Character } from "@/lib/character"
+import { SPORTS_PEP_GESTURES } from "@/lib/gestures"
 
 export const SPORTS_CHARACTERS: Character[] = [
   {
@@ -32,6 +33,52 @@ export const SPORTS_CHARACTERS: Character[] = [
             ],
           },
         },
+      },
+      {
+        kind: "voice",
+        id: "halftime-l2-coach",
+        title: "Rally cries",
+        subtitle: "Drill the lines that actually fire up a tired locker room",
+        mode: "coach",
+        personaOverlay: `COACH MODE: You are the captain, but your job is coaching the coach's delivery — no morale meter. Drill one rally phrase at a time. Listen, give feedback on energy and clarity, ask them to repeat louder and cleaner. Phrases: reset-the-half opener, tactical pivot, personal call-out.`,
+        content: {
+          en: {
+            openingLine: {
+              text: "Alright coach — say it like you mean it. Repeat: « That half is gone. The next forty-five are ours. »",
+              hint: "Short, punchy, believable",
+            },
+            starters: [
+              { text: "Heads up — that half is gone.", hint: "Reset energy" },
+              { text: "We win the second balls or we lose this match.", hint: "Tactical clarity" },
+              { text: "Marco — I need the player I know is in there.", hint: "Personal call-out" },
+            ],
+          },
+        },
+      },
+      {
+        kind: "gesture",
+        id: "halftime-l3-presence",
+        title: "Sideline presence",
+        subtitle: "Body language the team reads before you even speak",
+        steps: SPORTS_PEP_GESTURES,
+        winMessage: "The room sees it — you're ready to lead them back out.",
+        holdMs: 1400,
+      },
+      {
+        kind: "voice",
+        id: "halftime-l4-timeout",
+        title: "Crunch-time timeout",
+        subtitle: "Down one with two minutes left — one last huddle",
+        status: "locked",
+        lockLabel: "Pro",
+      },
+      {
+        kind: "voice",
+        id: "halftime-l5-finals",
+        title: "Championship speech",
+        subtitle: "The trophy is in the building — leave nothing in the locker room",
+        status: "wip",
+        lockLabel: "Coming soon",
       },
     ],
   },

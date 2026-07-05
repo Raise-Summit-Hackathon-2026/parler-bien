@@ -26,7 +26,7 @@ and "Create your own character" side by side.
 1. **Unify everything around `Character`, with optional multi-level paths.**
    Gesture levels stay, as a level type — not a parallel engine.
 2. **Free Play is curated by category** to showcase range (languages,
-   professional, coaching, sports, everyday). Categories are first-class in the
+   professional, sports, everyday). Categories are first-class in the
    domain model, not a string tag on a flat list.
 3. **No deadline — one coherent refactor**, model first, UX on top.
 
@@ -52,11 +52,11 @@ UI renders categories, not a flat list.
 ```ts
 // lib/character.ts (types) — the ONE model
 type CharacterCategoryId =
-  | "languages" | "professional" | "coaching" | "sports" | "everyday"
+  | "languages" | "professional" | "sports" | "everyday"
 
 type CharacterCategory = {
   id: CharacterCategoryId
-  label: string          // "Coaching & Reflection"
+  label: string          // e.g. "Professional"
   tagline: string        // one line under the row heading
 }
 
@@ -104,7 +104,6 @@ type GestureLevel = {
 lib/characters/index.ts        // CATEGORIES + BUILT_IN_CHARACTERS assembly, lookups
 lib/characters/languages.ts    // teacher, boulanger, sommelier, taxi, ...
 lib/characters/professional.ts // captain-eva (3 levels), job-interview (new)
-lib/characters/coaching.ts     // siddhartha (openEnded, reuses spiritual prompt text)
 lib/characters/sports.ts       // sports coach (new)
 lib/characters/everyday.ts     // vendor, parisian, waiter, landlord, ...
 ```

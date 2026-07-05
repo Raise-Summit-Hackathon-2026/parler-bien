@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     language,
     languageId: rawLanguageId,
     regionId: rawRegionId,
-    scenarioId = "teacher",
+    scenarioId = "vendor",
     history = [],
     characterGender = "female",
     currentMeter = 0,

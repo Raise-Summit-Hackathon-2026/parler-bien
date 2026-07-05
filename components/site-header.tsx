@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils"
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
-  { href: "/#free-play", label: "Free Play" },
   { href: "/workspaces", label: "Workspaces" },
 ]
 
@@ -28,9 +27,7 @@ export function SiteHeader() {
             const isActive =
               link.href === "/"
                 ? pathname === "/"
-                : link.href.startsWith("/#")
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href)
+                : pathname.startsWith(link.href)
 
             return (
               <Link

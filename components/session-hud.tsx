@@ -58,13 +58,13 @@ export function ExampleSuggestionCard({
     <button
       type="button"
       onClick={onSelect}
-      className="w-full rounded-xl border border-dashed bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
+      className="w-full rounded-lg border border-dashed bg-muted/30 p-2 text-left transition-colors hover:bg-muted/50"
     >
       <p className="text-[10px] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
         Try saying
       </p>
-      <p className="mt-1.5 text-sm font-medium leading-snug">{sentence.text}</p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{sentence.hint}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug">{sentence.text}</p>
+      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{sentence.hint}</p>
     </button>
   )
 }
@@ -81,12 +81,12 @@ export function MeterBar({
   const clamped = Math.max(0, Math.min(100, meter))
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs sm:text-sm">
         <span className="font-medium">{label}</span>
         <span className="text-muted-foreground tabular-nums">{clamped}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className={cn(
             "h-full rounded-full transition-all duration-700",
@@ -95,7 +95,7 @@ export function MeterBar({
           style={{ width: `${clamped}%` }}
         />
       </div>
-      {goal && <p className="text-xs text-muted-foreground">Goal: {goal}</p>}
+      {goal && <p className="line-clamp-2 text-xs text-muted-foreground">Goal: {goal}</p>}
     </div>
   )
 }

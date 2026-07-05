@@ -17,7 +17,7 @@
 - After EVERY task: `bunx tsc --noEmit` exits 0 AND `bun test` passes (the existing `lib/tts.test.ts` suite plus tests added here).
 - Package manager / runner is **bun** (`bun test`, `bunx tsc --noEmit`). Run all commands from the repo root `/Users/leyra/Developer/09_Hackathon/03_Parlez-moi/parler-bien`.
 - Copy rule: the product one-liner everywhere is **"Talk your way to any skill — voice-first training with AI characters, from languages to leadership."**
-- Category ids are exactly: `languages`, `professional`, `coaching`, `sports`, `everyday`.
+- Category ids are exactly: `languages`, `professional`, `sports`, `everyday`.
 - Commit after every task (small, described commits). Do not push.
 
 ---

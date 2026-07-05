@@ -3,8 +3,13 @@ import { describe, expect, test } from "bun:test"
 import {
   CATEGORIES,
   characterLevelScenario,
+  isLevelPlayable,
   levelBadge,
+  playableLevels,
+  resolveCharacterGender,
   scenarioToCharacter,
+  stableCharacterGender,
+  categoryScoresPronunciation,
   type Character,
 } from "@/lib/character"
 import {
@@ -112,12 +117,44 @@ describe("scenarioToCharacter", () => {
   })
 })
 
+describe("character gender", () => {
+  test("stableCharacterGender is deterministic for the same seed", () => {
+    expect(stableCharacterGender("captain-eva:1")).toBe(stableCharacterGender("captain-eva:1"))
+    expect(stableCharacterGender("vendor:0")).not.toBe(stableCharacterGender("vendor:1"))
+  })
+
+  test("infers female gender for Captain Eva", () => {
+    const eva = getBuiltInCharacter("captain-eva")
+    const scenario = characterLevelScenario(eva, 0, "en")
+    expect(resolveCharacterGender(scenario, undefined, "captain-eva:0")).toBe("female")
+  })
+
+  test("avatar and voice gender use the same seed in resolveCharacterGender", () => {
+    const vendor = getBuiltInCharacter("vendor")
+    const scenario = characterLevelScenario(vendor, 0, "en")
+    const seed = "vendor:0"
+    const genderA = resolveCharacterGender(scenario, undefined, seed)
+    const genderB = resolveCharacterGender(scenario, undefined, seed)
+    expect(genderA).toBe(genderB)
+  })
+  test("characterLevelScenario includes category for prompt routing", () => {
+    const scenario = characterLevelScenario(sampleCharacter, 0, "fr")
+    expect(scenario.category).toBe("professional")
+  })
+
+  test("categoryScoresPronunciation is true only for languages", () => {
+    expect(categoryScoresPronunciation("languages")).toBe(true)
+    expect(categoryScoresPronunciation("professional")).toBe(false)
+    expect(categoryScoresPronunciation("sports")).toBe(false)
+    expect(categoryScoresPronunciation("everyday")).toBe(false)
+  })
+})
+
 describe("categories & badges", () => {
-  test("CATEGORIES has the five spec ids in order", () => {
+  test("CATEGORIES has the four spec ids in order", () => {
     expect(CATEGORIES.map((c) => c.id)).toEqual([
       "languages",
       "professional",
-      "coaching",
       "sports",
       "everyday",
     ])
@@ -150,19 +187,21 @@ describe("built-in characters", () => {
     expect(isBuiltInCharacterId("nope")).toBe(false)
   })
 
-  test("captain-eva is featured, 3 levels, voice-gesture-voice", () => {
+  test("captain-eva is featured with 3 playable and 2 locked levels", () => {
     const eva = getBuiltInCharacter("captain-eva")
     expect(eva.featured).toBe(true)
     expect(eva.category).toBe("professional")
-    expect(eva.levels.map((l) => l.kind)).toEqual(["voice", "gesture", "voice"])
+    expect(playableLevels(eva).map((l) => l.kind)).toEqual(["voice", "gesture", "voice"])
+    expect(eva.levels).toHaveLength(5)
+    expect(eva.levels.filter((l) => !isLevelPlayable(l))).toHaveLength(2)
   })
 
-  test("siddhartha is open mode, teacher is coach mode", () => {
-    const sidd = getBuiltInCharacter("siddhartha")
-    expect(sidd.category).toBe("coaching")
-    expect(sidd.levels[0]?.kind).toBe("voice")
-    if (sidd.levels[0]?.kind === "voice") expect(sidd.levels[0].mode).toBe("open")
-    const teacher = getBuiltInCharacter("teacher")
-    if (teacher.levels[0]?.kind === "voice") expect(teacher.levels[0].mode).toBe("coach")
+  test("every built-in character has at least 3 playable levels and locked teasers", () => {
+    for (const character of BUILT_IN_CHARACTERS) {
+      const available = playableLevels(character)
+      const locked = character.levels.filter((l) => !isLevelPlayable(l))
+      expect(available.length).toBeGreaterThanOrEqual(3)
+      expect(locked.length).toBeGreaterThanOrEqual(1)
+    }
   })
 })

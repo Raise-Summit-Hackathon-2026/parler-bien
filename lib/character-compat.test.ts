@@ -12,7 +12,7 @@ describe("rowToCharacter", () => {
       id: "stale-id",
       name: "New",
       tagline: "t",
-      category: "coaching",
+      category: "everyday",
       avatarPrompt: "a",
       voice: { ageRange: "30", tone: "calm" },
       persona: "p",
@@ -22,7 +22,7 @@ describe("rowToCharacter", () => {
     const result = rowToCharacter(row)
     expect(result.id).toBe("row-1")
     expect(result.levels).toHaveLength(1)
-    expect(result.category).toBe("coaching")
+    expect(result.category).toBe("everyday")
   })
 
   test("upgrades old Scenario-shape rows to a 1-level Character", () => {

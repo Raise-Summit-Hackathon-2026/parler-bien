@@ -1,15 +1,20 @@
 "use client"
 
 import confetti from "canvas-confetti"
-import { ArrowLeft, Camera, Check, Loader2 } from "lucide-react"
+import { Camera, Check, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { GestureDemo } from "@/components/gesture-demo"
 import { LevelStrip } from "@/components/level-strip"
+import { SessionShell } from "@/components/session-shell"
 import { Button } from "@/components/ui/button"
 import { useGestureCamera } from "@/hooks/use-gesture-camera"
 import { useSpeaker } from "@/hooks/use-speaker"
-import type { Character } from "@/lib/character"
+import {
+  resolveCharacterGenderFromCharacter,
+  resolveCharacterVoice,
+  type Character,
+} from "@/lib/character"
 import {
   gestureHoldMs,
   type GestureStep,
@@ -28,6 +33,7 @@ type GestureSessionProps = {
   onBack: () => void
   backLabel?: string
   completeLabel?: string
+  showLevelStrip?: boolean
 }
 
 type Phase = "demo" | "perform" | "won"
@@ -44,6 +50,7 @@ export function GestureSession({
   onBack,
   backLabel = "Back",
   completeLabel,
+  showLevelStrip = true,
 }: GestureSessionProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [phase, setPhase] = useState<Phase>("demo")
@@ -54,11 +61,14 @@ export function GestureSession({
 
   useEffect(() => {
     if (phase !== "demo" || !currentStep) return
+    const gender = resolveCharacterGenderFromCharacter(character)
+    const voice = resolveCharacterVoice({ voice: character.voice }, gender)
     void speak(
       `${currentStep.title}. ${currentStep.instruction}`,
       "character",
       {
-        gender: character.voice.gender === "male" ? "male" : "female",
+        gender,
+        voice,
         ageRange: character.voice.ageRange,
         tone: character.voice.tone,
         deliveryStyle: character.deliveryStyle,
@@ -102,16 +112,15 @@ export function GestureSession({
   if (!currentStep && phase !== "won") return null
 
   return (
-    <div className="mx-auto flex h-svh w-full max-w-lg flex-col overflow-hidden px-4 py-3">
-      <Button variant="ghost" size="sm" onClick={onBack} className="self-start shrink-0">
-        <ArrowLeft />
-        {backLabel}
-      </Button>
-
+    <SessionShell onBack={onBack} backLabel={backLabel}>
       <div className="shrink-0 space-y-2 py-2">
-        {levelIndex !== undefined && levelTotal !== undefined && (
+        {showLevelStrip && levelIndex !== undefined && levelTotal !== undefined ? (
           <LevelStrip levels={character.levels} levelIndex={levelIndex} />
-        )}
+        ) : levelIndex !== undefined ? (
+          <p className="text-center text-xs font-medium text-muted-foreground">
+            Level {levelIndex + 1} · {sessionTitle}
+          </p>
+        ) : null}
         <div className="text-center">
           <p className="text-xs text-muted-foreground">{character.name}</p>
           {levelIndex === undefined && (
@@ -217,6 +226,6 @@ export function GestureSession({
           />
         ))}
       </div>
-    </div>
+    </SessionShell>
   )
 }

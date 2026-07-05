@@ -61,7 +61,7 @@ Generate exactly ${characterCount} distinct practice characters. Each character 
 
 The scenario must:
 - Have a clear win condition tracked by a 0-100 meter
-- Include persona text with {characterGender} placeholder, character age, short spoken lines only, meter rules, goal_achieved at meter >= 90, and instruction to score pronunciation
+- Include persona text with {characterGender} placeholder, character age, short spoken lines only, progress rules (0-100), goal_achieved at progress 100, and instruction to score pronunciation
 - Set voice.gender to "random" unless the source clearly implies a specific character gender; use "opposite-speaker" only for coach/teacher-style agents
 - Optionally set voice.voices with distinct Gemini voices for this agent. Valid examples include Charon, Kore, Fenrir, Puck, Aoede, Callirrhoe, Iapetus, Algieba, Rasalgethi, Laomedeia, Vindemiatrix, and Sulafat.
 - openingLine.text and all starters must be in ${languageName}

@@ -138,20 +138,19 @@ export function resolveLiveAvatarIdForPractice(
     id?: string
     voice?: { gender?: "male" | "female" | "random" | "opposite-speaker" }
   },
-  randomGender: CharacterGender,
+  gender: CharacterGender,
 ): string {
-  if (scenario.liveAvatarId?.trim() && isAllowedLiveAvatarId(scenario.liveAvatarId.trim())) {
-    return isLiveAvatarSandbox() ? SANDBOX_AVATAR_ID : scenario.liveAvatarId.trim()
-  }
-
-  const gender =
-    scenario.voice?.gender === "male" || scenario.voice?.gender === "female"
-      ? scenario.voice.gender
-      : randomGender
-
   const seed = scenario.id
     ? scenario.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
     : 0
+
+  const stored = scenario.liveAvatarId?.trim()
+  if (stored && isAllowedLiveAvatarId(stored)) {
+    const entry = getLiveAvatarEntry(stored)
+    if (!entry || entry.gender === gender) {
+      return isLiveAvatarSandbox() ? SANDBOX_AVATAR_ID : stored
+    }
+  }
 
   const picked = resolveLiveAvatarIdForGender(gender, seed)
   return isLiveAvatarSandbox() ? SANDBOX_AVATAR_ID : picked
@@ -160,13 +159,19 @@ export function resolveLiveAvatarIdForPractice(
 export function validateGeneratedLiveAvatarId(
   liveAvatarId: string | undefined,
   voiceGender: "male" | "female" | "random" | "opposite-speaker",
+  resolvedGender?: CharacterGender,
 ): string {
-  if (liveAvatarId && isAllowedLiveAvatarId(liveAvatarId)) {
-    return isLiveAvatarSandbox() ? SANDBOX_AVATAR_ID : liveAvatarId
-  }
-
   const gender: CharacterGender =
-    voiceGender === "male" || voiceGender === "female" ? voiceGender : "female"
+    voiceGender === "male" || voiceGender === "female"
+      ? voiceGender
+      : (resolvedGender ?? "female")
+
+  if (liveAvatarId && isAllowedLiveAvatarId(liveAvatarId)) {
+    const entry = getLiveAvatarEntry(liveAvatarId)
+    if (entry && entry.gender === gender) {
+      return isLiveAvatarSandbox() ? SANDBOX_AVATAR_ID : liveAvatarId
+    }
+  }
 
   return isLiveAvatarSandbox()
     ? SANDBOX_AVATAR_ID

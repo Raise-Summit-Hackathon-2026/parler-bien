@@ -11,12 +11,12 @@ export const generatedCharacterJsonSchema = {
     title: { type: "string", description: "Short scenario title, e.g. The Hotel Clerk" },
     tagline: { type: "string", description: "One-line hook for the scenario card" },
     goal: { type: "string", description: "What the user must achieve to win" },
-    meterLabel: { type: "string", description: "Short label for the progress meter, e.g. Trust" },
+    meterLabel: { type: "string", description: "Legacy field; UI always shows Progress" },
     winMessage: { type: "string", description: "Celebration message when goal is achieved" },
     persona: {
       type: "string",
       description:
-        "Full character instructions including {characterGender} placeholder, age range, meter rules (0-100), goal_achieved at >=90, and pronunciation scoring. Match the style of existing roleplay scenarios.",
+        "Full character instructions including {characterGender} placeholder, age range, progress rules (0-100, win at 100), goal_achieved at 100, and pronunciation scoring. Match the style of existing roleplay scenarios.",
     },
     voice: {
       type: "object",

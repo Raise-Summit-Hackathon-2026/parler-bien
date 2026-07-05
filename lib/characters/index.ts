@@ -1,5 +1,4 @@
 import type { Character, CharacterCategoryId } from "@/lib/character"
-import { COACHING_CHARACTERS } from "./coaching"
 import { EVERYDAY_CHARACTERS } from "./everyday"
 import { LANGUAGES_CHARACTERS } from "./languages"
 import { PROFESSIONAL_CHARACTERS } from "./professional"
@@ -8,7 +7,6 @@ import { SPORTS_CHARACTERS } from "./sports"
 export const BUILT_IN_CHARACTERS: Character[] = [
   ...LANGUAGES_CHARACTERS,
   ...PROFESSIONAL_CHARACTERS,
-  ...COACHING_CHARACTERS,
   ...SPORTS_CHARACTERS,
   ...EVERYDAY_CHARACTERS,
 ]

@@ -1,5 +1,5 @@
 import type { Character } from "@/lib/character"
-import { CABIN_SAFETY_GESTURES } from "@/lib/gestures"
+import { CABIN_SAFETY_GESTURES, INTERVIEW_PRESENCE_GESTURES } from "@/lib/gestures"
 
 export const PROFESSIONAL_CHARACTERS: Character[] = [
   {
@@ -12,8 +12,10 @@ export const PROFESSIONAL_CHARACTERS: Character[] = [
       "Professional female flight attendant in navy uniform, airplane cabin interior, confident welcoming smile, cinematic lighting",
     voice: {
       ageRange: "30-40",
+      gender: "female",
       tone: "crisp cabin PA voice that drops to a calm whisper under pressure",
     },
+    liveAvatarId: "075abc67-2fae-4548-8ca9-b815fcbd34c7",
     deliveryStyle:
       "Switch registers like a real lead cabin crew: bright PA-announcement projection for safety lines, firm cockpit-command clarity in emergencies, then a hushed reassuring whisper when calming a nervous passenger. Occasional professional sigh before difficult news.",
     coachingStyle:
@@ -94,6 +96,24 @@ export const PROFESSIONAL_CHARACTERS: Character[] = [
           },
         },
       },
+      {
+        kind: "voice",
+        id: "cabin-l4-emergency",
+        title: "Emergency briefing",
+        subtitle: "Lead the cabin through an unexpected diversion",
+        status: "locked",
+        lockLabel: "Pro",
+      },
+      {
+        kind: "gesture",
+        id: "cabin-l5-vip",
+        title: "First-class service",
+        subtitle: "Graceful gestures for premium cabin guests",
+        status: "wip",
+        lockLabel: "Coming soon",
+        steps: CABIN_SAFETY_GESTURES,
+        winMessage: "Impeccable service — the VIP cabin is delighted.",
+      },
     ],
   },
   {
@@ -127,6 +147,52 @@ export const PROFESSIONAL_CHARACTERS: Character[] = [
             ],
           },
         },
+      },
+      {
+        kind: "voice",
+        id: "interview-l2-coach",
+        title: "Interview phrases",
+        subtitle: "Drill the lines that sound confident under pressure",
+        mode: "coach",
+        personaOverlay: `COACH MODE: You are still the interviewer, but your job is pronunciation coaching only — no hiring meter. Drill one professional phrase at a time. Listen, give crisp feedback on clarity and pace, ask them to repeat. Phrases to cycle: structured self-intro, motivation answer, thoughtful question back to the interviewer.`,
+        content: {
+          en: {
+            openingLine: {
+              text: "Let's sharpen your opener. Repeat after me: « Thank you for having me — I've spent the last three years leading a small team, and I'm here because… »",
+              hint: "Slow, clear, professional pace",
+            },
+            starters: [
+              { text: "Thank you for having me.", hint: "Warm, confident opening" },
+              { text: "What drew me here is the team's focus on quality.", hint: "Specific motivation" },
+              { text: "Could you tell me what success looks like in the first six months?", hint: "Thoughtful reverse question" },
+            ],
+          },
+        },
+      },
+      {
+        kind: "gesture",
+        id: "interview-l3-presence",
+        title: "Interview presence",
+        subtitle: "Body language that reads as calm and capable",
+        steps: INTERVIEW_PRESENCE_GESTURES,
+        winMessage: "Strong presence — you'd hire you on body language alone.",
+        holdMs: 1400,
+      },
+      {
+        kind: "voice",
+        id: "interview-l4-salary",
+        title: "Salary negotiation",
+        subtitle: "They liked you — now talk numbers without flinching",
+        status: "locked",
+        lockLabel: "Pro",
+      },
+      {
+        kind: "voice",
+        id: "interview-l5-panel",
+        title: "Panel interview",
+        subtitle: "Six interviewers, one offer on the line",
+        status: "wip",
+        lockLabel: "Coming soon",
       },
     ],
   },

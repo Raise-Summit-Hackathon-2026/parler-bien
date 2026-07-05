@@ -52,7 +52,7 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             <SiteHeader />
-            <main className="flex-1">{children}</main>
+            <main className="flex flex-1 flex-col">{children}</main>
             <SiteFooter />
           </LanguageProvider>
         </ThemeProvider>
