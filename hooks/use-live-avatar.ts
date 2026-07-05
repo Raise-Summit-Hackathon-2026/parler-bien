@@ -9,7 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { LanguageId } from "@/lib/languages"
-import { LIVE_AVATAR_MAX_SESSION_SECONDS, isLiveAvatarSandbox } from "@/lib/liveavatar"
+import { LIVE_AVATAR_IDLE_PAUSE_SECONDS, isLiveAvatarSandbox } from "@/lib/liveavatar"
 import { authenticatedFetch } from "@/lib/supabase"
 
 export type LiveAvatarStatus =
@@ -17,7 +17,8 @@ export type LiveAvatarStatus =
   | "connecting"
   | "ready"
   | "speaking"
-  | "expired"
+  /** Session released after idle time or a provider cap — wakes on the next turn. */
+  | "paused"
   | "error"
 
 type UseLiveAvatarOptions = {
@@ -56,7 +57,6 @@ export function useLiveAvatar({
   const [status, setStatus] = useState<LiveAvatarStatus>("idle")
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
 
   const sessionRef = useRef<LiveAvatarSession | null>(null)
   const sessionIdRef = useRef<number | null>(null)
@@ -65,18 +65,19 @@ export function useLiveAvatar({
   // Resolves the pending speakText promise. `spoke: false` tells useSpeaker
   // the avatar did NOT deliver the line, so it falls back to TTS.
   const speakResolveRef = useRef<((spoke: boolean) => void) | null>(null)
-  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const idleWatchRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastActivityRef = useRef(0)
+  const speakingRef = useRef(false)
+
+  const markActivity = useCallback(() => {
+    lastActivityRef.current = Date.now()
+  }, [])
 
   const clearSessionTimers = useCallback(() => {
-    if (expiryTimerRef.current) {
-      clearTimeout(expiryTimerRef.current)
-      expiryTimerRef.current = null
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current)
-      countdownRef.current = null
+    if (idleWatchRef.current) {
+      clearInterval(idleWatchRef.current)
+      idleWatchRef.current = null
     }
     if (keepAliveRef.current) {
       clearInterval(keepAliveRef.current)
@@ -103,8 +104,8 @@ export function useLiveAvatar({
       streamReadyRef.current = false
       speakResolveRef.current?.(!fallbackToTts)
       speakResolveRef.current = null
+      speakingRef.current = false
       setIsSpeaking(false)
-      setRemainingSeconds(null)
     },
     [clearSessionTimers],
   )
@@ -114,33 +115,38 @@ export function useLiveAvatar({
     setStatus("idle")
   }, [cleanupSession])
 
-  const expireSession = useCallback(async () => {
-    await cleanupSession(true)
-    setRemainingSeconds(0)
-    setStatus("expired")
-  }, [cleanupSession])
+  /**
+   * Release the session without giving up on the avatar: status "paused"
+   * signals consumers to wake it (restartKey bump) on the next turn.
+   * Pass fallbackToTts when a line may be mid-flight (provider cap hit).
+   */
+  const pauseSession = useCallback(
+    async (fallbackToTts = false) => {
+      await cleanupSession(fallbackToTts)
+      setStatus("paused")
+    },
+    [cleanupSession],
+  )
 
-  const startSessionTimer = useCallback(() => {
+  const startSessionTimers = useCallback(() => {
     clearSessionTimers()
-    const startedAt = Date.now()
-    setRemainingSeconds(LIVE_AVATAR_MAX_SESSION_SECONDS)
+    markActivity()
 
-    countdownRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-      const left = Math.max(0, LIVE_AVATAR_MAX_SESSION_SECONDS - elapsed)
-      setRemainingSeconds(left)
-    }, 1000)
-
-    expiryTimerRef.current = setTimeout(() => {
-      void expireSession()
-    }, LIVE_AVATAR_MAX_SESSION_SECONDS * 1000)
+    // Idle watch: release the session (credits) when nobody is talking.
+    idleWatchRef.current = setInterval(() => {
+      if (speakingRef.current) return
+      const idleMs = Date.now() - lastActivityRef.current
+      if (idleMs >= LIVE_AVATAR_IDLE_PAUSE_SECONDS * 1000) {
+        void pauseSession()
+      }
+    }, 5_000)
 
     if (!isLiveAvatarSandbox()) {
       keepAliveRef.current = setInterval(() => {
         void sessionRef.current?.keepAlive().catch(() => {})
       }, 45_000)
     }
-  }, [clearSessionTimers, expireSession])
+  }, [clearSessionTimers, markActivity, pauseSession])
 
   const attachVideo = useCallback((element: HTMLVideoElement | null) => {
     videoElementRef.current = element
@@ -169,6 +175,7 @@ export function useLiveAvatar({
       }
 
       sessionRef.current.interrupt()
+      markActivity()
 
       return new Promise<boolean>((resolve) => {
         const session = sessionRef.current
@@ -178,6 +185,8 @@ export function useLiveAvatar({
         }
 
         const onSpeakStarted = () => {
+          speakingRef.current = true
+          markActivity()
           setIsSpeaking(true)
         }
 
@@ -185,6 +194,8 @@ export function useLiveAvatar({
           session.off(AgentEventsEnum.AVATAR_SPEAK_STARTED, onSpeakStarted)
           session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onSpeakEnded)
           speakResolveRef.current = null
+          speakingRef.current = false
+          markActivity()
           setIsSpeaking(false)
           resolve(true)
         }
@@ -192,6 +203,8 @@ export function useLiveAvatar({
         speakResolveRef.current = (spoke: boolean) => {
           session.off(AgentEventsEnum.AVATAR_SPEAK_STARTED, onSpeakStarted)
           session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onSpeakEnded)
+          speakingRef.current = false
+          markActivity()
           setIsSpeaking(false)
           resolve(spoke)
         }
@@ -272,7 +285,9 @@ export function useLiveAvatar({
           const reason = event.stop_reason
 
           if (reason === "MAX_DURATION_REACHED") {
-            void expireSession()
+            // Provider safety cap hit — pause and re-deliver any mid-flight
+            // line via TTS; the session wakes on the next turn.
+            void pauseSession(true)
             return
           }
 
@@ -310,7 +325,7 @@ export function useLiveAvatar({
         const markReady = () => {
           if (cancelled || sessionIdRef.current !== localSessionId) return
           setStatus("ready")
-          startSessionTimer()
+          startSessionTimers()
         }
 
         if (session.state === SessionState.CONNECTED) {
@@ -342,15 +357,16 @@ export function useLiveAvatar({
     languageId,
     restartKey,
     stop,
-    startSessionTimer,
-    expireSession,
+    startSessionTimers,
+    pauseSession,
     cleanupSession,
   ])
 
   useEffect(() => {
     function handleVisibilityChange() {
-      if (document.visibilityState === "hidden") {
-        void stop()
+      if (document.visibilityState === "hidden" && sessionRef.current) {
+        // Pause (not stop) so the session wakes again on the next turn.
+        void pauseSession()
       }
     }
 
@@ -358,30 +374,20 @@ export function useLiveAvatar({
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [stop])
+  }, [pauseSession])
 
   return useMemo(
     () => ({
       status,
       isReady: status === "ready",
-      isExpired: status === "expired",
+      isPaused: status === "paused",
       isSpeaking,
-      remainingSeconds,
       error,
       attachVideo,
       speakText,
       interrupt,
       stop,
     }),
-    [
-      status,
-      isSpeaking,
-      remainingSeconds,
-      error,
-      attachVideo,
-      speakText,
-      interrupt,
-      stop,
-    ],
+    [status, isSpeaking, error, attachVideo, speakText, interrupt, stop],
   )
 }

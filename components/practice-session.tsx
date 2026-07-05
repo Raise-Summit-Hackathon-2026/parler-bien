@@ -268,7 +268,6 @@ export function PracticeSession({
     isReady: liveAvatarReady,
     isSpeaking: liveAvatarSpeaking,
     error: liveAvatarError,
-    remainingSeconds: liveAvatarRemaining,
     attachVideo,
     speakText,
     interrupt: interruptAvatar,
@@ -278,6 +277,13 @@ export function PracticeSession({
     enabled: avatarEnabled,
     restartKey: avatarRestartKey,
   })
+
+  // A paused (idle-released) avatar session wakes when the user takes a turn.
+  function wakeAvatarIfPaused() {
+    if (avatarEnabled && liveAvatarStatus === "paused") {
+      setAvatarRestartKey((key) => key + 1)
+    }
+  }
 
   const avatarSink = useMemo(
     () =>
@@ -412,6 +418,8 @@ export function PracticeSession({
     if (hasWon) return
     if (isBusy && !isRecording) return
 
+    wakeAvatarIfPaused()
+
     if (isRecording) {
       const audio = await stopRecording()
       await submitAudio(audio)
@@ -436,6 +444,8 @@ export function PracticeSession({
 
   async function handleCoachMicPress() {
     if (isBusy || hasWon) return
+
+    wakeAvatarIfPaused()
 
     if (isRecording) {
       const audio = await stopRecording()
@@ -517,7 +527,6 @@ export function PracticeSession({
         <AvatarStage
           status={liveAvatarStatus}
           attachVideo={attachVideo}
-          remainingSeconds={liveAvatarRemaining}
           avatarEnabled={avatarEnabled}
           onToggleAvatar={handleToggleAvatar}
           onRestart={() => setAvatarRestartKey((key) => key + 1)}

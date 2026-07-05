@@ -234,47 +234,68 @@ export function useConversation({
         }
         if (!response.body) throw new Error("Scoring failed")
 
-        await readScoreStream(response.body, (event) => {
-          if (event.type === "reply") {
-            handleReply(event.transcript, event.reply, event.speaker)
-          } else if (event.type === "score") {
-            scoreReceived = true
-            const result = event.score
-            setScore(result)
-            setSelectedWord(
-              result.words.find((w) => w.score < 80) ?? result.words[0],
-            )
-            if (isRoleplayMode) {
-              const nextMeter = resolveMeterUpdate(meter, result)
-              setMeter(nextMeter)
-              setGoalAchieved(
-                result.goal_achieved || nextMeter >= GOAL_WIN_METER,
-              )
-            }
-            // Fallback: if the reply event never arrived, speak + append now
-            // (no-op when replyHandled is already true).
-            handleReply(result.transcript, result.reply, result.speaker)
-            // Unlock the mic here — a trailing moderation verdict must never
-            // delay it (isCharacterSpeaking still gates during playback).
-            if (abortRef.current === ac) setIsScoring(false)
-          } else if (event.type === "moderation") {
-            if (!event.responseSafe) {
-              // Cut unsafe generated speech mid-playback.
-              stopSpeaking()
-              interruptAvatar?.()
-              setModerationWarning("That reply didn't pass our safety check.")
-            } else if (!event.userSafe) {
-              setModerationWarning(
-                "That kind of language isn't okay here — keep it respectful and try again.",
-              )
-            }
-          } else if (event.type === "error") {
-            streamError = event.error
-          }
+        let resolveScoreArrived!: () => void
+        const scoreArrived = new Promise<void>((resolve) => {
+          resolveScoreArrived = resolve
         })
 
-        if (streamError) throw new Error(streamError)
-        if (!scoreReceived) throw new Error("Scoring ended unexpectedly")
+        const consumeStream = (async () => {
+          await readScoreStream(response.body!, (event) => {
+            if (event.type === "reply") {
+              handleReply(event.transcript, event.reply, event.speaker)
+            } else if (event.type === "score") {
+              scoreReceived = true
+              const result = event.score
+              setScore(result)
+              setSelectedWord(
+                result.words.find((w) => w.score < 80) ?? result.words[0],
+              )
+              if (isRoleplayMode) {
+                const nextMeter = resolveMeterUpdate(meter, result)
+                setMeter(nextMeter)
+                setGoalAchieved(
+                  result.goal_achieved || nextMeter >= GOAL_WIN_METER,
+                )
+              }
+              // Fallback: if the reply event never arrived, speak + append now
+              // (no-op when replyHandled is already true).
+              handleReply(result.transcript, result.reply, result.speaker)
+              // Unlock the mic and the caller here — the trailing moderation
+              // verdict must never delay the conversation loop.
+              if (abortRef.current === ac) setIsScoring(false)
+              resolveScoreArrived()
+            } else if (event.type === "moderation") {
+              if (!event.responseSafe) {
+                // Cut unsafe generated speech mid-playback.
+                stopSpeaking()
+                interruptAvatar?.()
+                setModerationWarning("That reply didn't pass our safety check.")
+              } else if (!event.userSafe) {
+                setModerationWarning(
+                  "That kind of language isn't okay here — keep it respectful and try again.",
+                )
+              }
+            } else if (event.type === "error") {
+              streamError = event.error
+            }
+          })
+          if (streamError) throw new Error(streamError)
+          if (!scoreReceived) throw new Error("Scoring ended unexpectedly")
+        })()
+
+        // Failures after the score event (e.g. a dropped moderation verdict)
+        // must not fail the already-completed turn.
+        const tail = consumeStream.catch((err) => {
+          if (ac.signal.aborted || scoreReceived) return
+          setRequestError(
+            err instanceof Error ? err.message : "Something went wrong",
+          )
+          if (abortRef.current === ac) setIsScoring(false)
+        })
+
+        // Resolve at the score event; the moderation tail keeps streaming in
+        // the background and updates the warning banner whenever it lands.
+        await Promise.race([scoreArrived, tail])
       } catch (err) {
         // Reset/unmount/new-submit aborts are intentional — stay silent.
         if (ac.signal.aborted) return
@@ -310,14 +331,15 @@ export function useConversation({
     )
   }, [score, isOpenMode, speakLine])
 
+  // Note: deliberately does NOT abort the previous turn's stream — its
+  // moderation tail may still be delivering a verdict. A new submitAudio
+  // aborts any prior stream itself.
   const beginLiveTurn = useCallback(() => {
-    abortRef.current?.abort()
     stopSpeaking()
     interruptAvatar?.()
     setScore(null)
     setSelectedWord(null)
     setRequestError(null)
-    setModerationWarning(null)
     setTargetPhrase(null)
   }, [stopSpeaking, interruptAvatar])
 

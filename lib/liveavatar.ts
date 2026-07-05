@@ -7,8 +7,14 @@ export const DEFAULT_LIVE_AVATAR_ID = "65f9e3c9-d48b-4118-b73a-4ae2e3cbb8f0"
 /** Only avatar supported in LiveAvatar sandbox mode (Wayne) */
 export const SANDBOX_AVATAR_ID = "dd73ea75-1218-4ef3-92ce-606d5f7fbc0a"
 
-/** Max continuous LiveAvatar stream per session (seconds). */
-export const LIVE_AVATAR_MAX_SESSION_SECONDS = 60
+/**
+ * Provider-level safety cap per session (seconds). Not surfaced in the UI —
+ * idle pausing (below) is what actually bounds credit usage.
+ */
+export const LIVE_AVATAR_MAX_SESSION_SECONDS = 600
+
+/** Pause the avatar session after this much idle time (no speech). */
+export const LIVE_AVATAR_IDLE_PAUSE_SECONDS = 45
 
 export type LiveAvatarCatalogEntry = {
   id: string

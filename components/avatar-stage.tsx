@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils"
 type AvatarStageProps = {
   status: LiveAvatarStatus
   attachVideo: (element: HTMLVideoElement | null) => void
-  remainingSeconds?: number | null
   avatarEnabled: boolean
   onToggleAvatar: (enabled: boolean) => void
   onRestart?: () => void
@@ -26,16 +25,9 @@ type AvatarStageProps = {
   overlay?: boolean
 }
 
-function formatRemaining(seconds: number) {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, "0")}`
-}
-
 export function AvatarStage({
   status,
   attachVideo,
-  remainingSeconds,
   avatarEnabled,
   onToggleAvatar,
   onRestart,
@@ -51,7 +43,7 @@ export function AvatarStage({
   const showLiveVideo =
     avatarEnabled && (status === "ready" || status === "speaking")
   const showConnecting = avatarEnabled && status === "connecting"
-  const showExpired = avatarEnabled && status === "expired"
+  const showPaused = avatarEnabled && status === "paused"
   const showError = avatarEnabled && status === "error"
 
   useEffect(() => {
@@ -106,10 +98,10 @@ export function AvatarStage({
         )}
       />
 
-      {showExpired && (
+      {showPaused && (
         <div className="absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/70 to-transparent px-3 pb-2 pt-6">
           <p className="text-center text-[11px] font-medium text-white/90">
-            Avatar session ended — voice replies continue
+            Avatar paused — it wakes on your next turn
           </p>
           {onRestart && (
             <Button
@@ -118,7 +110,7 @@ export function AvatarStage({
               className="mx-auto mt-2 flex"
               onClick={onRestart}
             >
-              Restart avatar
+              Resume now
             </Button>
           )}
         </div>
@@ -129,12 +121,6 @@ export function AvatarStage({
           <p className="text-center text-[11px] font-medium text-white/90">
             Avatar unavailable — using voice only
           </p>
-        </div>
-      )}
-
-      {showLiveVideo && remainingSeconds != null && remainingSeconds <= 15 && (
-        <div className="absolute top-2 right-2 z-30 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium tabular-nums text-white">
-          {formatRemaining(remainingSeconds)}
         </div>
       )}
 
